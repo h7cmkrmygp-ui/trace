@@ -77,6 +77,24 @@ struct DateResolverTests {
         #expect(resolved == ResolvedDate(date: Self.day(2026, 10, 9, 14, 0), hasTime: true))
     }
 
+    /// L'heure d'un autre jour n'est jamais collée au jour choisi : « demain » (le rappel) avec « 24 novembre à 14 h »
+    /// donne demain sans heure, pas demain à 14 h.
+    @Test func aTimeIsNeverTakenFromAnotherDay() {
+        let task = DateResolver.firstDate(in: ["demain", "24 novembre à 14 h"],
+                                          excerpt: "Réserver la salle le 24 novembre à 14 h, rappelle-moi ça demain",
+                                          relativeTo: Self.now, calendar: Self.calendar)
+        #expect(task == ResolvedDate(date: Self.day(2026, 10, 9), hasTime: false))
+        // Un rendez-vous sans heure ne prend pas l'heure de son rappel.
+        let appointment = DateResolver.firstDate(in: ["mardi", "lundi à 18 h"],
+                                                 excerpt: "Dentiste mardi, rappelle-moi ça lundi à 18 h",
+                                                 relativeTo: Self.now, calendar: Self.calendar)
+        #expect(appointment == ResolvedDate(date: Self.day(2026, 10, 13), hasTime: false))
+        // L'heure du même jour, dite à part ou dans l'extrait, est toujours prise.
+        let sameDay = DateResolver.firstDate(in: ["demain"], excerpt: "Appeler le garage demain à 10 h",
+                                             relativeTo: Self.now, calendar: Self.calendar)
+        #expect(sameDay == ResolvedDate(date: Self.day(2026, 10, 9, 10, 0), hasTime: true))
+    }
+
     @Test func firstDateUsesTheFirstUnderstoodExpression() {
         let resolved = DateResolver.firstDate(in: ["bientôt", "demain"], excerpt: "",
                                               relativeTo: Self.now, calendar: Self.calendar)
