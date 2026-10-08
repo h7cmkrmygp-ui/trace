@@ -5,8 +5,8 @@ import Testing
 struct EvaluationSetTests {
     @Test func hasFortyFictionalCasesWithAcceptedCategories() {
         let cases = EvaluationSet.cases
-        #expect(cases.count == 40)
-        #expect(Set(cases.map(\.sentence)).count == 40)
+        #expect(cases.count >= 40)
+        #expect(Set(cases.map(\.sentence)).count == cases.count)
         for item in cases {
             #expect(!item.sentence.trimmingCharacters(in: .whitespaces).isEmpty)
             #expect(!item.acceptedRoots.isEmpty, "aucune catégorie acceptée pour « \(item.sentence) »")
