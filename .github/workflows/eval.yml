@@ -1,0 +1,30 @@
+name: Apple evaluation
+# Mesure le modèle d'Apple (classement et confidentialité) sur des phrases inventées. Rapport seulement.
+on:
+  push:
+    paths: ["Packages/EngramKit/Sources/EngramIntelligence/**", "Packages/EngramKit/Tests/EngramIntelligenceTests/AppleEvaluationTests.swift", ".github/workflows/eval.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  evaluate:
+    name: Évaluation du modèle d'Apple
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Évaluer
+        working-directory: Packages/EngramKit
+        env:
+          ENGRAM_RUN_APPLE_EVAL: "1"
+        run: |
+          swift test --filter AppleEvaluationTests 2>&1 | grep -E "MODELE APPLE|SCORE|^OK |^NON|^ERR|EXACT|PRUDENT|TROP BAS|passed|failed" | tee "$RUNNER_TEMP/rapport.txt"
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: evaluation-${{ github.run_number }}
+          path: ${{ runner.temp }}/rapport.txt
+          retention-days: 7
