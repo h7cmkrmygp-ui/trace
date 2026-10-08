@@ -236,6 +236,17 @@ public struct CategoryStore: Sendable {
         }
     }
 
+    /// Pose la description proposée par l'IA sur une catégorie qui n'en a pas encore (jamais d'écrasement).
+    func describeIfMissing(_ db: Database, categoryID: UUID, description: String, now: Date) throws {
+        guard var category = try EngramCategory.fetchOne(db, key: categoryID),
+              (category.descriptionText ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let cleaned = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        category.descriptionText = cleaned
+        category.updatedAt = now
+        try category.update(db)
+    }
+
     /// Catégories du chemin, de la plus large à la plus précise.
     func resolveChain(_ db: Database, names: [String], origin: Origin, now: Date) throws -> [EngramCategory] {
         guard !names.isEmpty else { throw StoreError.invalidName }

@@ -47,7 +47,10 @@ public enum AnalysisValidator {
             // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
             mentionedDates: thought.mentionedDates
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) })
+                .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) },
+            categoryDescription: thought.categoryDescription
+                .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
+                .flatMap { $0.isEmpty ? nil : $0 })
     }
 
     /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Corolla » dans un seul champ :

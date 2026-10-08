@@ -70,6 +70,9 @@ public struct ThoughtFiler: Sendable {
             func classify(_ memoryID: UUID, with thought: ValidThought) throws {
                 if !thought.categoryPath.isEmpty {
                     let chain = try categoryStore.resolveChain(db, names: thought.categoryPath, origin: .ai, now: now)
+                    if let root = chain.first, let description = thought.categoryDescription {
+                        try categoryStore.describeIfMissing(db, categoryID: root.id, description: description, now: now)
+                    }
                     if let target = chain.last {
                         let outcome = try categoryStore.assign(db, memoryID: memoryID, categoryID: target.id,
                                                                origin: .ai, confidence: nil, now: now)

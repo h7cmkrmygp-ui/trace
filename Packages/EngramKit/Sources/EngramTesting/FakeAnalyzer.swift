@@ -7,6 +7,7 @@ public final class FakeAnalyzer: MemoryAnalyzer {
     struct State: Sendable {
         var responses: [Result<ThoughtAnalysis, AnalyzerError>]
         var calls: [[String]] = []
+        var contexts: [AnalysisContext] = []
     }
 
     private let state: Mutex<State>
@@ -25,7 +26,14 @@ public final class FakeAnalyzer: MemoryAnalyzer {
         return try response.get()
     }
 
+    public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
+        state.withLock { $0.contexts.append(context) }
+        return try await analyze(text: text, existingCategories: existingCategories)
+    }
+
     public var callCount: Int { state.withLock { $0.calls.count } }
     /// Listes de catégories reçues, un élément par appel.
     public var receivedCategories: [[String]] { state.withLock { $0.calls } }
+    /// Contextes reçus (appels avec contexte seulement).
+    public var receivedContexts: [AnalysisContext] { state.withLock { $0.contexts } }
 }

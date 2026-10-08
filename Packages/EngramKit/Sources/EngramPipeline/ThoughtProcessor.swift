@@ -51,15 +51,18 @@ public actor ThoughtProcessor {
                 return .fallback
             }
             let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
+            let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt)
             var attempt = 0
             while true {
                 attempt += 1
                 do {
-                    let analysis = try await analyzer.analyze(text: text, existingCategories: paths)
+                    let analysis = try await analyzer.analyze(text: text, existingCategories: paths, context: context)
                     let valid = try AnalysisValidator.validate(analysis, against: text)
                     // Des pensées rejetées ou un texte mal couvert : la note complète reste aussi « À classer ».
-                    return .filed(try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
-                                                 forceKeepInterim: valid.count < analysis.thoughts.count))
+                    let summary = try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
+                                                 forceKeepInterim: valid.count < analysis.thoughts.count)
+                    if let route = analysis.route { try memories.recordRoute(sourceID: sourceID, route: route) }
+                    return .filed(summary)
                 } catch AnalyzerError.unavailable(let reason) {
                     return .waiting(reason)
                 } catch AnalyzerError.invalidOutput where attempt < 2 {
