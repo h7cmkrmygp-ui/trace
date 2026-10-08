@@ -133,6 +133,15 @@ final class AppModel {
         }
     }
 
+    /// Vide la corbeille, avec les fichiers audio qui ne servent plus.
+    func emptyTrash() throws {
+        for deletion in try memories.emptyTrash() {
+            if let path = deletion.audioPathToRemove {
+                try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
+            }
+        }
+    }
+
     // MARK: - Erreurs
 
     /// Exécute une action ; en cas d'erreur, l'affiche dans une alerte.

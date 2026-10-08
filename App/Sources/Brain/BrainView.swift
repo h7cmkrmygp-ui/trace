@@ -51,14 +51,7 @@ struct BrainView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
-            .navigationDestination(for: NotesRoute.self) { route in
-                switch route {
-                case .list(let title, let statuses): MemoryListView(title: title, statuses: statuses)
-                case .category(let category): CategoryMemoriesView(category: category)
-                case .settings: SettingsView()
-                case .evaluation: EvaluationView()
-                }
-            }
+            .navigationDestination(for: NotesRoute.self) { $0.destination }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Cerveau : \(categoryNames.count) catégories, \(itemCount) pensées")
             .task {

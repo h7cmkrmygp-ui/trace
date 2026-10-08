@@ -7,49 +7,47 @@ import SwiftUI
 enum NotesRoute: Hashable {
     case list(title: String, statuses: Set<MemoryStatus>)
     case category(EngramCategory)
+    case todo
     case settings
     case evaluation
+
+    @MainActor @ViewBuilder var destination: some View {
+        switch self {
+        case .list(let title, let statuses): MemoryListView(title: title, statuses: statuses)
+        case .category(let category): CategoryMemoriesView(category: category)
+        case .todo: TodoListView()
+        case .settings: SettingsView()
+        case .evaluation: EvaluationView()
+        }
+    }
 }
 
-/// Notes : recherche, « À faire », catégories créées par l'IA, puis Archives et Corbeille.
+/// Notes : une recherche, puis des dossiers — seulement ceux qui contiennent quelque chose.
+/// Archives, Corbeille et Réglages sont rangés dans le menu en haut.
 struct NotesView: View {
     @Environment(AppModel.self) private var model
+    @State private var path = NavigationPath()
     @State private var summary: CategoryStore.LibrarySummary?
     @State private var todo: [Memory] = []
     @State private var query = ""
     @State private var results: [Memory] = []
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    private var roots: [CategoryStore.CategorySummary] { summary?.categories.filter { $0.depth == 0 } ?? [] }
+    private var unsortedCount: Int { summary?.unsortedCount ?? 0 }
+    private var isEmpty: Bool { summary != nil && roots.isEmpty && todo.isEmpty && unsortedCount == 0 }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if isSearching {
-                    searchResults
-                } else {
-                    todoSection
-                    if let summary { librarySections(summary) }
-                }
+        NavigationStack(path: $path) {
+            Group {
+                if isSearching { searchResults } else { folders }
             }
-            .listStyle(.plain)
             .navigationTitle("Notes")
             .searchable(text: $query, prompt: "Chercher dans ta mémoire")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: NotesRoute.settings) {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Réglages")
-                }
+                ToolbarItem(placement: .topBarTrailing) { menu }
             }
-            .navigationDestination(for: NotesRoute.self) { route in
-                switch route {
-                case .list(let title, let statuses): MemoryListView(title: title, statuses: statuses)
-                case .category(let category): CategoryMemoriesView(category: category)
-                case .settings: SettingsView()
-                case .evaluation: EvaluationView()
-                }
-            }
+            .navigationDestination(for: NotesRoute.self) { $0.destination }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
             .task {
                 do {
@@ -78,61 +76,141 @@ struct NotesView: View {
         }
     }
 
-    @ViewBuilder private var searchResults: some View {
-        if results.isEmpty {
-            ContentUnavailableView.search(text: query)
+    private var menu: some View {
+        Menu {
+            Button {
+                path.append(NotesRoute.list(title: "Archives", statuses: [.archived]))
+            } label: {
+                Label("Archives (\(summary?.archivedCount ?? 0))", systemImage: "archivebox")
+            }
+            Button {
+                path.append(NotesRoute.list(title: "Corbeille", statuses: [.trashed]))
+            } label: {
+                Label("Corbeille (\(summary?.trashedCount ?? 0))", systemImage: "trash")
+            }
+            Divider()
+            Button {
+                path.append(NotesRoute.settings)
+            } label: {
+                Label("Réglages", systemImage: "gearshape")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
         }
-        ForEach(results) { memory in
+        .accessibilityLabel("Plus")
+    }
+
+    private var folders: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                if !todo.isEmpty {
+                    NavigationLink(value: NotesRoute.todo) {
+                        FolderCard(systemImage: "checklist", title: "À faire", subtitle: Self.count(todo.count, "chose", "à faire"))
+                    }
+                }
+                if unsortedCount > 0 {
+                    NavigationLink(value: NotesRoute.list(title: "À classer", statuses: [.unsorted])) {
+                        FolderCard(systemImage: "tray", title: "À classer", subtitle: Self.count(unsortedCount, "note", "à classer"))
+                    }
+                }
+                ForEach(roots) { item in
+                    NavigationLink(value: NotesRoute.category(item.category)) {
+                        FolderCard(systemImage: "folder", title: item.category.name,
+                                   subtitle: item.category.descriptionText.flatMap { $0.isEmpty ? nil : $0 }
+                                       ?? Self.count(item.totalCount, "note", nil))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+        }
+        .overlay {
+            if isEmpty {
+                ContentUnavailableView("Aucune note pour l'instant", systemImage: "folder",
+                                       description: Text("Parle à Engram : tes dossiers apparaîtront ici tout seuls."))
+            }
+        }
+    }
+
+    @ViewBuilder private var searchResults: some View {
+        List(results) { memory in
             NavigationLink(value: memory.id) { MemoryRow(memory: memory) }
         }
-    }
-
-    @ViewBuilder private var todoSection: some View {
-        if !todo.isEmpty {
-            Section("À faire") {
-                ForEach(todo) { memory in
-                    NavigationLink(value: memory.id) {
-                        Label(memory.title, systemImage: memory.kind == .appointment ? "calendar" : "circle")
-                    }
-                    .swipeActions {
-                        Button("Fait", systemImage: "checkmark") {
-                            model.perform { _ = try model.memories.setStatus(.archived, for: memory.id, actor: .user) }
-                        }
-                        .tint(.gray)
-                    }
-                }
-            }
+        .listStyle(.plain)
+        .overlay {
+            if results.isEmpty { ContentUnavailableView.search(text: query) }
         }
     }
 
-    @ViewBuilder private func librarySections(_ summary: CategoryStore.LibrarySummary) -> some View {
-        if summary.unsortedCount > 0 {
-            Section {
-                NavigationLink(value: NotesRoute.list(title: "À classer", statuses: [.unsorted])) {
-                    LabeledContent { Text("\(summary.unsortedCount)") } label: { Label("À classer", systemImage: "tray") }
-                }
-            }
-        }
-        Section("Catégories") {
-            if summary.categories.isEmpty {
-                Text("Parle à Engram : tes catégories apparaîtront ici toutes seules.")
+    /// « 1 note », « 3 notes à classer »…
+    static func count(_ n: Int, _ noun: String, _ suffix: String?) -> String {
+        let word = n > 1 ? noun + "s" : noun
+        return [String(n), word, suffix].compactMap { $0 }.joined(separator: " ")
+    }
+}
+
+/// Carte-dossier, dans le style de la capture : icône, nom, une ligne de description, chevron.
+struct FolderCard: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .frame(width: 48, height: 48)
+                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            ForEach(summary.categories) { item in
-                NavigationLink(value: NotesRoute.category(item.category)) {
-                    LabeledContent { Text("\(item.memoryCount)") } label: {
-                        Label(item.category.name, systemImage: item.depth == 0 ? "folder" : "arrow.turn.down.right")
-                    }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Tâches et rendez-vous en cours ; balayer pour marquer « Fait » (archivé).
+struct TodoListView: View {
+    @Environment(AppModel.self) private var model
+    @State private var todo: [Memory] = []
+
+    var body: some View {
+        List(todo) { memory in
+            NavigationLink(value: memory.id) {
+                Label(memory.title, systemImage: memory.kind == .appointment ? "calendar" : "circle")
+            }
+            .swipeActions {
+                Button("Fait", systemImage: "checkmark") {
+                    model.perform { _ = try model.memories.setStatus(.archived, for: memory.id, actor: .user) }
                 }
-                .padding(.leading, CGFloat(item.depth) * 16)
+                .tint(.green)
             }
         }
-        Section {
-            NavigationLink(value: NotesRoute.list(title: "Archives", statuses: [.archived])) {
-                LabeledContent { Text("\(summary.archivedCount)") } label: { Label("Archives", systemImage: "archivebox") }
-            }
-            NavigationLink(value: NotesRoute.list(title: "Corbeille", statuses: [.trashed])) {
-                LabeledContent { Text("\(summary.trashedCount)") } label: { Label("Corbeille", systemImage: "trash") }
+        .overlay {
+            if todo.isEmpty { ContentUnavailableView("Rien à faire", systemImage: "checkmark.circle") }
+        }
+        .navigationTitle("À faire")
+        .task {
+            do {
+                for try await list in model.memories.memoriesStream(kinds: [.task, .appointment], statuses: [.active, .unsorted]) {
+                    todo = list
+                }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
             }
         }
     }

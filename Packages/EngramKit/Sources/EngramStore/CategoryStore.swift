@@ -378,6 +378,35 @@ public struct CategoryStore: Sendable {
         }
     }
 
+    /// Une catégorie et ses notes vivantes.
+    public struct CategorySection: Sendable, Equatable, Identifiable {
+        public let category: EngramCategory
+        public let memories: [Memory]
+        public var id: UUID { category.id }
+    }
+
+    /// Écran d'une catégorie : ses propres notes, puis celles de chaque sous-catégorie (ordre alphabétique).
+    /// Les sections sans note sont omises.
+    public func sectionsStream(rootID: UUID) -> AsyncThrowingStream<[CategorySection], any Error> {
+        database.stream { db in try Self.sections(db, rootID: rootID) }
+    }
+
+    static func sections(_ db: Database, rootID: UUID) throws -> [CategorySection] {
+        guard let root = try EngramCategory.fetchOne(db, key: rootID) else { return [] }
+        let children = try EngramCategory
+            .filter(Column("parent_id") == rootID && Column("status") == CategoryStatus.active)
+            .fetchAll(db)
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        return try ([root] + children).compactMap { category in
+            let memories = try Memory.fetchAll(db, sql: """
+                SELECT m.* FROM memory m JOIN memory_category mc ON mc.memory_id = m.id
+                WHERE mc.category_id = ? AND mc.rejected = 0 AND m.status IN ('active','unsorted')
+                ORDER BY m.captured_at DESC
+                """, arguments: [category.id])
+            return memories.isEmpty ? nil : CategorySection(category: category, memories: memories)
+        }
+    }
+
     static func librarySummary(_ db: Database) throws -> LibrarySummary {
         let categories = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
         var counts: [UUID: Int] = [:]
