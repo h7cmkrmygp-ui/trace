@@ -150,14 +150,16 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
         case .available:
             return "Disponible sur cet iPhone"
         case .unavailable(let reason):
-            switch reason {
-            case .deviceNotEligible:
+            // Les noms des raisons varient selon les versions du SDK : on lit leur description plutôt que de les énumérer.
+            let name = String(describing: reason)
+            if name.contains("deviceNotEligible") {
                 return "Cet appareil ne prend pas en charge Apple Intelligence."
-            case .systemNotReady:
-                return "Apple Intelligence n'est pas encore prêt (activation ou téléchargement en cours)."
-            @unknown default:
-                return "Apple Intelligence est indisponible. Vérifie qu'il est activé dans Réglages."
+            } else if name.contains("NotEnabled") {
+                return "Active Apple Intelligence dans Réglages › Apple Intelligence et Siri."
+            } else if name.contains("NotReady") {
+                return "Apple Intelligence n'est pas encore prêt (téléchargement du modèle en cours)."
             }
+            return "Apple Intelligence est indisponible pour l'instant."
         @unknown default:
             return "Apple Intelligence est indisponible."
         }
