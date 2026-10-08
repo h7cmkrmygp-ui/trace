@@ -193,7 +193,9 @@ public enum CloudDecoder {
             let trimmed = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? nil : trimmed
         }
-        let kind = MemoryKind(rawValue: note.kind ?? "") ?? .other
+        var kind = MemoryKind(rawValue: note.kind ?? "") ?? .other
+        // Un rappel demandé en fait une chose « À faire » (un rendez-vous reste un rendez-vous).
+        if kind != .appointment, (note.dates ?? []).contains(where: { $0.role == "reminder" }) { kind = .task }
         // Le rappel d'abord : c'est lui qui donne l'échéance de la note. Sauf pour un rendez-vous : sa propre date
         // d'abord, car c'est elle qui va dans le calendrier.
         let order = kind == .appointment ? ["event": 0, "deadline": 1, "reminder": 2] : ["reminder": 0, "deadline": 1, "event": 2]
