@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "EngramPipeline", targets: ["EngramPipeline"]),
         .library(name: "EngramIntelligence", targets: ["EngramIntelligence"]),
         .library(name: "EngramCapture", targets: ["EngramCapture"]),
+        .library(name: "EngramCalendar", targets: ["EngramCalendar"]),
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
@@ -23,6 +24,7 @@ let package = Package(
         .target(name: "EngramPipeline", dependencies: ["EngramCore", "EngramStore"]),
         .target(name: "EngramIntelligence", dependencies: ["EngramCore"]),
         .target(name: "EngramCapture", dependencies: ["EngramCore"]),
+        .target(name: "EngramCalendar"),
         .target(name: "EngramTesting", dependencies: ["EngramCore"]),
         .testTarget(name: "EngramCoreTests", dependencies: ["EngramCore", "EngramTesting"]),
         .testTarget(

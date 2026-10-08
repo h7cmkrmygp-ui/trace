@@ -19,10 +19,13 @@ public struct ThoughtFiler: Sendable {
 
     public let database: AppDatabase
     public let dates: any DateProvider
+    /// Calendrier (fuseau) utilisé pour calculer les échéances.
+    public let calendar: Calendar
 
-    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider()) {
+    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider(), calendar: Calendar = .current) {
         self.database = database
         self.dates = dates
+        self.calendar = calendar
     }
 
     public func file(_ thoughts: [ValidThought], sourceID: UUID) throws -> FilingSummary {
@@ -62,11 +65,14 @@ public struct ThoughtFiler: Sendable {
 
             if kept.isEmpty {
                 for thought in thoughts {
+                    let due = DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
+                                                     relativeTo: source.capturedAt, calendar: calendar)
                     let draft = MemoryDraft(
                         sourceID: sourceID, excerpt: thought.excerpt, spanStart: thought.spanStart, spanEnd: thought.spanEnd,
                         spanTextVersion: source.correctedText == nil ? .original : .corrected,
                         title: thought.title, summary: thought.summary, content: thought.excerpt, kind: thought.kind,
-                        status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion)
+                        status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion,
+                        dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
                     try classify(memory.id, with: thought)
                     filedIDs.append(memory.id)

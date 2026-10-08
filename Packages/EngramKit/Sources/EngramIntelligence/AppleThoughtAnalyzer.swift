@@ -97,26 +97,39 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
                 to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories),
                 generating: GeneratedThoughts.self)
             return response.content.thoughts.map(Self.convert)
-        } catch let error as LanguageModelSession.GenerationError {
+        } catch let error as LanguageModelError {
+            // iOS 27 : `LanguageModelError` remplace `LanguageModelSession.GenerationError`.
             switch error {
-            case .exceededContextWindowSize where depth < 3:
-                let halves = TextChunker.halves(of: chunk)
-                guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
-                let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, depth: depth + 1)
-                let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, depth: depth + 1)
-                return first + second
-            case .assetsUnavailable:
-                throw AnalyzerError.unavailable("Le modèle d'Apple Intelligence se télécharge encore.")
+            case .contextSizeExceeded where depth < 3:
+                return try await analyzeInHalves(chunk, existingCategories: existingCategories, depth: depth)
             case .unsupportedLanguageOrLocale:
                 throw AnalyzerError.unavailable("Cette langue n'est pas prise en charge par le modèle.")
             case .guardrailViolation, .refusal:
                 throw AnalyzerError.refused
-            case .rateLimited, .concurrentRequests:
+            case .rateLimited, .timeout:
                 throw AnalyzerError.busy
             default:
                 throw AnalyzerError.invalidOutput
             }
+        } catch {
+            // Autres erreurs (ressources du modèle absentes, anciennes erreurs) : reconnues par leur description.
+            let name = String(describing: error)
+            if name.localizedCaseInsensitiveContains("assetsUnavailable") {
+                throw AnalyzerError.unavailable("Le modèle d'Apple Intelligence se télécharge encore.")
+            }
+            if name.localizedCaseInsensitiveContains("exceededContextWindowSize"), depth < 3 {
+                return try await analyzeInHalves(chunk, existingCategories: existingCategories, depth: depth)
+            }
+            throw AnalyzerError.invalidOutput
         }
+    }
+
+    func analyzeInHalves(_ chunk: String, existingCategories: [String], depth: Int) async throws -> [AnalyzedThought] {
+        let halves = TextChunker.halves(of: chunk)
+        guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
+        let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, depth: depth + 1)
+        let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, depth: depth + 1)
+        return first + second
     }
 
     static func convert(_ generated: GeneratedThought) -> AnalyzedThought {

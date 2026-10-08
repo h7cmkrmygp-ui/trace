@@ -71,14 +71,18 @@ public struct MemoryDraft: Sendable, Hashable {
     public var suggestedTopic: String?
     public var mentionedDates: [String]
     public var analysisVersion: String
+    public var dueAt: Date?
+    public var dueHasTime: Bool
 
     public init(
         sourceID: UUID, excerpt: String, spanStart: Int? = nil, spanEnd: Int? = nil,
         spanTextVersion: TextVersion = .original, title: String, summary: String? = nil,
         content: String, kind: MemoryKind? = nil, status: MemoryStatus = .unsorted,
         confidence: Double? = nil, suggestedTopic: String? = nil, mentionedDates: [String] = [],
-        analysisVersion: String
+        analysisVersion: String, dueAt: Date? = nil, dueHasTime: Bool = false
     ) {
+        self.dueAt = dueAt
+        self.dueHasTime = dueHasTime
         self.sourceID = sourceID
         self.excerpt = excerpt
         self.spanStart = spanStart
@@ -121,6 +125,10 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
     public var updatedAt: Date
     public var trashedAt: Date?
     public var version: Int
+    /// Échéance calculée à partir des dates dites (jamais inventée).
+    public var dueAt: Date?
+    /// Vrai si une heure précise a été dite.
+    public var dueHasTime: Bool
 
     public init(id: UUID = UUID(), draft: MemoryDraft, capturedAt: Date, now: Date) {
         self.id = id
@@ -146,6 +154,8 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
         self.updatedAt = now
         self.trashedAt = nil
         self.version = 1
+        self.dueAt = draft.dueAt
+        self.dueHasTime = draft.dueHasTime
     }
 
     /// Ce qui est conservé dans l'historique des versions.
@@ -169,6 +179,8 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case trashedAt = "trashed_at"
+        case dueAt = "due_at"
+        case dueHasTime = "due_has_time"
     }
 }
 

@@ -16,7 +16,7 @@ struct StoreTestEnvironment {
         dates = TestDateProvider(Fixtures.date)
         memories = MemoryStore(database: database, dates: dates)
         categories = CategoryStore(database: database, dates: dates)
-        filer = ThoughtFiler(database: database, dates: dates)
+        filer = ThoughtFiler(database: database, dates: dates, calendar: Fixtures.calendar)
     }
 
     @discardableResult

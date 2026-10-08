@@ -1,0 +1,202 @@
+import Foundation
+
+/// Une date comprise dans le texte. `hasTime` = une heure précise a été dite.
+public struct ResolvedDate: Sendable, Hashable {
+    public let date: Date
+    public let hasTime: Bool
+
+    public init(date: Date, hasTime: Bool) {
+        self.date = date
+        self.hasTime = hasTime
+    }
+}
+
+/// Calcule une date réelle à partir d'une expression française ou anglaise, relativement au moment de la capture.
+/// Déterministe : l'IA ne fait que relever les expressions, la date n'est jamais inventée.
+/// Une expression vague (« bientôt », « la semaine prochaine ») ne donne aucune date.
+public enum DateResolver {
+    /// Première expression comprise ; à défaut, cherche dans l'extrait lui-même.
+    public static func firstDate(in expressions: [String], excerpt: String, relativeTo now: Date,
+                                 calendar: Calendar) -> ResolvedDate? {
+        for expression in expressions {
+            if let resolved = resolve(expression, relativeTo: now, calendar: calendar) { return resolved }
+        }
+        return resolve(excerpt, relativeTo: now, calendar: calendar)
+    }
+
+    public static func resolve(_ expression: String, relativeTo now: Date, calendar: Calendar) -> ResolvedDate? {
+        let text = normalize(expression)
+        guard !text.isEmpty else { return nil }
+        let today = calendar.startOfDay(for: now)
+        let day = explicitDayMonth(text, today: today, calendar: calendar)
+            ?? numericDate(text, today: today, calendar: calendar)
+            ?? dayOfMonth(text, today: today, calendar: calendar)
+            ?? relativeDay(text, today: today, calendar: calendar)
+            ?? inSomeDays(text, today: today, calendar: calendar)
+            ?? weekday(text, today: today, calendar: calendar)
+        let time = timeOfDay(text)
+        if day == nil && time == nil { return nil }
+        let base = day ?? today
+        guard let time else { return ResolvedDate(date: base, hasTime: false) }
+        guard let date = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: base) else { return nil }
+        return ResolvedDate(date: date, hasTime: true)
+    }
+
+    // MARK: - Jours
+
+    static let months: [(name: String, number: Int)] = [
+        ("janvier", 1), ("janv", 1), ("january", 1), ("jan", 1),
+        ("fevrier", 2), ("fevr", 2), ("fev", 2), ("february", 2), ("feb", 2),
+        ("mars", 3), ("march", 3), ("mar", 3),
+        ("avril", 4), ("avr", 4), ("april", 4), ("apr", 4),
+        ("mai", 5), ("may", 5),
+        ("juin", 6), ("june", 6), ("jun", 6),
+        ("juillet", 7), ("juil", 7), ("july", 7), ("jul", 7),
+        ("aout", 8), ("august", 8), ("aug", 8),
+        ("septembre", 9), ("sept", 9), ("september", 9), ("sep", 9),
+        ("octobre", 10), ("october", 10), ("oct", 10),
+        ("novembre", 11), ("november", 11), ("nov", 11),
+        ("decembre", 12), ("december", 12), ("dec", 12),
+    ]
+
+    static let monthAlternation = months.map(\.name).sorted { $0.count > $1.count }.joined(separator: "|")
+
+    static func monthNumber(_ name: String) -> Int? {
+        months.first { $0.name == name }?.number
+    }
+
+    /// « 29 octobre », « 1er mars 2027 », « 29 oct. », « October 29 », « oct 29, 2027 ».
+    static func explicitDayMonth(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        if let groups = match(#"\b(\d{1,2})(?:er)?\s+("# + monthAlternation + #")\.?(?:\s+(\d{4}))?\b"#, in: text),
+           let day = groups[1].flatMap(Int.init), let month = groups[2].flatMap(monthNumber) {
+            return makeDate(year: groups[3].flatMap(Int.init), month: month, day: day, today: today, calendar: calendar)
+        }
+        if let groups = match(#"\b("# + monthAlternation + #")\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?\b"#, in: text),
+           let month = groups[1].flatMap(monthNumber), let day = groups[2].flatMap(Int.init) {
+            return makeDate(year: groups[3].flatMap(Int.init), month: month, day: day, today: today, calendar: calendar)
+        }
+        return nil
+    }
+
+    /// « 29/10 », « 29/10/2027 », « 29/10/27 » (jour/mois).
+    static func numericDate(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        guard let groups = match(#"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b"#, in: text),
+              let day = groups[1].flatMap(Int.init), let month = groups[2].flatMap(Int.init) else { return nil }
+        var year = groups[3].flatMap(Int.init)
+        if let short = year, short < 100 { year = 2000 + short }
+        return makeDate(year: year, month: month, day: day, today: today, calendar: calendar)
+    }
+
+    /// « le 29 » : ce mois-ci si le jour n'est pas passé, sinon le mois suivant.
+    static func dayOfMonth(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        guard let groups = match(#"\ble\s+(\d{1,2})(?:er)?\b(?!\s*(?:h\b|h\d|:|heure))"#, in: text),
+              let day = groups[1].flatMap(Int.init), (1...31).contains(day) else { return nil }
+        let components = calendar.dateComponents([.year, .month, .day], from: today)
+        guard let year = components.year, let month = components.month, let todayDay = components.day else { return nil }
+        if day >= todayDay, let date = validDate(year: year, month: month, day: day, calendar: calendar) { return date }
+        let next = month == 12 ? (year + 1, 1) : (year, month + 1)
+        return validDate(year: next.0, month: next.1, day: day, calendar: calendar)
+    }
+
+    /// Aujourd'hui, demain, après-demain (et leurs équivalents anglais).
+    static func relativeDay(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        let offset: Int
+        if contains(#"\b(apres[- ]demain|day after tomorrow)\b"#, in: text) {
+            offset = 2
+        } else if contains(#"\b(demain|tomorrow)\b"#, in: text) {
+            offset = 1
+        } else if contains(#"\b(aujourd'?hui|today|ce soir|tonight|ce matin|this morning)\b"#, in: text) {
+            offset = 0
+        } else {
+            return nil
+        }
+        return calendar.date(byAdding: .day, value: offset, to: today)
+    }
+
+    /// « dans 3 jours », « dans 2 semaines », « in 3 days ».
+    static func inSomeDays(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        guard let groups = match(#"\b(?:dans|in)\s+(\d{1,3})\s+(jours?|days?|semaines?|weeks?)\b"#, in: text),
+              let count = groups[1].flatMap(Int.init), let unit = groups[2] else { return nil }
+        let days = unit.hasPrefix("j") || unit.hasPrefix("d") ? count : count * 7
+        return calendar.date(byAdding: .day, value: days, to: today)
+    }
+
+    static let weekdays: [String: Int] = [
+        "dimanche": 1, "lundi": 2, "mardi": 3, "mercredi": 4, "jeudi": 5, "vendredi": 6, "samedi": 7,
+        "sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4, "thursday": 5, "friday": 6, "saturday": 7,
+    ]
+
+    /// Un jour de la semaine : sa prochaine occurrence (1 à 7 jours plus tard).
+    static func weekday(_ text: String, today: Date, calendar: Calendar) -> Date? {
+        let alternation = weekdays.keys.sorted().joined(separator: "|")
+        guard let groups = match(#"\b("# + alternation + #")\b"#, in: text),
+              let name = groups[1], let target = weekdays[name] else { return nil }
+        let current = calendar.component(.weekday, from: today)
+        var difference = (target - current + 7) % 7
+        if difference == 0 { difference = 7 }
+        return calendar.date(byAdding: .day, value: difference, to: today)
+    }
+
+    // MARK: - Heures
+
+    static func timeOfDay(_ rawText: String) -> (hour: Int, minute: Int)? {
+        // « après-midi » n'est pas « midi ».
+        let text = rawText.replacingOccurrences(of: "apres-midi", with: " ").replacingOccurrences(of: "apres midi", with: " ")
+        if contains(#"\b(midi|noon)\b"#, in: text) { return (12, 0) }
+        if contains(#"\b(minuit|midnight)\b"#, in: text) { return (0, 0) }
+        var hour: Int?
+        var minute = 0
+        var meridiem: String?
+        if let groups = match(#"\b(\d{1,2}):(\d{2})\s*(am|pm)?\b"#, in: text) {
+            hour = groups[1].flatMap(Int.init)
+            minute = groups[2].flatMap(Int.init) ?? 0
+            meridiem = groups[3]
+        } else if let groups = match(#"\b(\d{1,2})\s*(am|pm)\b"#, in: text) {
+            hour = groups[1].flatMap(Int.init)
+            meridiem = groups[2]
+        } else if let groups = match(#"\b(\d{1,2})\s*h(?:eures?)?\s*(\d{2})?\b"#, in: text) {
+            hour = groups[1].flatMap(Int.init)
+            minute = groups[2].flatMap(Int.init) ?? 0
+        }
+        guard var resolvedHour = hour else { return nil }
+        if let meridiem {
+            guard (1...12).contains(resolvedHour) else { return nil }
+            if meridiem == "pm" && resolvedHour < 12 { resolvedHour += 12 }
+            if meridiem == "am" && resolvedHour == 12 { resolvedHour = 0 }
+        }
+        guard (0..<24).contains(resolvedHour), (0..<60).contains(minute) else { return nil }
+        return (resolvedHour, minute)
+    }
+
+    // MARK: - Outils
+
+    static func normalize(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+                     locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
+            .replacingOccurrences(of: "’", with: "'")
+    }
+
+    static func makeDate(year: Int?, month: Int, day: Int, today: Date, calendar: Calendar) -> Date? {
+        if let year { return validDate(year: year, month: month, day: day, calendar: calendar) }
+        let currentYear = calendar.component(.year, from: today)
+        guard let candidate = validDate(year: currentYear, month: month, day: day, calendar: calendar) else { return nil }
+        return candidate < today ? validDate(year: currentYear + 1, month: month, day: day, calendar: calendar) : candidate
+    }
+
+    static func validDate(year: Int, month: Int, day: Int, calendar: Calendar) -> Date? {
+        let components = DateComponents(year: year, month: month, day: day)
+        guard components.isValidDate(in: calendar) else { return nil }
+        return calendar.date(from: components)
+    }
+
+    /// Groupes capturés du premier résultat (index 0 = correspondance entière).
+    static func match(_ pattern: String, in text: String) -> [String?]? {
+        guard let regex = try? Regex(pattern), let result = try? regex.firstMatch(in: text) else { return nil }
+        return (0..<result.output.count).map { index in result.output[index].substring.map(String.init) }
+    }
+
+    static func contains(_ pattern: String, in text: String) -> Bool {
+        match(pattern, in: text) != nil
+    }
+}

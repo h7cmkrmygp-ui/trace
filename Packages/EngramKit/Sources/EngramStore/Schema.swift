@@ -9,8 +9,25 @@ enum Schema {
             try db.execute(sql: v1FullText)
             try createChangeLogTriggers(db)
         }
+        migrator.registerMigration("v2_due_dates_calendar") { db in
+            try db.execute(sql: v2DueDatesAndCalendar)
+        }
         return migrator
     }
+
+    /// v2 (P3) : échéances des souvenirs, liens avec les événements du calendrier, index de la corbeille.
+    static let v2DueDatesAndCalendar = """
+        ALTER TABLE memory ADD COLUMN due_at DATETIME;
+        ALTER TABLE memory ADD COLUMN due_has_time INTEGER NOT NULL DEFAULT 0 CHECK (due_has_time IN (0,1));
+        CREATE INDEX memory_due_at ON memory(due_at);
+        CREATE INDEX memory_trashed_at ON memory(trashed_at);
+        CREATE TABLE calendar_link (
+          memory_id BLOB PRIMARY KEY NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          event_identifier TEXT NOT NULL,
+          calendar_identifier TEXT,
+          created_at DATETIME NOT NULL
+        );
+        """
 
     /// Tables suivies par le journal des changements, avec la colonne qui identifie l'entité.
     static let trackedTables: [(table: String, idColumn: String)] = [
