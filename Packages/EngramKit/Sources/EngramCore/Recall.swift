@@ -56,6 +56,9 @@ public struct RecallQuery: Sendable, Equatable {
         return query
     }
 
+    /// Recherche « sur le même sujet » qu'un texte (notes liées) : ses mots utiles, sans période ni type.
+    public static func about(_ text: String) -> RecallQuery { RecallQuery() }
+
     /// Les types nommés gagnent sur le verbe « faire » (« une idée pour faire un jardin » = une idée).
     static func kinds(in text: String, isPlanning: Bool) -> Set<MemoryKind> {
         var kinds: Set<MemoryKind> = []
@@ -131,6 +134,10 @@ public enum RecallRanker {
         return find(candidates, for: query, now: now, semanticScores: semanticScores, expansions: expansions,
                     limit: query.intent == .find ? limit : max(limit, 12))
     }
+
+    /// Notes sur le même sujet qu'une note (jamais elle-même), seulement au-dessus d'un seuil de ressemblance.
+    public static func related(to document: RecallDocument, in documents: [RecallDocument], now: Date,
+                               semanticScores: [UUID: Double] = [:], limit: Int = 3) -> [RecallHit] { [] }
 
     // MARK: Lister (période, type)
 

@@ -108,3 +108,8 @@ extension MemoryStore {
         Array(repeating: "?", count: count).joined(separator: ", ")
     }
 }
+
+extension MemoryStore {
+    /// Ce que « Retrouver » peut lire.
+    public func recallDocuments(limit: Int = 5_000) throws -> [RecallDocument] { [] }
+}
