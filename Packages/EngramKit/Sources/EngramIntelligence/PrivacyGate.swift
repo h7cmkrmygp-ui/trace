@@ -107,6 +107,10 @@ public enum SensitiveDetectors {
         if SensitiveLexicon.containsAny(tokens, of: credentialWords) {
             signals.append(PrivacySignal(level: .secret, reason: "Mot de passe, NIP ou code."))
         }
+        // « code de casier 4821 », « lock code is 0000 » : un code suivi de chiffres est un secret.
+        if matches(#"\b(codes?|combinaison|combination|combo)\b[^.\n]{0,30}?\d{3,}"#, in: folded, caseInsensitive: true) {
+            signals.append(PrivacySignal(level: .secret, reason: "Code."))
+        }
         let digitRuns = Self.digitRuns(in: text)
         if digitRuns.contains(where: { (13...19).contains($0.count) && isLuhnValid($0) }) {
             signals.append(PrivacySignal(level: .secret, reason: "Numéro de carte."))
