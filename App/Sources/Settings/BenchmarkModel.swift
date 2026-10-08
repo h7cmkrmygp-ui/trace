@@ -183,7 +183,7 @@ final class BenchmarkModel {
             let whisper = app.whisperTranscriber(for: model)
             let batteryStart = Self.batteryLevel()
             var audioSeconds = 0.0
-            for strategy in TranscriptionStrategy.allCases {
+            strategies: for strategy in TranscriptionStrategy.allCases {
                 let configuration = Self.configuration(model, strategy)
                 for recording in recordings where run(recording.id, configuration) == nil {
                     if Task.isCancelled {
@@ -201,9 +201,10 @@ final class BenchmarkModel {
                                               text: transcript.text, seconds: Date().timeIntervalSince(start)))
                         audioSeconds += recording.duration
                     } catch TranscriptionError.modelUnavailable {
+                        // Le modèle ne se charge pas sur cet iPhone : inutile de réessayer avec les autres stratégies.
                         saved.measures.loadFailures.insert(model.rawValue)
                         save(app)
-                        break
+                        break strategies
                     } catch {
                         continue
                     }
