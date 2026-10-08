@@ -33,3 +33,17 @@ Colonnes : **Dessiné** (l'écran existe) · **Simulé** (fonctionne avec de fau
 Tests automatiques au dernier run : **75** (21 EngramCore + 54 EngramStore).
 
 Vérification iPhone de P1 par le propriétaire le 2026-10-08 : points 1 à 7 et 9 à 11 ✅ ; point 8 ❌ (navigation Corbeille) → corrigé (commit bf…/LibraryRoute), à revérifier.
+
+## P2 — « Je parle, c'est classé » (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| F1 | Capture vocale (5 min, CAF) | ✅ | n/a | ✅ | compile | ⏳ | — | VoiceRecorder |
+| F2 | Transcription sur l'iPhone (fr-CA) | n/a | n/a | ✅ | compile | ⏳ | — | après l'arrêt ; Whisper en P3 si besoin |
+| F3/F10/F11 | Découpage, titres, résumés | ✅ | ✅ | ✅ | ✅ | ⏳ | — | AppleThoughtAnalyzer + validateur anti-invention |
+| F12/F13/F14 | Catégories et sous-catégories automatiques | ✅ | ✅ | ✅ | ✅ | ⏳ | — | aucune catégorie de départ |
+| F15 | Tags par l'IA | — | ✅ | ✅ | ✅ | ⏳ | — | |
+| — | Liste « À faire » | ✅ | n/a | ✅ | ✅ | ⏳ | — | |
+| — | Évaluation (40 phrases fictives) | ✅ | n/a | ✅ | ✅ | ⏳ | — | Réglages › Évaluer le classement |
+
+Tests automatiques : **115** (Core 31, Store 69, Pipeline 8, Intelligence 5, Capture 2).
