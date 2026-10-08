@@ -26,6 +26,18 @@ final class FakeTransport: HTTPTransport {
     var urls: [String] { state.withLock { $0.urls } }
 }
 
+/// Juge qui compte ses appels (et répond « neutre »).
+final class CountingJudge: PrivacyJudge {
+    private let count = Mutex(0)
+
+    func judge(_ text: String) async throws -> PrivacyJudgement {
+        count.withLock { $0 += 1 }
+        return PrivacyJudgement(verdict: .neutral, reason: "")
+    }
+
+    var calls: Int { count.withLock { $0 } }
+}
+
 struct CloudBehaviorTests {
     static let answer = #"{"notes":[{"title":"Lait","summary":"","excerpt":"acheter du lait","kind":"task","category":"Achats","categoryDescription":"","subcategory":"","tags":[],"dates":[]}]}"#
 
@@ -84,6 +96,22 @@ struct CloudBehaviorTests {
                                                 context: AnalysisContext(keepLocal: false, capturedAt: Date()))
         #expect(analysis.route?.provider == "groq")
         #expect(analysis.route?.needsCloudRetry == false)
+    }
+
+    /// Sans aucune clé, tout reste sur l'iPhone : inutile de faire juger la confidentialité (un appel au modèle en moins).
+    @Test func withoutAnyServiceThePrivacyJudgeIsNotAsked() async throws {
+        let judge = CountingJudge()
+        let thought = ThoughtAnalysis(thoughts: [
+            AnalyzedThought(title: "Lait", summary: nil, excerpt: "acheter du lait", kind: .task, tags: [], mentionedDates: [],
+                            category: "Achats", subcategory: nil),
+        ])
+        let router = RoutedAnalyzer(local: FakeAnalyzer([.success(thought)]), judge: judge, neutral: nil, personal: nil,
+                                    quota: CloudQuota(defaults: nil))
+        let analysis = try await router.analyze(text: "acheter du lait", existingCategories: [],
+                                                context: AnalysisContext(keepLocal: false, capturedAt: Date()))
+        #expect(analysis.route?.provider == "apple")
+        #expect(analysis.route?.needsCloudRetry == false)
+        #expect(judge.calls == 0)
     }
 
     @Test func quotasSurviveARestartOfTheApp() throws {
