@@ -64,6 +64,16 @@ struct BilingualStrategyTests {
         #expect(WhisperModel.allCases.allSatisfy { !$0.label.isEmpty && $0.approximateSizeMB > 500 })
     }
 
+    /// Les trois stratégies comparées par le banc d'essai ; la bilingue est celle par défaut.
+    @Test func strategiesAreStableAndBilingualIsTheDefault() {
+        #expect(TranscriptionStrategy.default == .bilingual)
+        #expect(TranscriptionStrategy.allCases.map(\.rawValue) == ["bilingual", "french", "automatic"])
+        #expect(TranscriptionStrategy.allCases.allSatisfy { !$0.label.isEmpty })
+        #expect(TranscriptionStrategy.frenchOnly.fixedPlan == .single("fr"))
+        #expect(TranscriptionStrategy.bilingual.fixedPlan == nil)
+        #expect(TranscriptionStrategy.automatic.fixedPlan == nil)
+    }
+
     @Test func thePromptMixesBothLanguagesAndIsPunctuated() {
         #expect(WhisperPrompt.bilingual.contains("call"))
         #expect(WhisperPrompt.bilingual.contains("meeting"))
