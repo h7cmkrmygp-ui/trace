@@ -1,9 +1,9 @@
 name: Apple evaluation
 # Mesure le modèle d'Apple (classement et confidentialité) sur des phrases inventées, dans un iPhone simulé.
 # Rapport seulement : rien ne bloque la CI.
+# Lancement manuel seulement : le 2026-10-08, le simulateur de la CI annonçait le modèle « disponible » mais chaque
+# génération échouait (ModelManagerError 1026, modèle absent de la machine virtuelle). À relancer si GitHub change ses Mac.
 on:
-  push:
-    paths: ["Packages/EngramKit/Sources/EngramIntelligence/**", "Packages/EngramKit/Tests/EngramIntelligenceTests/AppleEvaluationTests.swift", ".github/workflows/eval.yml"]
   workflow_dispatch:
 permissions:
   contents: read
