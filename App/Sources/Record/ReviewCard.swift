@@ -10,6 +10,46 @@ struct ReviewDraft: Equatable {
     var keepLocal = false
 }
 
+/// Lecture de l'enregistrement sur la carte. L'icône revient à « Réécouter » quand la lecture finit toute seule,
+/// et la musique des autres apps reprend ensuite.
+@MainActor
+@Observable
+final class ReviewPlayer: NSObject, AVAudioPlayerDelegate {
+    private(set) var isPlaying = false
+    @ObservationIgnored private var player: AVAudioPlayer?
+
+    func toggle(_ url: URL) {
+        if isPlaying {
+            stop()
+            return
+        }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio)
+        try? session.setActive(true)
+        guard let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        player.delegate = self
+        self.player = player
+        isPlaying = player.play()
+    }
+
+    /// Sans effet si rien ne joue (la session audio d'un enregistrement en cours n'est jamais touchée).
+    func stop() {
+        guard let player else { return }
+        player.stop()
+        finish()
+    }
+
+    private func finish() {
+        player = nil
+        isPlaying = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in self.finish() }
+    }
+}
+
 /// « Vérifie ta note » : corriger la transcription, réécouter, puis classer (ou annuler).
 /// Le texte d'origine reste toujours conservé ; la correction est rangée à part.
 struct ReviewCard: View {
@@ -17,7 +57,7 @@ struct ReviewCard: View {
     let audioURL: URL?
     let onConfirm: () -> Void
     let onDiscard: () -> Void
-    @State private var player: AVAudioPlayer?
+    @State private var player = ReviewPlayer()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -33,12 +73,12 @@ struct ReviewCard: View {
                 .tint(.green)
                 .font(.subheadline)
             HStack(spacing: 12) {
-                if audioURL != nil {
-                    Button(player?.isPlaying == true ? "Arrêter" : "Réécouter",
-                           systemImage: player?.isPlaying == true ? "stop.circle" : "play.circle", action: togglePlayback)
+                if let audioURL {
+                    Button(player.isPlaying ? "Arrêter" : "Réécouter",
+                           systemImage: player.isPlaying ? "stop.circle" : "play.circle") { player.toggle(audioURL) }
                         .labelStyle(.iconOnly)
                         .font(.title2)
-                        .accessibilityLabel(player?.isPlaying == true ? "Arrêter la lecture" : "Réécouter")
+                        .accessibilityLabel(player.isPlaying ? "Arrêter la lecture" : "Réécouter")
                 }
                 Spacer()
                 Button("Annuler", role: .destructive, action: onDiscard)
@@ -49,20 +89,7 @@ struct ReviewCard: View {
             }
         }
         .padding(16)
-        .onDisappear { player?.stop() }
-    }
-
-    private func togglePlayback() {
-        if let player, player.isPlaying {
-            player.stop()
-            self.player = nil
-            return
-        }
-        guard let audioURL else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        player = try? AVAudioPlayer(contentsOf: audioURL)
-        player?.play()
+        .onDisappear { player.stop() }
     }
 }
 
