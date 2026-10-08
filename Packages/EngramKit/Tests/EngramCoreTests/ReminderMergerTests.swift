@@ -66,6 +66,19 @@ struct ReminderMergerTests {
         #expect(merged.first?.mentionedDates == ["mardi à 10 h", "lundi"])
     }
 
+    /// Une seule note qui demande un rappel est une chose « À faire », même quand l'IA ne l'a pas découpée.
+    @Test func aSingleNoteAskingForAReminderIsATask() {
+        let text = "Idée de cadeau : un livre de cuisine, rappelle-moi ça samedi"
+        let idea = ThoughtAnalysis(thoughts: [thought("Cadeau", excerpt: text, kind: .idea, dates: ["samedi"])])
+        #expect(ReminderMerger.merge(idea, in: text).thoughts.map(\.kind) == [.task])
+        // Un rendez-vous reste un rendez-vous ; une idée sans rappel reste une idée.
+        let appointment = ThoughtAnalysis(thoughts: [thought("Dentiste", excerpt: "Dentiste mardi, rappelle-moi lundi",
+                                                             kind: .appointment)])
+        #expect(ReminderMerger.merge(appointment, in: "Dentiste mardi, rappelle-moi lundi").thoughts.map(\.kind) == [.appointment])
+        let plain = ThoughtAnalysis(thoughts: [thought("Recettes", excerpt: "Une app de recettes", kind: .idea)])
+        #expect(ReminderMerger.merge(plain, in: "Une app de recettes").thoughts.map(\.kind) == [.idea])
+    }
+
     @Test func aReminderWithItsOwnSubjectStaysSeparate() {
         let text = "Demander congé pour le 24 novembre, rappelle-moi d'appeler le garage demain"
         let analysis = ThoughtAnalysis(thoughts: [
