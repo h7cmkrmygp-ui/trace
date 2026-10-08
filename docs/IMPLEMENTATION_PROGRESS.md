@@ -88,7 +88,7 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 - Whisper ne traduit jamais : un test le garantit.
 
 **Notes et « Vérifie ta note »**
-- « À vérifier » n'apparaît plus aussi dans « À classer ».
+- « À vérifier » n'apparaît plus aussi dans « À classer », ni dans la recherche ou le Cerveau avant d'être classée.
 - La carte « Vérifie ta note » affiche la transcription la plus récente.
 - Pas de retranscription d'une note corrigée à la main.
 - Deux pensées au même extrait n'en font qu'une.
@@ -134,4 +134,4 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
 
-Tests automatiques : **270** (Core 67, Store 116, Pipeline 12, Intelligence 56 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).
+Tests automatiques : **271** (Core 67, Store 117, Pipeline 12, Intelligence 56 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).
