@@ -1,6 +1,6 @@
 # Engram P4 — « Vraie IA » : Whisper sur l'iPhone, Gemini pour classer, Notes simplifiées
 
-Statut : **proposition, en attente de l'accord du propriétaire.** Aucun code de ce document n'est écrit avant son accord.
+Statut : **proposition révisée avec les décisions du propriétaire (section 10), en attente de son accord final.** Aucun code de ce document n'est écrit avant cet accord.
 
 ## 1. Ce que le propriétaire a demandé
 
@@ -130,9 +130,92 @@ Les versions non compressées (environ 3 Go) ne sont pas proposées sur iPhone. 
    - reclassement après retour du quota.
 4. CI verte, IPA, puis une liste de vérification unique pour l'iPhone. Elle comprend le banc d'essai, des phrases bilingues de référence, le quota et le mode avion.
 
-## 9. Décisions demandées au propriétaire
+## 9. Décisions demandées au propriétaire (première version)
 
-1. **Conditions de Gemini gratuit.** Accepter d'envoyer des notes personnelles malgré la clause « ne pas envoyer d'informations personnelles aux services gratuits », avec le masquage et l'interrupteur « Garder sur l'iPhone ». Sinon, Apple seulement.
-2. **Serveur intermédiaire.** Appel direct avec clé dans le trousseau (recommandé), ou relais quand même.
-3. **Modèle Whisper par défaut** : Turbo (626 Mo) jusqu'au banc d'essai, ou Large V3 (947 Mo) d'emblée.
-4. **Ordre** A → B → C.
+1. Conditions de Gemini gratuit.
+2. Serveur intermédiaire.
+3. Modèle Whisper par défaut.
+4. Ordre A → B → C.
+
+## 10. Décisions du propriétaire et révision du plan
+
+Elles remplacent ce qui les contredit plus haut (en particulier les sections 5 et 7).
+
+### 10.1 Confidentialité : rien de personnel n'est envoyé à Gemini gratuit
+
+Le propriétaire veut respecter la clause de Google : aucune information personnelle, sensible ou confidentielle n'est envoyée au service gratuit. Le masquage seul ne suffit pas, et le doute se traite **sur l'iPhone**. La section 5 change donc ainsi.
+
+- **Contrôleur de confidentialité local**, avant tout envoi. Une note n'est envoyée à Gemini que si **toutes** les couches la déclarent sans information personnelle :
+  1. **Choix du propriétaire.** Interrupteur « Garder sur l'iPhone » sur la carte de vérification, et réglage global « Tout garder sur l'iPhone ».
+  2. **Détecteurs déterministes**, sur l'iPhone :
+     - courriels, téléphones, adresses et liens (`NSDataDetector`) ;
+     - codes postaux ;
+     - numéros de carte (contrôle de Luhn), NAS, comptes bancaires et IBAN ;
+     - mots de passe, NIP, codes ;
+     - montants d'argent ;
+     - noms de personnes, de lieux et d'organisations (`NLTagger`, qui prend en charge le français).
+  3. **Lexique** français et anglais des domaines sensibles : santé et corps (poids, mesures, médicaments, médecin…), argent personnel, travail (employeur, salaire, congés, collègues), famille et relations, juridique, identité, opinions, religion, orientation.
+  4. **Jugement du modèle d'Apple** sur l'iPhone, en sortie guidée : `nonPersonnel`, `personnel` ou `incertain`, avec le motif.
+- **Règle** :
+  - seule une note qu'aucune couche ne signale et que le modèle d'Apple juge `nonPersonnel` part chez Gemini ;
+  - `incertain`, une erreur ou un modèle d'Apple indisponible donnent toujours un **traitement local** ;
+  - la liste des catégories envoyée à Gemini passe par le même filtre, et une catégorie dont le nom est personnel n'est jamais envoyée.
+- **Le masquage de la section 5 est retiré.** Une note qui contient un numéro reste sur l'iPhone, elle n'est pas masquée puis envoyée.
+- **Transparence** : chaque note indique où elle a été classée (« Gemini » ou « sur l'iPhone ») et pourquoi. Réglages › Intelligence montre la proportion du mois.
+- **Conséquence assumée** : dans un deuxième cerveau, une grande partie des notes seront personnelles et resteront sur l'iPhone. Gemini traitera les notes neutres (achats courants, idées, tâches de maison, films…). L'amélioration du classement d'Apple (nouvelles consignes `p4-v1`, exemples, règles) n'est donc pas un simple secours : c'est elle qui classera la majorité des notes.
+- **Textes originaux** : la transcription d'origine (`originalText`) et l'audio restent intégralement sur l'iPhone. Aucun remplacement : les corrections et les retranscriptions sont rangées à part.
+
+### 10.2 Architecture : aucun serveur à construire ni à payer
+
+**Pour Engram personnel (maintenant)** :
+- clé Gemini collée par le propriétaire dans Réglages, rangée dans le trousseau (`ThisDeviceOnly`) ;
+- appel HTTPS direct, clé dans l'en-tête ;
+- rien dans le code, Git, la CI ni l'IPA. L'IPA construite par GitHub est téléchargeable par tout utilisateur connecté de GitHub : elle ne doit jamais rien contenir de secret.
+
+**Pour une version distribuée : étude de Firebase AI Logic + App Check + Gemini Developer API (forfait Spark), vérifiée le 2026-10-08.**
+
+| Point | Constat |
+|---|---|
+| Spark gratuit | Oui : Firebase AI Logic est gratuit, et la Gemini Developer API au palier gratuit ne demande aucun compte de facturation (le projet reste sur Spark). Le palier payant exige d'associer soi-même un compte de facturation. |
+| SDK | Bibliothèque `FirebaseAILogic` (dépôt `firebase-ios-sdk`, v12.5.0 ou plus), iOS 15 ou plus, Xcode 26.2 ou plus : compatible avec Engram (iOS 27, Xcode 27). Plus besoin de clé Gemini dans l'app. Il faut en revanche le fichier de configuration Firebase, qui contient une clé de projet Firebase (non secrète par conception, protégée par App Check). |
+| App Check | Indispensable. Depuis juillet 2026, la console l'active d'office pour AI Logic. Fournisseurs Apple de production : **App Attest**, DeviceCheck, reCAPTCHA Enterprise. |
+| **Blocage** | App Attest et DeviceCheck se configurent avec une équipe de développeur Apple. Avec AltStore et un Apple ID gratuit, aucune source fiable ne confirme qu'App Attest fonctionne, et AltStore ne signe qu'un petit ensemble d'autorisations (à confirmer par un essai réel). reCAPTCHA Enterprise demande la facturation Google Cloud (Blaze). Le fournisseur « debug » est réservé au développement : son jeton serait un secret dans l'app. Sans App Check, la configuration Firebase extraite de l'IPA publique permettrait à n'importe qui d'utiliser le quota du projet. |
+| Journaux | « AI monitoring » est **facultatif et désactivé par défaut**. Activé, il enregistre les prompts et les réponses complets dans Cloud Logging. On ne l'active jamais, et on ajoute en plus le filtre d'exclusion `resource.type="firebasevertexai.googleapis.com/Model"` sur le collecteur `_Default`. |
+| Données | Au palier gratuit, ce sont les conditions des services non payants de Gemini qui s'appliquent : la règle 10.1 reste nécessaire. |
+
+**Conclusion** : Firebase AI Logic est la bonne voie pour une future version distribuée, **le jour où Engram aura un compte Apple Developer payant** (App Attest fiable, distribution TestFlight). Avec AltStore et un Apple ID gratuit, il serait **moins** sûr que la clé dans le trousseau. Rien de Firebase n'est donc ajouté maintenant.
+
+Pour garder la porte ouverte, Gemini est branché derrière le protocole `MemoryAnalyzer`. Un futur `FirebaseThoughtAnalyzer` remplacera l'appel direct sans toucher au reste.
+
+Si Firebase est ajouté un jour, son fichier de configuration sera injecté par un secret GitHub au moment de la construction, et exclu du dépôt par `.gitignore`.
+
+**Vérification du dépôt public** (historique complet, le 2026-10-08) :
+- 48 commits, tous avec l'identité `noreply` ;
+- aucune clé, aucun jeton, aucun fichier de configuration, aucune image, aucun audio ;
+- gitleaks analyse déjà tout l'historique à chaque CI ;
+- **à corriger** : des exemples tirés de la vie réelle du propriétaire (des phrases sur les feux de sa voiture et sur une demande de congé) apparaissent dans les tests, le jeu d'évaluation et les documents. Ils n'identifient personne, mais la règle 1 du dépôt exige des données fictives et neutres. Ils seront remplacés par des exemples inventés dans les fichiers actuels.
+- **Réécrire l'historique** pour les effacer des anciens commits demanderait une poussée forcée sur GitHub : c'est une décision séparée du propriétaire.
+
+### 10.3 Transcription : Turbo par défaut, Large V3 si nettement plus précis
+
+- **Par défaut** : Whisper Large V3 Turbo (626 Mo).
+- **Comparaison sur de vrais enregistrements, sur l'iPhone uniquement** : les enregistrements ne quittent jamais l'appareil, donc la comparaison ne peut pas se faire dans la CI.
+  - **Référence** : la transcription corrigée par le propriétaire (carte « Vérifie ta note »), ou une référence tapée dans le banc d'essai.
+  - **Mesures** pour chaque modèle :
+    - taux d'erreur sur les mots (WER), avec la casse et la ponctuation ignorées et les accents conservés ;
+    - durée de calcul divisée par la durée de l'audio ;
+    - batterie et état thermique pendant la série ;
+    - réussite du chargement (mémoire).
+- **Règle de décision** :
+  - **Conditions pour passer à Large V3** :
+    - il est nettement plus précis : au moins 2 points de WER de moins **et** au moins 15 % d'erreurs en moins, sur au moins 10 enregistrements ou 5 minutes d'audio ;
+    - l'appareil le fait fonctionner correctement : il figure dans la table officielle des modèles pris en charge pour la puce, il se charge sans erreur de mémoire, et il transcrit en au plus 1 × temps réel sans surchauffe sérieuse.
+  - Le basculement est **automatique**, avec un message qui l'explique, et le propriétaire peut revenir en arrière.
+  - Sinon, Turbo reste.
+- **Fidélité** : inchangée par rapport à la section 4 (jamais `translate`, français sauf note nettement en anglais, amorce de style). Aucune « correction » par une IA après Whisper : seule la ponctuation produite par Whisper lui-même est gardée.
+
+### 10.4 Classement, budget et ordre
+
+- **Gemini** reçoit la note entière, et ses consignes exigent de comprendre le sens et non des mots-clés. Le reste de la section 5 tient : une note par sujet, pas de découpage arbitraire, validation des extraits et des dates, et Apple en secours hors ligne.
+- **Budget 0 $** : quota atteint, réseau absent ou erreur, et la note est classée sur l'iPhone. Aucune facturation n'est jamais activée ni demandée.
+- **Ordre** : A (Notes, Cerveau, Corbeille et remplacement des exemples réels), puis B (Whisper), puis C (contrôleur de confidentialité, Gemini, nouvelles consignes d'Apple). Aucune fonctionnalité existante n'est retirée. Seule l'option de transcription OpenAI, jamais livrée et payante, est abandonnée.
