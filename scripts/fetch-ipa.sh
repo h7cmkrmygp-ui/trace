@@ -8,8 +8,9 @@ BRANCH="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 RUN_ID="$("$GH" run list --branch "$BRANCH" --limit 30 --json databaseId,workflowName,conclusion \
   --jq '[.[] | select(.workflowName == "CI" and .conclusion == "success")][0].databaseId // empty')"
 [ -n "$RUN_ID" ] || { echo "Aucun run CI réussi sur $BRANCH"; exit 2; }
-rm -rf build/ipa
+# On vide le contenu sans supprimer le dossier lui-même (OneDrive peut le verrouiller).
 mkdir -p build/ipa
+rm -rf build/ipa/Engram-ipa-* build/ipa/Engram.ipa
 "$GH" run download "$RUN_ID" --pattern 'Engram-ipa-*' --dir build/ipa
 IPA="$(find build/ipa -name 'Engram.ipa' -type f | head -1)"
 [ -n "$IPA" ] || { echo "Engram.ipa introuvable dans l'artefact"; exit 3; }
