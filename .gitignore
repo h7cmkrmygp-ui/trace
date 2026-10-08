@@ -51,3 +51,6 @@ models/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Info.plist généré par XcodeGen
+App/Info.plist

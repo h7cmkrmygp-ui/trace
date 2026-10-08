@@ -1,0 +1,69 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  secrets-scan:
+    name: Analyse des secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Installer gitleaks 8.30.1
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+      - name: Analyser tout l'historique
+        run: ./gitleaks git --redact --verbose --exit-code 1 .
+
+  package-tests:
+    name: Tests EngramKit (swift test)
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Versions
+        run: xcodebuild -version && swift --version
+      - name: swift test
+        working-directory: Packages/EngramKit
+        run: swift test
+
+  ipa:
+    name: Construire Engram.ipa (sans signature)
+    runs-on: xcode-27
+    needs: package-tests
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-xcodegen
+      - name: Générer le projet Xcode
+        run: xcodegen generate
+      - name: Archiver sans signature
+        run: |
+          xcodebuild archive \
+            -project Engram.xcodeproj -scheme Engram -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Engram.xcarchive" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Empaqueter le .ipa
+        run: |
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$RUNNER_TEMP/Engram.xcarchive/Products/Applications/Engram.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry Engram.ipa Payload)
+          ls -lh "$RUNNER_TEMP/ipa/Engram.ipa"
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Engram-ipa-${{ github.run_number }}
+          path: ${{ runner.temp }}/ipa/Engram.ipa
+          retention-days: 7
+          if-no-files-found: error
