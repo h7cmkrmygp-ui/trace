@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────
+# Engram — ce dépôt est PUBLIC.
+# Aucune donnée personnelle, aucun secret, aucun enregistrement réel.
+# ─────────────────────────────────────────────────────────────
+
+# Projet Xcode généré par XcodeGen (la source de vérité est project.yml)
+*.xcodeproj/
+*.xcworkspace/
+!Packages/**/*.xcworkspace/
+
+# Builds et artefacts
+build/
+DerivedData/
+.build/
+.swiftpm/
+*.ipa
+*.xcarchive/
+*.dSYM/
+*.dSYM.zip
+xcuserdata/
+
+# Signature et secrets — ne jamais committer
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.keychain
+.env
+.env.*
+secrets/
+*.secret
+*.pem
+*.key
+
+# Données personnelles — ne jamais committer
+private/
+exports/
+*.engram-export.zip
+# Enregistrements audio : interdits par défaut (les fixtures autorisées seront listées explicitement)
+*.m4a
+*.caf
+*.wav
+*.aac
+*.mp3
+
+# Modèles téléchargés (Whisper, etc.)
+models/
+*.mlmodelc/
+
+# Système
+.DS_Store
+Thumbs.db
+desktop.ini
