@@ -9,6 +9,20 @@ import Testing
 struct AppleEvaluationTests {
     static let enabled = ProcessInfo.processInfo.environment["ENGRAM_RUN_APPLE_EVAL"] == "1"
 
+    /// Rapport : affiché et ajouté à un fichier du dossier temporaire (récupéré par la CI depuis le simulateur).
+    static func report(_ line: String) {
+        print(line)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("engram-eval.txt")
+        let data = Data((line + "\n").utf8)
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            try? handle.close()
+        } else {
+            try? data.write(to: url)
+        }
+    }
+
     /// Cas fictifs pour le juge de confidentialité, avec le niveau attendu au minimum.
     static let privacyCases: [(String, PrivacyVerdict)] = [
         ("Acheter du lait et du pain", .neutral),
@@ -25,7 +39,7 @@ struct AppleEvaluationTests {
 
     @Test(.enabled(if: enabled)) func appleModelClassifiesTheEvaluationSet() async throws {
         let availability = AppleThoughtAnalyzer.availabilityDescription()
-        print("MODELE APPLE : \(availability.text)")
+        Self.report("MODELE APPLE : \(availability.text)")
         guard availability.isAvailable else { return }
         let analyzer = AppleThoughtAnalyzer()
         var known: [String] = []
@@ -40,12 +54,12 @@ struct AppleEvaluationTests {
                 let countOK = item.expectedNotes.map { $0 == valid.count } ?? true
                 let ok = item.accepts(categoryPath: path) && countOK
                 if ok { accepted += 1 }
-                print("\(ok ? "OK " : "NON") | \(item.sentence) → \(path.joined(separator: " › ")) | \(valid.count) note(s)")
+                Self.report("\(ok ? "OK " : "NON") | \(item.sentence) → \(path.joined(separator: " › ")) | \(valid.count) note(s)")
             } catch {
-                print("ERR | \(item.sentence) → \(error)")
+                Self.report("ERR | \(item.sentence) → \(error)")
             }
         }
-        print("SCORE CLASSEMENT : \(accepted)/\(EvaluationSet.cases.count)")
+        Self.report("SCORE CLASSEMENT : \(accepted)/\(EvaluationSet.cases.count)")
     }
 
     @Test(.enabled(if: enabled)) func applePrivacyJudgeOnFictionalNotes() async throws {
@@ -60,12 +74,12 @@ struct AppleEvaluationTests {
                 let isSafe = (rank[judgement.verdict] ?? 2) >= (rank[minimum] ?? 0)
                 let exact = judgement.verdict == minimum
                 if isSafe { safe += 1 }
-                print("\(exact ? "EXACT" : isSafe ? "PRUDENT" : "TROP BAS") | \(text) → \(judgement.verdict.rawValue) (attendu \(minimum.rawValue))")
+                Self.report("\(exact ? "EXACT" : isSafe ? "PRUDENT" : "TROP BAS") | \(text) → \(judgement.verdict.rawValue) (attendu \(minimum.rawValue))")
             } catch {
-                print("ERR | \(text) → \(error) (la note resterait sur l'iPhone)")
+                Self.report("ERR | \(text) → \(error) (la note resterait sur l'iPhone)")
             }
         }
-        print("SCORE CONFIDENTIALITE (jamais trop bas) : \(safe)/\(Self.privacyCases.count)")
+        Self.report("SCORE CONFIDENTIALITE (jamais trop bas) : \(safe)/\(Self.privacyCases.count)")
     }
 }
 #endif
