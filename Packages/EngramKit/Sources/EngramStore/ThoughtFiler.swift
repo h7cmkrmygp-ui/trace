@@ -120,13 +120,16 @@ public struct ThoughtFiler: Sendable {
         }
     }
 
-    /// Texte modifié, statut changé (archive, corbeille, classée), ou catégorie/tag posé ou retiré à la main.
+    /// Modifiée par le propriétaire : texte modifié, archivée ou à la corbeille, catégorie ou tag posé ou retiré à la main,
+    /// ou reliée à un événement du calendrier de l'iPhone (la remplacer créerait un doublon d'événement).
+    /// Une note classée par l'IA et laissée telle quelle n'est pas « touchée » : elle peut être reclassée.
     static func isTouchedByOwner(_ db: Database, _ memory: Memory) throws -> Bool {
-        if memory.userEdited || memory.status != .unsorted { return true }
+        if memory.userEdited || memory.status == .archived || memory.status == .trashed { return true }
         return try Bool.fetchOne(db, sql: """
             SELECT EXISTS(SELECT 1 FROM memory_category WHERE memory_id = ? AND origin = 'user')
                 OR EXISTS(SELECT 1 FROM memory_tag WHERE memory_id = ? AND origin = 'user')
-            """, arguments: [memory.id, memory.id]) ?? false
+                OR EXISTS(SELECT 1 FROM calendar_link WHERE memory_id = ?)
+            """, arguments: [memory.id, memory.id, memory.id]) ?? false
     }
 
     /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close.

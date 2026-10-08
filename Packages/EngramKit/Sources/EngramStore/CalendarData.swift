@@ -11,6 +11,8 @@ public struct SettingStore: Sendable {
         case calendarAutoAdd = "calendar.autoAdd"
         /// Identifiant du calendrier cible (absent = calendrier par défaut d'iOS).
         case calendarTarget = "calendar.targetIdentifier"
+        /// Moteur de transcription : « whisper » (défaut) ou « apple ».
+        case transcriptionEngine = "transcription.engine"
     }
 
     public let database: AppDatabase

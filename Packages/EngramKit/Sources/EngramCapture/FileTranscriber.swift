@@ -2,20 +2,11 @@ import AVFAudio
 import Foundation
 import Speech
 
-public struct Transcript: Sendable, Equatable {
-    public let text: String
-    public let localeIdentifier: String
-}
-
-public enum TranscriptionError: Error, Equatable, Sendable {
-    /// Aucune des langues souhaitées n'est prise en charge sur cet appareil.
-    case unsupportedLanguage
-}
-
-/// Transcrit un fichier audio **sur l'appareil** avec SpeechAnalyzer et SpeechTranscriber.
+/// Transcrit un fichier audio **sur l'appareil** avec la reconnaissance d'Apple (SpeechAnalyzer et SpeechTranscriber).
 /// Les ressources de la langue sont téléchargées par iOS au premier usage.
-public struct FileTranscriber: Sendable {
+public struct FileTranscriber: AudioTranscriber {
     public static let engineName = "apple-speech"
+    public var engineName: String { Self.engineName }
 
     /// Par ordre de préférence : français canadien, français de France, langue de l'appareil.
     public let preferredLocales: [Locale]
@@ -39,10 +30,13 @@ public struct FileTranscriber: Sendable {
             }
             return pieces.joined(separator: " ")
         }
-        try await analyzer.start(inputAudioFile: file, finishAfterFile: true)
-        let raw = try await collector.value
-        let text = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        return Transcript(text: text, localeIdentifier: locale.identifier)
+        do {
+            try await analyzer.start(inputAudioFile: file, finishAfterFile: true)
+        } catch {
+            collector.cancel()
+            throw error
+        }
+        return Transcript(text: try await collector.value, localeIdentifier: locale.identifier)
     }
 
     func resolveLocale() async -> Locale? {

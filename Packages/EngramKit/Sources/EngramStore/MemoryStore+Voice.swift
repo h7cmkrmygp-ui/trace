@@ -94,6 +94,45 @@ extension MemoryStore {
         }
     }
 
+    /// Nouvelle transcription d'une note vocale par un meilleur moteur. La transcription d'origine est gardée,
+    /// la nouvelle devient le texte de référence ; les souvenirs que l'IA avait tirés de l'ancienne et que le
+    /// propriétaire n'a pas touchés sont remplacés par une note provisoire, qui sera ré-analysée.
+    @discardableResult
+    public func retranscribe(sourceID: UUID, transcript: String, languages: [String], engine: String?) throws -> Memory? {
+        let now = dates.now()
+        return try database.writer.write { db in
+            guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
+            guard source.kind == .voice else { throw StoreError.invalidOperation("seule une note vocale peut être retranscrite") }
+            let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { throw StoreError.emptyContent }
+            source.correctedText = text
+            source.languages = languages
+            source.transcriptionEngine = engine
+            source.processingStatus = .waiting
+            source.updatedAt = now
+            try source.update(db)
+
+            var keptAny = false
+            for memory in try Memory.filter(Column("source_id") == sourceID).fetchAll(db) {
+                if try ThoughtFiler.isTouchedByOwner(db, memory) { keptAny = true } else { _ = try memory.delete(db) }
+            }
+            guard !keptAny else { return nil }
+            let draft = MemoryDraft(sourceID: sourceID, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
+                                    spanTextVersion: .corrected, title: TitleMaker.fallbackTitle(from: text), content: text,
+                                    status: .unsorted, analysisVersion: Self.interimAnalysisVersion)
+            return try createMemory(db, draft: draft, actor: .system, now: now)
+        }
+    }
+
+    /// Toutes les notes vocales dont l'audio est conservé (pour les retranscrire).
+    public func voiceSources() throws -> [Source] {
+        try database.writer.read { db in
+            try Source.filter(Column("kind") == SourceKind.voice && Column("audio_path") != nil)
+                .order(Column("captured_at"))
+                .fetchAll(db)
+        }
+    }
+
     /// Fichiers audio déjà connus (pour retrouver les enregistrements orphelins).
     public func referencedAudioPaths() throws -> Set<String> {
         try database.writer.read { db in
