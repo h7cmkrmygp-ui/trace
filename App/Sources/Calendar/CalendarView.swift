@@ -183,7 +183,7 @@ struct MonthGrid: View {
                         selectedDay = day
                     }
                 } else {
-                    Color.clear.frame(height: 40)
+                    Color.clear.frame(height: 44)
                 }
             }
         }
@@ -209,7 +209,9 @@ struct DayCell: View {
                     .fill(isMarked ? Color.primary.opacity(0.6) : .clear)
                     .frame(width: 4, height: 4)
             }
-            .frame(height: 40)
+            // Toute la case est touchable (au moins 44 pt, comme le recommande Apple).
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(day.formatted(.dateTime.weekday(.wide).day().month(.wide)) + (isMarked ? ", prévu" : ""))
