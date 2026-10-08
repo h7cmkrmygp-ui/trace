@@ -98,7 +98,7 @@ public struct Exporter: Sendable {
             let paths = (categoryLinks[memory.id] ?? [])
                 .compactMap { categoriesByID[$0.categoryID] }
                 .filter { $0.status == .active }
-                .map { pathComponents(of: $0, in: categoriesByID) }
+                .map { CategoryPaths.components(of: $0, in: categoriesByID) }
                 .sorted { $0.joined(separator: "/") < $1.joined(separator: "/") }
             let tagNames = (tagLinks[memory.id] ?? []).compactMap { tagsByID[$0.tagID]?.name }.sorted()
 
@@ -147,18 +147,6 @@ public struct Exporter: Sendable {
         encoder.outputFormatting = [.withoutEscapingSlashes]
         guard let data = try? encoder.encode(value) else { return "\"\"" }
         return String(decoding: data, as: UTF8.self)
-    }
-
-    static func pathComponents(of category: EngramCategory, in all: [UUID: EngramCategory]) -> [String] {
-        var components = [category.name]
-        var current = category
-        var depth = 0
-        while let parentID = current.parentID, let parent = all[parentID], depth < 32 {
-            components.insert(parent.name, at: 0)
-            current = parent
-            depth += 1
-        }
-        return components
     }
 
     /// Octets maximum pour la partie lisible d'un nom de fichier (le suffixe « -xxxxxxxx.md » s'y ajoute).

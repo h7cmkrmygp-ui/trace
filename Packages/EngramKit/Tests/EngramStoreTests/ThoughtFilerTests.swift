@@ -83,6 +83,20 @@ struct ThoughtFilerTests {
         #expect(try env.memories.sourcesAwaitingAnalysis() == [memory.sourceID])
     }
 
+    @Test func aRecordingIsSavedFirstThenReceivesItsTranscript() throws {
+        let env = try StoreTestEnvironment()
+        let recording = try env.memories.saveVoiceRecording(audioPath: "audio/r.caf", duration: 4)
+        #expect(recording.title == MemoryStore.pendingTranscriptTitle)
+        #expect(try env.memories.sourcesAwaitingTranscription().map(\.id) == [recording.sourceID])
+        #expect(try env.memories.sourcesAwaitingAnalysis().isEmpty)
+        let updated = try #require(try env.memories.attachTranscript(sourceID: recording.sourceID, transcript: "Appeler le garage",
+                                                                      languages: ["fr-CA"], engine: "apple-speech"))
+        #expect(updated.id == recording.id)
+        #expect(updated.title == "Appeler le garage")
+        #expect(try env.memories.sourcesAwaitingTranscription().isEmpty)
+        #expect(try env.memories.sourcesAwaitingAnalysis() == [recording.sourceID])
+    }
+
     @Test func anEmptyTranscriptStillKeepsTheAudio() throws {
         let env = try StoreTestEnvironment()
         let memory = try env.memories.saveVoiceNote(audioPath: "audio/y.caf", duration: 3, transcript: "  ",

@@ -199,18 +199,83 @@ public struct CategoryStore: Sendable {
     public func assign(memoryID: UUID, categoryID: UUID, origin: AssignmentOrigin, confidence: Double? = nil) throws -> AssignmentOutcome {
         let now = dates.now()
         return try database.writer.write { db in
-            guard try Memory.exists(db, key: memoryID) else { throw StoreError.notFound }
-            guard let category = try EngramCategory.fetchOne(db, key: categoryID), category.status == .active else {
-                throw StoreError.notFound
+            try assign(db, memoryID: memoryID, categoryID: categoryID, origin: origin, confidence: confidence, now: now)
+        }
+    }
+
+    func assign(_ db: Database, memoryID: UUID, categoryID: UUID, origin: AssignmentOrigin,
+                confidence: Double?, now: Date) throws -> AssignmentOutcome {
+        guard try Memory.exists(db, key: memoryID) else { throw StoreError.notFound }
+        guard let category = try EngramCategory.fetchOne(db, key: categoryID), category.status == .active else {
+            throw StoreError.notFound
+        }
+        let existing = try CategoryAssignment.fetchOne(db, key: ["memory_id": memoryID, "category_id": category.id])
+        let outcome = try AssignmentRules.assign(
+            db, existing: existing,
+            makeNew: { CategoryAssignment(memoryID: memoryID, categoryID: category.id, origin: origin,
+                                          confidence: confidence, confirmed: origin == .user, now: now) },
+            origin: origin, now: now)
+        try SortingStatus.refresh(db, memoryID: memoryID, now: now)
+        return outcome
+    }
+
+    // MARK: - Chemins de catégories (créés par l'IA)
+
+    /// Trouve ou crée chaque niveau du chemin (« Automobile », « Lexus ») et renvoie le plus précis.
+    /// Chaque niveau est comparé aux catégories actives de même parent, accents, casse et pluriel ignorés.
+    public func resolvePath(_ names: [String], origin: Origin) throws -> EngramCategory {
+        let now = dates.now()
+        return try database.writer.write { db in
+            guard let last = try resolveChain(db, names: names, origin: origin, now: now).last else {
+                throw StoreError.invalidName
             }
-            let existing = try CategoryAssignment.fetchOne(db, key: ["memory_id": memoryID, "category_id": category.id])
-            let outcome = try AssignmentRules.assign(
-                db, existing: existing,
-                makeNew: { CategoryAssignment(memoryID: memoryID, categoryID: category.id, origin: origin,
-                                              confidence: confidence, confirmed: origin == .user, now: now) },
-                origin: origin, now: now)
-            try SortingStatus.refresh(db, memoryID: memoryID, now: now)
-            return outcome
+            return last
+        }
+    }
+
+    /// Catégories du chemin, de la plus large à la plus précise.
+    func resolveChain(_ db: Database, names: [String], origin: Origin, now: Date) throws -> [EngramCategory] {
+        guard !names.isEmpty else { throw StoreError.invalidName }
+        var chain: [EngramCategory] = []
+        for name in names {
+            let category = try createCategory(db, name: name, parentID: chain.last?.id, origin: origin,
+                                              description: nil, now: now).category
+            chain.append(category)
+        }
+        return chain
+    }
+
+    /// Tous les chemins actifs, triés : « Automobile », « Automobile › Lexus », « Finance »…
+    public func categoryPaths() throws -> [String] {
+        try database.writer.read { db in try Self.categoryPaths(db) }
+    }
+
+    static func categoryPaths(_ db: Database) throws -> [String] {
+        let active = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+        let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+        return active
+            .map { CategoryPaths.display(CategoryPaths.components(of: $0, in: byID)) }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// Archive une fois pour toutes les catégories de départ (P1) qui n'ont aucun souvenir ni sous-catégorie.
+    /// Renvoie le nombre de catégories archivées.
+    public func archiveUnusedSeeds() throws -> Int {
+        let now = dates.now()
+        return try database.writer.write { db in
+            let unused = try EngramCategory.fetchAll(db, sql: """
+                SELECT c.* FROM category c
+                WHERE c.origin = 'seed' AND c.status = 'active'
+                  AND NOT EXISTS (SELECT 1 FROM memory_category mc WHERE mc.category_id = c.id AND mc.rejected = 0)
+                  AND NOT EXISTS (SELECT 1 FROM category child WHERE child.parent_id = c.id AND child.status = 'active')
+                """)
+            for var category in unused {
+                try CategoryAssignment.filter(Column("category_id") == category.id).deleteAll(db)
+                category.status = .archived
+                category.updatedAt = now
+                try category.update(db)
+            }
+            return unused.count
         }
     }
 
@@ -240,31 +305,38 @@ public struct CategoryStore: Sendable {
 
     public func upsertTag(name: String, origin: Origin) throws -> EngramTag {
         let now = dates.now()
-        return try database.writer.write { db in
-            let cleaned = try Self.cleanName(name, maxLength: Self.maxTagLength)
-            let normalized = TextNormalizer.normalizedName(cleaned)
-            if let existing = try EngramTag.filter(Column("normalized_name") == normalized).fetchOne(db) {
-                return existing
-            }
-            let tag = EngramTag(name: cleaned, origin: origin, now: now)
-            try tag.insert(db)
-            return tag
+        return try database.writer.write { db in try upsertTag(db, name: name, origin: origin, now: now) }
+    }
+
+    func upsertTag(_ db: Database, name: String, origin: Origin, now: Date) throws -> EngramTag {
+        let cleaned = try Self.cleanName(name, maxLength: Self.maxTagLength)
+        let normalized = TextNormalizer.normalizedName(cleaned)
+        if let existing = try EngramTag.filter(Column("normalized_name") == normalized).fetchOne(db) {
+            return existing
         }
+        let tag = EngramTag(name: cleaned, origin: origin, now: now)
+        try tag.insert(db)
+        return tag
     }
 
     public func tag(memoryID: UUID, tagID: UUID, origin: AssignmentOrigin, confidence: Double? = nil) throws -> AssignmentOutcome {
         let now = dates.now()
         return try database.writer.write { db in
-            guard try Memory.exists(db, key: memoryID), try EngramTag.exists(db, key: tagID) else {
-                throw StoreError.notFound
-            }
-            let existing = try TagAssignment.fetchOne(db, key: ["memory_id": memoryID, "tag_id": tagID])
-            return try AssignmentRules.assign(
-                db, existing: existing,
-                makeNew: { TagAssignment(memoryID: memoryID, tagID: tagID, origin: origin,
-                                         confidence: confidence, confirmed: origin == .user, now: now) },
-                origin: origin, now: now)
+            try tag(db, memoryID: memoryID, tagID: tagID, origin: origin, confidence: confidence, now: now)
         }
+    }
+
+    func tag(_ db: Database, memoryID: UUID, tagID: UUID, origin: AssignmentOrigin,
+             confidence: Double?, now: Date) throws -> AssignmentOutcome {
+        guard try Memory.exists(db, key: memoryID), try EngramTag.exists(db, key: tagID) else {
+            throw StoreError.notFound
+        }
+        let existing = try TagAssignment.fetchOne(db, key: ["memory_id": memoryID, "tag_id": tagID])
+        return try AssignmentRules.assign(
+            db, existing: existing,
+            makeNew: { TagAssignment(memoryID: memoryID, tagID: tagID, origin: origin,
+                                     confidence: confidence, confirmed: origin == .user, now: now) },
+            origin: origin, now: now)
     }
 
     public func untag(memoryID: UUID, tagID: UUID, by origin: AssignmentOrigin) throws {

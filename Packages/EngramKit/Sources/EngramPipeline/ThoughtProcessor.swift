@@ -1,0 +1,73 @@
+import EngramCore
+import EngramStore
+import Foundation
+
+public enum ProcessingOutcome: Sendable, Equatable {
+    case filed(FilingSummary)
+    /// Le modèle ne peut pas répondre pour l'instant (raison lisible) : la note reste « À classer » et sera retraitée.
+    case waiting(String)
+    /// L'analyse a échoué : la note reste « À classer » avec son texte brut.
+    case fallback
+}
+
+/// Texte → analyse → validation anti-invention → classement.
+/// Une sortie invalide ou un modèle occupé déclenchent un seul nouvel essai ; tout autre échec mène au repli.
+public actor ThoughtProcessor {
+    /// Au-delà, la liste de catégories prendrait trop de place dans le contexte du modèle.
+    static let maxCategoriesInPrompt = 150
+
+    let memories: MemoryStore
+    let categories: CategoryStore
+    let filer: ThoughtFiler
+    let analyzer: any MemoryAnalyzer
+
+    public init(memories: MemoryStore, categories: CategoryStore, filer: ThoughtFiler, analyzer: any MemoryAnalyzer) {
+        self.memories = memories
+        self.categories = categories
+        self.filer = filer
+        self.analyzer = analyzer
+    }
+
+    public func process(sourceID: UUID) async -> ProcessingOutcome {
+        do {
+            guard let source = try memories.source(id: sourceID) else { return .fallback }
+            let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                try filer.markFallback(sourceID: sourceID)
+                return .fallback
+            }
+            let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
+            var attempt = 0
+            while true {
+                attempt += 1
+                do {
+                    let analysis = try await analyzer.analyze(text: text, existingCategories: paths)
+                    let valid = try AnalysisValidator.validate(analysis, against: text)
+                    return .filed(try filer.file(valid, sourceID: sourceID))
+                } catch AnalyzerError.unavailable(let reason) {
+                    return .waiting(reason)
+                } catch AnalyzerError.invalidOutput where attempt < 2 {
+                    continue
+                } catch AnalyzerError.busy where attempt < 2 {
+                    continue
+                }
+            }
+        } catch {
+            try? filer.markFallback(sourceID: sourceID)
+            return .fallback
+        }
+    }
+
+    /// Traite toutes les sources en attente, de la plus ancienne à la plus récente.
+    /// S'arrête dès que le modèle est indisponible (inutile d'insister).
+    public func processPending() async -> [ProcessingOutcome] {
+        guard let ids = try? memories.sourcesAwaitingAnalysis() else { return [] }
+        var outcomes: [ProcessingOutcome] = []
+        for id in ids {
+            let outcome = await process(sourceID: id)
+            outcomes.append(outcome)
+            if case .waiting = outcome { break }
+        }
+        return outcomes
+    }
+}

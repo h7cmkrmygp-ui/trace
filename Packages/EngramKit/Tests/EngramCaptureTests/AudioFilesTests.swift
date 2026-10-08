@@ -9,7 +9,7 @@ struct AudioFilesTests {
         let recording = try AudioFiles.newRecording(in: base.url)
         #expect(recording.relativePath.hasPrefix("audio/"))
         #expect(recording.relativePath.hasSuffix(".caf"))
-        #expect(recording.url == base.url.appendingPathComponent(recording.relativePath))
+        #expect(recording.url.path == AudioFiles.url(forRelativePath: recording.relativePath, in: base.url).path)
         var isDirectory: ObjCBool = false
         #expect(FileManager.default.fileExists(atPath: base.url.appendingPathComponent("audio").path, isDirectory: &isDirectory))
         #expect(isDirectory.boolValue)
