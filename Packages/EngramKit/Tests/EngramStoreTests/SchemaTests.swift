@@ -10,7 +10,7 @@ struct SchemaTests {
         let database = try AppDatabase.inMemory()
         try database.writer.read { (db: Database) throws in
             for table in ["source", "memory", "memory_version", "category", "memory_category", "tag",
-                          "memory_tag", "embedding", "memory_fts", "processing_job", "change_log", "setting"] {
+                          "memory_tag", "embedding", "memory_fts", "memory_fts_map", "processing_job", "change_log", "setting"] {
                 #expect(try db.tableExists(table), "table manquante : \(table)")
             }
             #expect(try Schema.migrator.hasCompletedMigrations(db))
@@ -66,6 +66,32 @@ struct SchemaTests {
             #expect(try count("reunion") == 0)
             #expect(try count("dentiste") == 1)
             _ = try memory.delete(db)
+            #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts") == 0)
+        }
+    }
+
+    /// L'index plein texte est relié aux souvenirs par un entier stable : pas de parcours complet de l'index à chaque modification.
+    @Test func fullTextRowsAreKeyedByAStableRowid() throws {
+        let database = try AppDatabase.inMemory()
+        try database.writer.write { db in
+            let source = Fixtures.source()
+            try source.insert(db)
+            var memory = Fixtures.memory(sourceID: source.id, title: "Acheter du lait", content: "Acheter du lait")
+            try memory.insert(db)
+            let rowid = { () throws -> Int64? in
+                try Int64.fetchOne(db, sql: "SELECT fts_rowid FROM memory_fts_map WHERE memory_id = ?", arguments: [memory.id])
+            }
+            let first = try #require(try rowid())
+            memory.status = .archived
+            try memory.update(db)
+            #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts WHERE rowid = ?", arguments: [first]) == 1)
+            memory.title = "Acheter du pain"
+            try memory.update(db)
+            #expect(try rowid() == first)
+            #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts WHERE memory_fts MATCH 'pain'") == 1)
+            #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts") == 1)
+            _ = try memory.delete(db)
+            #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts_map") == 0)
             #expect(try Int.fetchOne(db, sql: "SELECT count(*) FROM memory_fts") == 0)
         }
     }

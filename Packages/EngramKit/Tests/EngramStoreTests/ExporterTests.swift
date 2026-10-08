@@ -63,6 +63,17 @@ struct ExporterTests {
         #expect(text.contains("titre: \"Achats/Ventes : \\\"Q3\\\" <final>?\""))
     }
 
+    /// Un nom de fichier ne dépasse jamais la limite de 255 octets du système de fichiers, même fait d'émojis.
+    @Test func veryLongEmojiTitlesStillExport() throws {
+        let env = try StoreTestEnvironment()
+        try env.saveNote(String(repeating: "🇨🇦", count: 70))
+        let out = try TemporaryDirectory()
+        let result = try Exporter(database: env.database, dates: env.dates).export(into: out.url)
+        let unsorted = result.folderURL.appendingPathComponent("markdown").appendingPathComponent("À classer")
+        let name = try #require(try FileManager.default.contentsOfDirectory(atPath: unsorted.path).first)
+        #expect(name.utf8.count <= 255)
+    }
+
     @Test func exportingTwiceReplacesThePreviousArchive() throws {
         let env = try StoreTestEnvironment()
         try env.saveNote("Une pensée")
