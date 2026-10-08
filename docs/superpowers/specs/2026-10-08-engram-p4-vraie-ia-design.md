@@ -1,6 +1,6 @@
 # Engram P4 — « Vraie IA » : Whisper sur l'iPhone, Gemini pour classer, Notes simplifiées
 
-Statut : **proposition révisée avec les décisions du propriétaire (section 10), en attente de son accord final.** Aucun code de ce document n'est écrit avant cet accord.
+Statut : **approuvé le 2026-10-08, avec les corrections de la section 11**, qui priment sur tout ce qui les contredit plus haut.
 
 ## 1. Ce que le propriétaire a demandé
 
@@ -219,3 +219,99 @@ Si Firebase est ajouté un jour, son fichier de configuration sera injecté par 
 - **Gemini** reçoit la note entière, et ses consignes exigent de comprendre le sens et non des mots-clés. Le reste de la section 5 tient : une note par sujet, pas de découpage arbitraire, validation des extraits et des dates, et Apple en secours hors ligne.
 - **Budget 0 $** : quota atteint, réseau absent ou erreur, et la note est classée sur l'iPhone. Aucune facturation n'est jamais activée ni demandée.
 - **Ordre** : A (Notes, Cerveau, Corbeille et remplacement des exemples réels), puis B (Whisper), puis C (contrôleur de confidentialité, Gemini, nouvelles consignes d'Apple). Aucune fonctionnalité existante n'est retirée. Seule l'option de transcription OpenAI, jamais livrée et payante, est abandonnée.
+
+## 11. Corrections du propriétaire (accord de départ, 2026-10-08)
+
+### 11.1 Trois niveaux de confidentialité et un deuxième service en ligne : Groq
+
+Le propriétaire ne veut pas qu'Engram repose surtout sur l'IA locale. Recherche du 2026-10-08 sur les services en ligne gratuits aux meilleures conditions :
+
+| Service | Gratuit | Entraînement sur les notes | Conservation | Infos personnelles |
+|---|---|---|---|---|
+| Gemini API, palier gratuit | oui | **oui**, avec des évaluateurs humains | — | **interdites** par les conditions |
+| **Groq**, forfait gratuit, sans carte | `openai/gpt-oss-120b`, environ 30 req./min et 1 000 req./jour selon des sources tierces (le vrai quota s'affiche dans la console) | **non** : le contrat interdit à Groq d'entraîner un modèle avec les entrées ou les sorties (section 4.2) | rien par défaut ; jusqu'à 30 jours seulement en cas d'incident ou d'abus ; option « Zero Data Retention » | permises (accord de traitement des données), sauf les « PHI » du droit américain (données des cliniques et des assureurs). Avoir 18 ans ou plus |
+| Cloudflare Workers AI, gratuit | 10 000 « neurones » par jour, soit environ 80 notes | non | non précisé | non restreintes |
+| Mistral, palier gratuit | oui | sources contradictoires | — | — |
+| GitHub Models | probablement retiré | — | — | — |
+
+**Choix** : Groq devient le service des notes **personnelles**. Gemini garde les notes **neutres**, comme décidé. Cloudflare reste une solution de rechange documentée, non codée.
+
+**Routage par niveau :**
+1. **Neutre → Gemini.**
+   - Il faut à la fois : aucun détecteur déclenché, aucun mot du lexique, **et** un jugement `neutre` du modèle d'Apple, avec une confiance élevée.
+   - Les mots-clés ne peuvent **jamais** déclarer une note neutre. Ils ne servent qu'à la faire monter d'un niveau.
+2. **Personnel → Groq.** Tout le reste, sauf le niveau 3. Le doute entre neutre et personnel donne « personnel ».
+3. **Secret → iPhone seulement** :
+   - interrupteur « Garder sur l'iPhone » ;
+   - mots de passe, NIP et codes ;
+   - numéros de carte, de compte et de NAS ;
+   - pièces d'identité ;
+   - jugement `secret` du modèle d'Apple ;
+   - doute entre personnel et secret.
+
+   Réglage « Santé : garder sur l'iPhone », désactivé par défaut. À mon avis, les notes de santé d'un particulier ne sont pas des « PHI » au sens de la loi américaine, mais le propriétaire peut les garder locales.
+
+**Si un service manque** : sans clé, sans réseau, ou quota atteint.
+- Neutre : Gemini, puis Groq, puis l'iPhone.
+- Personnel : Groq, puis l'iPhone.
+- Une note classée sur l'iPhone faute de service est reclassée plus tard par le bon service, si le propriétaire ne l'a pas touchée.
+- **Jamais** une note personnelle ne passe chez Gemini.
+
+**Clés :**
+- deux champs dans Réglages › Intelligence : Gemini et Groq ;
+- les clés sont collées par le propriétaire et rangées dans le trousseau ;
+- bouton « Tester » pour chacune ;
+- lien vers la console Groq pour activer « Zero Data Retention ».
+
+**Qualité du classement local** (notes secrètes et secours) :
+- consignes `p4-v1` ;
+- exemples ;
+- règles de fusion des rappels ;
+- suggestion de catégorie d'après les notes semblables déjà classées, par proximité de sens calculée sur l'iPhone (`NLEmbedding`). Aucune donnée ne quitte l'iPhone.
+
+### 11.2 Firebase App Check en mode développement
+
+- Le fournisseur « debug » ne dépend pas de l'attestation d'Apple. Il peut donc fonctionner sous AltStore avec un Apple ID gratuit.
+- Le jeton de développement est créé sur l'iPhone. Normalement, on le lit dans la console de Xcode. Sans Mac, Engram devrait l'afficher lui-même pour qu'on l'enregistre dans la console Firebase : à vérifier dans le SDK au moment voulu.
+- Ce jeton est un secret qui ouvre l'accès. Il ne doit jamais être dans l'IPA ni sur GitHub.
+- Côté sécurité, c'est l'équivalent de la clé dans le trousseau, sans gain réel pour un usage personnel.
+- **Conclusion** : faisable, non prioritaire, non codé pour l'instant.
+
+### 11.3 Whisper multilingue et validation stricte
+
+- **Turbo reste le défaut. Le français n'est plus imposé.**
+- **Stratégie bilingue**, appliquée à chaque morceau de parole découpé par détection de la voix :
+  1. Whisper mesure la probabilité de chaque langue, limitée au français et à l'anglais.
+  2. Si une langue domine nettement (au moins 0,85), on décode dans cette langue.
+  3. Sinon (phrase mélangée), on décode **deux fois** (français et anglais) et on garde l'hypothèse la plus probable pour le modèle (log-probabilité moyenne).
+  4. Dans tous les cas :
+     - une amorce bilingue, écrite à la façon du propriétaire, incite Whisper à garder les mots anglais tels quels ;
+     - la tâche est toujours `transcribe`, jamais `translate`.
+- **Jeu d'essai représentatif** : une quarantaine de phrases fictives et neutres, lues à voix haute par le propriétaire dans l'app. Les enregistrements restent sur l'iPhone. Le jeu couvre :
+  - du français québécois pur et de l'anglais pur ;
+  - des changements de langue au milieu d'une phrase ;
+  - des verbes anglais conjugués en français (« checker », « booker ») ;
+  - des nombres, dates et heures ;
+  - des noms de marques ;
+  - un débit rapide.
+- **Comparaison** :
+  - Turbo et Large V3, chacun avec trois stratégies : français imposé, détection libre, stratégie bilingue ;
+  - mesures : WER, taux de mots anglais perdus ou traduits, vitesse, batterie.
+- **Validation** : aucun changement automatique.
+  - Engram ne **propose** Large V3 que si toutes ces conditions sont réunies :
+    - tout le jeu d'essai a été lu ;
+    - au moins 20 notes réelles ont été corrigées par le propriétaire ;
+    - Large V3 fait au moins 2 points et 15 % d'erreurs en moins, avec une marge de confiance qui exclut l'égalité (rééchantillonnage apparié à 95 %) ;
+    - la vitesse et la température sont correctes.
+  - Le propriétaire valide lui-même le changement.
+  - La même règle s'applique au choix de la stratégie.
+
+### 11.4 GitHub
+
+- Les exemples réels sont remplacés par des exemples fictifs dans les fichiers actuels.
+- **Aucune réécriture de l'historique, aucune poussée forcée.**
+
+### 11.5 Vérification sur l'iPhone
+
+- Je ne peux pas tester sur l'iPhone. Chaque phase se termine par une IPA et une liste de vérification : transcription, classement et confidentialité, dont le routage visible sur chaque note.
+- Rien n'est noté « testé sur iPhone » sans la confirmation du propriétaire.
