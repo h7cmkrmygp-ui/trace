@@ -105,6 +105,24 @@ final class ScreenshotTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+        audit(app, name)
+    }
+
+    /// Audit d'accessibilité d'iOS (contraste, libellés, zones touchables, taille du texte) : les problèmes sont
+    /// notés dans un rapport joint, sans faire échouer le test (certains viennent du système).
+    @MainActor
+    private func audit(_ app: XCUIApplication, _ name: String) {
+        var lines: [String] = []
+        try? app.performAccessibilityAudit(for: [.contrast, .elementDetection, .hitRegion, .sufficientElementDescription,
+                                                 .textClipped, .trait]) { issue in
+            let element = issue.element.map { "\($0.elementType.rawValue) « \($0.label) »" } ?? "?"
+            lines.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(element)")
+            return true
+        }
+        let report = XCTAttachment(string: lines.isEmpty ? "aucun problème" : lines.joined(separator: "\n"))
+        report.name = "audit-\(name).txt"
+        report.lifetime = .keepAlways
+        add(report)
     }
 
     @MainActor @discardableResult
