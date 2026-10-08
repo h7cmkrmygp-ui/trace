@@ -13,9 +13,11 @@ public struct AnalyzedThought: Sendable, Hashable {
     public var category: String
     /// Sous-catégorie facultative (« Corolla »).
     public var subcategory: String?
+    /// Courte description de la catégorie quand l'IA la crée (« Suivi de la santé, du poids… »).
+    public var categoryDescription: String?
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
-                mentionedDates: [String], category: String, subcategory: String?) {
+                mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil) {
         self.title = title
         self.summary = summary
         self.excerpt = excerpt
@@ -24,6 +26,7 @@ public struct AnalyzedThought: Sendable, Hashable {
         self.mentionedDates = mentionedDates
         self.category = category
         self.subcategory = subcategory
+        self.categoryDescription = categoryDescription
     }
 }
 
