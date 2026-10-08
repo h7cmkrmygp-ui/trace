@@ -44,7 +44,8 @@ public enum FTSQuery {
 }
 
 extension MemoryStore {
-    /// Recherche par mots dans les souvenirs actifs et « À classer » (et archivés sur demande). La corbeille est exclue.
+    /// Recherche par mots dans les souvenirs actifs et « À classer » (et archivés sur demande). La corbeille est exclue,
+    /// comme les dictées qui attendent « Vérifie ta note » (elles n'apparaissent que dans « À vérifier »).
     public func searchText(_ input: String, filters: SearchFilters = SearchFilters(), limit: Int = 50) throws -> [TextSearchHit] {
         guard let match = FTSQuery.make(from: input) else { return [] }
         var statuses: [MemoryStatus] = [.active, .unsorted]
@@ -57,6 +58,7 @@ extension MemoryStore {
             JOIN memory m ON m.id = map.memory_id
             WHERE memory_fts MATCH ?
               AND m.status IN (\(Self.placeholders(statuses.count)))
+              AND m.source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)
             """
         var values: [(any DatabaseValueConvertible)?] = [match]
         values += statuses.map { $0 as (any DatabaseValueConvertible)? }

@@ -180,8 +180,10 @@ extension CategoryStore {
             if let current = deepest[memoryID], depth(current) >= depth(categoryID) { continue }
             deepest[memoryID] = categoryID
         }
+        // Les dictées qui attendent « Vérifie ta note » n'y figurent pas encore.
         let memories = try Memory
             .filter([MemoryStatus.active, MemoryStatus.unsorted].contains(Column("status")))
+            .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
             .fetchAll(db)
         // Catégories qui contiennent une pensée, et tous leurs parents.
         var shown: Set<UUID> = []
