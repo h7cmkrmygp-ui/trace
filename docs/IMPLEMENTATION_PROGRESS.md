@@ -104,7 +104,7 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 - Calendrier : plus de rendez-vous affichés en double, rechargement après un ajout, accès refusé expliqué avec un lien vers les Réglages, événements de plusieurs jours affichés chaque jour.
 
 **Écrans**
-- Cerveau vide : plus aucun point derrière « Ton cerveau est vide » (le point central n'est plus dessiné).
+- Cerveau vide : plus aucun point derrière « Ton cerveau est vide » (le point central n'est plus dessiné), message lisible par VoiceOver ; compteur « 1 note » au singulier.
 - Cerveau lisible par VoiceOver (liste des catégories).
 - Arrêt automatique à 5 min sans double fin.
 - « Ajouté au calendrier » sur la carte de résultat.
@@ -132,6 +132,7 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 **Constats**
 - Notes, Corbeille (Restaurer et Supprimer visibles, « Tout supprimer » avec confirmation), « Vérifie ta note », Réglages, Cerveau et Calendrier s'affichent correctement dans les deux modes.
 - Le test agit aussi, comme toi : il confirme une dictée (« Classer », elle quitte « À vérifier »), balaie une note de la corbeille (Restaurer et Supprimer présents) et vide la corbeille pour de vrai (« Corbeille vide »).
+- Mémoire vide : le Cerveau affiche seulement « Ton cerveau est vide » (aucun point derrière, message lu par VoiceOver), et les Notes « Aucune note pour l'instant ».
 - Défauts trouvés et corrigés : étiquette du Cerveau coupée, zones des jours trop petites, recherche cachée.
 
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.

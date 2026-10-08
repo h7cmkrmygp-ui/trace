@@ -58,7 +58,7 @@ struct BrainView: View {
                     Button("Recentrer", systemImage: "scope") { recenter() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Text("\(itemCount) notes").font(.footnote).foregroundStyle(.secondary)
+                    Text(NotesView.count(itemCount, "note", nil)).font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
