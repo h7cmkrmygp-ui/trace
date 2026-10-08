@@ -64,23 +64,27 @@ final class ScreenshotTests: XCTestCase {
                 let cell = app.cells.firstMatch
                 if cell.waitForExistence(timeout: 3) {
                     cell.swipeLeft()
+                    // Bug signalé : seul « Restaurer » apparaissait. Les deux actions doivent être là. Vérifié avant
+                    // la capture : l'audit d'accessibilité qui la suit change la taille du texte et referme le balayage.
+                    let restore = app.buttons["Restaurer"]
+                    let delete = app.buttons["Supprimer"]
+                    if !(restore.waitForExistence(timeout: 3) && delete.exists) {
+                        attachTree(app, "arbre-08-corbeille-balayage-\(mode)")
+                    }
+                    XCTAssertTrue(restore.exists, "Restaurer manquant dans la corbeille")
+                    XCTAssertTrue(delete.exists, "Supprimer manquant dans la corbeille")
                     snap(app, "08-corbeille-balayage-\(mode)")
-                    // Bug signalé : seul « Restaurer » apparaissait. Les deux actions doivent être là.
-                    XCTAssertTrue(app.buttons["Restaurer"].exists, "Restaurer manquant dans la corbeille")
-                    XCTAssertTrue(app.buttons["Supprimer"].exists, "Supprimer manquant dans la corbeille")
                     app.navigationBars.firstMatch.tap()
                 }
                 if tap(app.buttons["Tout supprimer"]) {
                     snap(app, "09-tout-supprimer-\(mode)")
-                    let tree = XCTAttachment(string: app.debugDescription)
-                    tree.name = "arbre-09-tout-supprimer-\(mode).txt"
-                    tree.lifetime = .keepAlways
-                    add(tree)
                     // Bug signalé : pas de « Tout supprimer ». On vide la corbeille pour de vrai (notes inventées).
                     if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Supprimer 1 note")).firstMatch) {
                         XCTAssertTrue(app.staticTexts["Corbeille vide"].waitForExistence(timeout: 5), "La corbeille ne s'est pas vidée")
                         snap(app, "09b-corbeille-vide-\(mode)")
                     } else {
+                        attachTree(app, "arbre-09-tout-supprimer-\(mode)")
+                        XCTFail("Confirmation « Supprimer 1 note définitivement » introuvable")
                         dismissDialog(app)
                     }
                 }
@@ -144,6 +148,15 @@ final class ScreenshotTests: XCTestCase {
         report.name = "audit-\(name).txt"
         report.lifetime = .keepAlways
         add(report)
+    }
+
+    /// Arbre des éléments de l'écran (types, libellés), joint au rapport pour comprendre un échec.
+    @MainActor
+    private func attachTree(_ app: XCUIApplication, _ name: String) {
+        let tree = XCTAttachment(string: app.debugDescription)
+        tree.name = "\(name).txt"
+        tree.lifetime = .keepAlways
+        add(tree)
     }
 
     @MainActor @discardableResult
