@@ -157,8 +157,9 @@ struct CategoryStoreTests {
         #expect(summary.unsortedCount == 1)
         #expect(summary.trashedCount == 1)
         #expect(summary.archivedCount == 0)
-        #expect(summary.categories.map(\.category.name) == ["Santé", "Sport"])
-        #expect(summary.categories.map(\.depth) == [0, 1])
+        // « Sport » ne contient rien : la bibliothèque ne l'affiche pas.
+        #expect(summary.categories.map(\.category.name) == ["Santé"])
+        #expect(summary.categories.map(\.depth) == [0])
         #expect(summary.categories.first?.memoryCount == 1)
     }
 }
