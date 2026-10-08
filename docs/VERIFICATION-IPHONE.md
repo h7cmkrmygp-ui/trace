@@ -13,7 +13,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 - **Clés gratuites** (18 ans ou plus, aucune carte de crédit demandée) :
   - **Gemini** : https://aistudio.google.com/apikey. N'associe **jamais** de compte de facturation à ton projet Google : sans facturation, aucun frais n'est possible.
   - **Groq** : https://console.groq.com/keys. Dans https://console.groq.com/settings/data-controls, active « Zero Data Retention » si l'option est proposée.
-  - Tu colles toi-même chaque clé dans Engram (étapes 14 et 15). Elle est rangée dans le trousseau de l'iPhone, jamais ailleurs.
+  - Tu colles toi-même chaque clé dans Engram (étapes 15 et 16). Elle est rangée dans le trousseau de l'iPhone, jamais ailleurs.
 
 ## A. Notes, Corbeille, Cerveau (les bugs que tu as signalés)
 
@@ -53,6 +53,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
     - Elle ne doit **jamais** être classée par Gemini.
 19. **Dis** : « Rappelle-moi de réserver la salle le 24 novembre, rappelle-moi ça demain ».
     - **Une seule** note, avec demain pour échéance.
+    - **Dis aussi** : « Idée de cadeau : un livre de cuisine, rappelle-moi ça samedi ». Une seule note, rangée dans « À faire », pour samedi.
 20. **Dis** : « Appeler le garage pour les pneus, pis acheter du lait en revenant ».
     - **Deux** notes, dans deux catégories différentes.
 21. **Active « Garder sur l'iPhone » sur la carte**, puis classe la note : elle est « Classée sur l'iPhone ».
@@ -78,6 +79,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## E. Calendrier et le reste (P3)
 
 31. **Dis** : « Dentiste vendredi à 14 h » : le rendez-vous est ajouté au calendrier de l'iPhone (1 h).
+    - **Dis aussi** : « Dentiste mardi à 10 h, rappelle-moi ça lundi ». Une seule note ; le rendez-vous est au calendrier **mardi à 10 h**, pas lundi.
 32. **Onglet Calendrier** :
     - le rendez-vous apparaît le bon jour, **une seule fois** (pas en double avec l'événement de l'iPhone) ;
     - un événement de plusieurs jours apparaît chaque jour.

@@ -16,21 +16,18 @@ public struct ResolvedDate: Sendable, Hashable {
 /// Une expression vague (« bientôt », « la semaine prochaine ») ne donne aucune date.
 public enum DateResolver {
     /// Combine le premier jour et la première heure trouvés dans les expressions (« vendredi », « 14 h »),
-    /// et complète ce qui manque avec l'extrait lui-même.
+    /// et complète ce qui manque avec l'extrait lui-même. Une heure ne vient que d'une expression sans jour
+    /// ou du même jour : jamais de l'heure d'un autre jour (celle de l'événement collée au jour du rappel).
     public static func firstDate(in expressions: [String], excerpt: String, relativeTo now: Date,
                                  calendar: Calendar) -> ResolvedDate? {
         let today = calendar.startOfDay(for: now)
         var day: Date?
         var time: (hour: Int, minute: Int)?
-        for expression in expressions {
-            let parts = components(of: normalize(expression), today: today, calendar: calendar)
+        for text in expressions + [excerpt] {
+            if day != nil && time != nil { break }
+            let parts = components(of: normalize(text), today: today, calendar: calendar)
             if day == nil { day = parts.day }
-            if time == nil { time = parts.time }
-        }
-        if day == nil || time == nil {
-            let parts = components(of: normalize(excerpt), today: today, calendar: calendar)
-            if day == nil { day = parts.day }
-            if time == nil { time = parts.time }
+            if time == nil, parts.day == nil || parts.day == day { time = parts.time }
         }
         return combine(day: day, time: time, now: now, calendar: calendar)
     }
