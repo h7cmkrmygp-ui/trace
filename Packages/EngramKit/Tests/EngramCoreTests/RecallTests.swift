@@ -72,6 +72,21 @@ struct RecallQueryTests {
         #expect(project.keywords == ["projet"])
     }
 
+    /// Les suggestions de l'écran Retrouver sont comprises.
+    @Test func theSuggestedQuestionsAreUnderstood() {
+        let ideas = parse("Mes idées récentes")
+        #expect(ideas.intent == .list)
+        #expect(ideas.kinds == [.idea])
+        #expect(ideas.period == DateInterval(start: Self.now.addingTimeInterval(-14 * 86_400), end: Self.now))
+        let latest = parse("Mes dernières notes")
+        #expect(latest.intent == .list)
+        #expect(latest.period == DateInterval(start: Self.now.addingTimeInterval(-14 * 86_400), end: Self.now))
+        let week = parse("Résume ce que j'ai noté cette semaine")
+        #expect(week.intent == .summarize)
+        #expect(week.keywords.isEmpty)
+        #expect(week.kinds.isEmpty)
+    }
+
     @Test func englishQuestionsToo() {
         let query = parse("What did I have to do tomorrow?")
         #expect(query.intent == .list)
