@@ -156,4 +156,9 @@ Retour du propriétaire sur l'iPhone (2026-10-08) : la note est bien enregistré
 | — | Siri, raccourcis, bouton Action | n/a | n/a | ✅ | compile | ⏳ | — | « Enregistrer une pensée », « Noter dans Engram », « Demander à Engram » (iPhone déverrouillé) |
 | — | Détail d'une note | ✅ | n/a | ✅ | compile | ⏳ | — | type et échéance affichés, « Marquer comme fait » |
 
-Tests automatiques : **301** (Core 85, Store 119, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).
+Tests automatiques : **304** (Core 88, Store 119, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).
+
+Ajouts de P5 faits ensuite :
+- « dans 10 minutes », « dans 2 heures » donnent une échéance précise (rappels relatifs).
+- Retrouver comprend « récentes », « dernières », et affine par une question de suite (« Et la semaine passée ? », « de ce sujet »).
+- Descriptions des dossiers lisibles en très grand texte ; transitions discrètes (désactivées avec « Réduire les animations »).

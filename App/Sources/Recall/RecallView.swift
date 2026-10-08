@@ -98,6 +98,7 @@ final class RecallModel {
 
 struct RecallView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = RecallModel()
     @FocusState private var isFieldFocused: Bool
 
@@ -119,6 +120,7 @@ struct RecallView: View {
                         }
                     }
                     .padding(16)
+                    .animation(reduceMotion ? nil : .snappy, value: model.exchanges.map { $0.reply?.hits.count ?? -1 })
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: model.exchanges.last?.reply?.answer) { _, _ in

@@ -36,7 +36,9 @@ struct RecordView: View {
                 }
                 Spacer(minLength: 16)
                 outcome
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
+            .animation(reduceMotion ? nil : .snappy, value: model.phase)
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity)
             .toolbar {
