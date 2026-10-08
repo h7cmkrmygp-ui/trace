@@ -1,0 +1,35 @@
+name: SDK check
+on:
+  push:
+    paths: [".github/workflows/sdk-check.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  inspect:
+    runs-on: xcode-27
+    steps:
+      - name: Versions et simulateurs
+        run: |
+          xcodebuild -version
+          swift --version
+          echo "iOS SDK : $(xcrun --sdk iphoneos --show-sdk-version)"
+          xcrun simctl list devices available | grep -E "iPhone" || true
+      - name: API publiques utilisées par Engram
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          inspect() {
+            local fw="$1" pattern="$2" file
+            file="$(find "$SDK/System/Library/Frameworks/$fw.framework" -name '*.swiftinterface' -path '*arm64e-apple-ios*' | head -1)"
+            [ -n "$file" ] || file="$(find "$SDK/System/Library/Frameworks/$fw.framework" -name '*.swiftinterface' | head -1)"
+            echo "::group::$fw — ${file:-introuvable}"
+            if [ -n "$file" ]; then grep -nE "$pattern" "$file" | head -200 || true; fi
+            echo "::endgroup::"
+          }
+          inspect FoundationModels 'SystemLanguageModel|LanguageModelSession|availability|contextSize|supportedLanguages|supportsLocale|func respond|macro Generable|macro Guide|GenerationOptions|GenerationError|guardrailViolation|exceededContextWindowSize|tokenCount|Instructions'
+          inspect Speech 'SpeechAnalyzer|SpeechTranscriber|DictationTranscriber|AssetInventory|supportedLocales|installedLocales|reserve|assetInstallationRequest|ReportingOption|TranscriptionOption|ResultAttributeOption'
+          inspect NaturalLanguage 'NLContextualEmbedding|embeddingResult|dimension|maximumSequenceLength|requestAssets|hasAvailableAssets|NLLanguageRecognizer'
+          inspect LocalAuthentication 'class LAContext|func evaluatePolicy|deviceOwnerAuthentication'

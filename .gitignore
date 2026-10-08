@@ -36,6 +36,15 @@ secrets/
 private/
 exports/
 *.engram-export.zip
+# Noms réels produits par l'app (export et copie de secours)
+Engram-Export-*/
+Engram-Export-*.zip
+Engram-Recuperation-*/
+Engram-Recuperation-*.zip
+engram.json
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 # Enregistrements audio : interdits par défaut (les fixtures autorisées seront listées explicitement)
 *.m4a
 *.caf
@@ -51,3 +60,6 @@ models/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Info.plist généré par XcodeGen
+App/Info.plist

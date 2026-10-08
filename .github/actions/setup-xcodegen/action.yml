@@ -1,0 +1,13 @@
+name: Installer XcodeGen
+description: Installe XcodeGen 2.46.0 (version épinglée) et l'ajoute au PATH.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        curl -sSfL -o "$RUNNER_TEMP/xcodegen.zip" \
+          https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+        unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+        echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+    - shell: bash
+      run: xcodegen --version
