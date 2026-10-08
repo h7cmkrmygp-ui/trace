@@ -269,8 +269,10 @@ struct RecallHitRow: View {
         HStack(spacing: 12) {
             Image(systemName: Self.symbol(for: document.kind))
                 .font(.body)
+                .foregroundStyle(tint ?? .primary)
                 .frame(width: 32, height: 32)
-                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(tint.map { $0.opacity(0.16) } ?? Color(.tertiarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(document.title)
                     .font(.subheadline.weight(.medium))
@@ -289,6 +291,11 @@ struct RecallHitRow: View {
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    /// Couleur de la catégorie de la note (comme dans le Cerveau).
+    private var tint: Color? {
+        document.categories.first.map { Color.category($0.components(separatedBy: " › ").first ?? $0) }
     }
 
     private var details: String {

@@ -192,30 +192,71 @@ struct RecordView: View {
     }
 }
 
+/// Le bouton de l'accueil : une sphère de verre, avec derrière elle une lumière aux couleurs des catégories qui tourne
+/// lentement. Pendant l'enregistrement, la lumière devient rouge, grandit avec la voix et des ondes s'en échappent.
 struct RecordButton: View {
     let isRecording: Bool
     let level: Float
     let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var spin = false
+
+    private var glowColors: [Color] {
+        if isRecording { return [.red, .orange, .pink, .red] }
+        let hues = CategoryPalette.hues.prefix(6).map { Color(hue: $0, saturation: 0.55, brightness: 0.95) }
+        return hues + [hues[0]]
+    }
 
     var body: some View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(isRecording ? Color.red.opacity(0.08) : Color.primary.opacity(0.03))
-                Circle()
-                    .strokeBorder(isRecording ? Color.red.opacity(0.4) : Color.primary.opacity(0.18), lineWidth: 1)
-                Image(systemName: isRecording ? "stop.fill" : "mic")
-                    .font(.system(size: 36, weight: .light))
+                    .fill(AngularGradient(colors: glowColors, center: .center))
+                    .blur(radius: 30)
+                    .opacity(isRecording ? 0.6 : 0.42)
+                    .scaleEffect(1.02 + CGFloat(level) * 0.28)
+                    .rotationEffect(.degrees(spin ? 360 : 0))
+                if isRecording && !reduceMotion { RippleRings() }
+                Color.clear
+                    .glassEffect(.regular.interactive(), in: Circle())
+                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                    .font(.system(size: 40, weight: .regular))
                     .foregroundStyle(isRecording ? Color.red : Color.primary)
+                    .contentTransition(.symbolEffect(.replace))
             }
             .frame(width: 200, height: 200)
-            .scaleEffect(1 + CGFloat(level) * 0.06)
+            .scaleEffect(1 + CGFloat(level) * 0.04)
             .animation(.easeOut(duration: 0.12), value: level)
+            .animation(.smooth(duration: 0.4), value: isRecording)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .sensoryFeedback(.impact(weight: .medium), trigger: isRecording)
         .accessibilityLabel(isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement")
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 24).repeatForever(autoreverses: false)) { spin = true }
+        }
+    }
+}
+
+/// Ondes qui s'éloignent du bouton pendant l'enregistrement.
+private struct RippleRings: View {
+    private let epoch = Date()
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
+            let time = timeline.date.timeIntervalSince(epoch)
+            ZStack {
+                ForEach(0..<2, id: \.self) { index in
+                    let phase = (time / 1.8 + Double(index) * 0.5).truncatingRemainder(dividingBy: 1)
+                    Circle()
+                        .stroke(Color.red.opacity(0.35 * (1 - phase)), lineWidth: 1.5)
+                        .scaleEffect(1 + 0.4 * phase)
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

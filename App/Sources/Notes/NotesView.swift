@@ -149,9 +149,10 @@ struct NotesView: View {
                 }
                 ForEach(roots) { item in
                     NavigationLink(value: NotesRoute.category(item.category)) {
-                        FolderCard(systemImage: "folder", title: item.category.name,
+                        FolderCard(systemImage: "folder.fill", title: item.category.name,
                                    subtitle: item.category.descriptionText.flatMap { $0.isEmpty ? nil : $0 }
-                                       ?? Self.count(item.totalCount, "note", nil))
+                                       ?? Self.count(item.totalCount, "note", nil),
+                                   tint: .category(item.category.name))
                     }
                 }
             }
@@ -190,13 +191,17 @@ struct FolderCard: View {
     let systemImage: String
     let title: String
     let subtitle: String
+    /// Couleur de la catégorie (la même que son neurone dans le Cerveau) ; nil pour les dossiers spéciaux.
+    var tint: Color?
 
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: systemImage)
                 .font(.title3)
+                .foregroundStyle(tint ?? .primary)
                 .frame(width: 48, height: 48)
-                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(tint.map { $0.opacity(0.16) } ?? Color(.tertiarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)

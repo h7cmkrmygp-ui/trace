@@ -16,6 +16,8 @@ struct MemoryDetailView: View {
     @State private var isRetranscribing = false
     /// Notes sur le même sujet (au plus 3, seulement si elles ressemblent vraiment).
     @State private var related: [RecallHit] = []
+    /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
+    @State private var allCategories: [UUID: EngramCategory] = [:]
 
     var body: some View {
         Group {
@@ -45,7 +47,13 @@ struct MemoryDetailView: View {
                 if assigned.isEmpty {
                     Text("À classer").foregroundStyle(.secondary)
                 }
-                ForEach(assigned) { Label($0.name, systemImage: "folder") }
+                ForEach(assigned) { category in
+                    Label {
+                        Text(category.name)
+                    } icon: {
+                        Image(systemName: "folder.fill").foregroundStyle(Color.category(rootName(of: category)))
+                    }
+                }
                 Button("Choisir les catégories…", systemImage: "folder.badge.plus") { isPickingCategories = true }
             }
             if !related.isEmpty {
@@ -215,6 +223,18 @@ struct MemoryDetailView: View {
             source = try model.memories.source(id: memory.sourceID)
             versions = try model.memories.versions(of: memoryID)
             assigned = try model.categories.categories(for: memoryID)
+            allCategories = Dictionary(uniqueKeysWithValues: try model.categories.activeCategories().map { ($0.id, $0) })
         }
+    }
+
+    /// Nom de la grande catégorie d'une catégorie (elle-même si elle n'a pas de parent).
+    private func rootName(of category: EngramCategory) -> String {
+        var current = category
+        var depth = 0
+        while let parentID = current.parentID, let parent = allCategories[parentID], depth < 16 {
+            current = parent
+            depth += 1
+        }
+        return current.name
     }
 }
