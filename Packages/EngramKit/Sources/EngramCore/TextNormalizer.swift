@@ -13,6 +13,14 @@ public enum TextNormalizer {
         words(of: raw).joined(separator: " ")
     }
 
+    /// `phrase` apparaît-elle dans `text`, mot pour mot, aux limites de mots
+    /// (sans tenir compte de la casse, des accents ni de la ponctuation) ?
+    public static func containsPhrase(_ phrase: String, in text: String) -> Bool {
+        let needle = matchingForm(phrase)
+        guard !needle.isEmpty else { return false }
+        return (" " + matchingForm(text) + " ").contains(" " + needle + " ")
+    }
+
     static func words(of raw: String) -> [String] {
         raw.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
                     locale: Locale(identifier: "en_US_POSIX"))
