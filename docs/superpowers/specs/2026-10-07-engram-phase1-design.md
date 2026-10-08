@@ -147,6 +147,8 @@ Un paquet Swift local `EngramKit` contient les modules ; l'app ne contient que l
 
 Chaque service passe par un protocole : on peut remplacer le moteur de transcription, le modèle d'IA ou le moteur d'embeddings sans toucher au reste.
 
+Les types de catégorie et de tag s'appellent `EngramCategory` et `EngramTag`, pour éviter les conflits avec `Testing.Tag` et le `Category` d'Objective-C.
+
 ### 4.3 Choix techniques justifiés
 | Choix | Pourquoi | Alternative écartée |
 |---|---|---|
@@ -207,16 +209,16 @@ Conventions : identifiants **UUID** générés sur l'appareil ; dates en **UTC**
 Index : `status`, `source_id`, `captured_at`, `trashed_at`.
 
 **`memory_version`** : historique restaurable (F24).
-`id` PK · `memory_id` FK (cascade à la suppression définitive) · `version` · `snapshot` (JSON : titre, résumé, contenu, kind, statut, catégories, tags) · `changed_by` (`user` \| `ai` \| `system`) · `change_reason` · `created_at`. Unicité : (`memory_id`, `version`).
+`id` PK · `memory_id` FK (cascade à la suppression définitive) · `version` · `snapshot` (JSON : titre, résumé, contenu, kind, statut ; les liens ont leur propre historique dans `change_log`) · `changed_by` (`user` \| `ai` \| `system`) · `change_reason` · `created_at`. Unicité : (`memory_id`, `version`).
 
 **`category`** : dossiers et sous-dossiers.
 `id` PK · `name` · `normalized_name` (minuscules, sans accents, singulier simple) · `description` · `parent_id` FK → `category` (NULL = racine) · `origin` (`seed` \| `ai` \| `user`) · `status` (`active` \| `archived`) · `created_at` · `updated_at`. Unicité : (`parent_id` ou racine, `normalized_name`).
 « À classer » **n'est pas une catégorie** : c'est le statut `unsorted` d'un souvenir.
 
-**`memory_category`** : `memory_id` · `category_id` · `origin` (`ai` \| `user`) · `confidence` · `confirmed` (booléen) · `created_at`. PK (`memory_id`, `category_id`).
+**`memory_category`** : `memory_id` · `category_id` · `origin` (`ai` \| `user`) · `confidence` · `confirmed` · `rejected` (lien retiré par le propriétaire, conservé pour que l'IA ne le recrée pas) · `created_at` · `updated_at`. PK (`memory_id`, `category_id`).
 
 **`tag`** : `id` · `name` · `normalized_name` (unique) · `origin` · `created_at`.
-**`memory_tag`** : même structure que `memory_category`.
+**`memory_tag`** : même structure que `memory_category`, avec `rejected`.
 
 **`embedding`** : `id` · `owner_kind` (`memory` \| `category`) · `owner_id` · `model` · `dimensions` · `vector` (BLOB, Float32, normalisé) · `input_hash` (pour détecter un embedding périmé) · `created_at`. Unicité : (`owner_kind`, `owner_id`, `model`).
 
@@ -236,7 +238,7 @@ Migrations GRDB nommées (`v1_initial`, `v2_…`), **jamais modifiées après pu
 |---|---|---|
 | Archiver | `status = archived`, hors des vues par défaut, toujours trouvable via un filtre | oui |
 | Mettre à la corbeille | `status = trashed`, `trashed_at` renseigné | oui (restaurer) |
-| Supprimer définitivement | Lignes supprimées (souvenir, versions, liens, embedding, entrée FTS). La source et son audio sont supprimés s'ils ne sont plus référencés par aucun souvenir. Confirmation obligatoire. | **non** |
+| Supprimer définitivement | Lignes supprimées (souvenir, versions, liens, embedding, entrée FTS). La source et son audio sont supprimés s'ils ne sont plus référencés par aucun souvenir. Confirmation obligatoire. Uniquement depuis la corbeille. | **non** |
 
 La corbeille ne se vide **jamais automatiquement** en Phase 1.
 
@@ -431,7 +433,7 @@ Secondarybrain/
   1. génération du projet par XcodeGen ;
   2. tests du paquet et de l'app sur le simulateur iOS 27 ;
   3. analyse gitleaks.
-- **Build `.ipa` (`build-ipa.yml`)** : archive Release **sans signature** (`CODE_SIGNING_ALLOWED=NO`) → dossier `Payload/Engram.app` compressé en `Engram.ipa` → publié comme artefact de la compilation (conservé 7 jours). Le propriétaire le télécharge et l'installe avec **AltStore, qui le signe avec son Apple ID**.
+- **`.ipa`** : produit à chaque envoi par le job `ipa` de `ci.yml` : archive Release **sans signature** (`CODE_SIGNING_ALLOWED=NO`) → dossier `Payload/Engram.app` compressé en `Engram.ipa` → publié comme artefact de la compilation (conservé 7 jours). Le propriétaire le télécharge et l'installe avec **AltStore, qui le signe avec son Apple ID**.
 - Numéro de build = numéro d'exécution de la compilation.
 - Runner : image `xcode-27` (aperçu public). Le libellé et la version de Xcode sont épinglés dans le workflow.
 
