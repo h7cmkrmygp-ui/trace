@@ -35,6 +35,7 @@ struct TranscriptionSettingsSection: View {
                 }
             }
             Toggle("Vérifier avant de classer", isOn: $review)
+                .tint(.green)
                 .onChange(of: review) { _, value in model.perform { try model.settings.set(value, for: .reviewBeforeFiling) } }
             if engine == .whisper && downloaded.contains(whisperModel) {
                 Button {

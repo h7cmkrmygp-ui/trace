@@ -17,6 +17,7 @@ struct SettingsView: View {
         Form {
             Section {
                 Toggle("Ajouter mes rendez-vous au calendrier", isOn: $autoAdd)
+                    .tint(.green)
                     .onChange(of: autoAdd) { _, value in model.perform { try model.settings.set(value, for: .calendarAutoAdd) } }
                 if calendarAccess == .granted {
                     Picker("Calendrier", selection: $targetCalendar) {

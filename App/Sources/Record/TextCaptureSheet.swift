@@ -18,6 +18,7 @@ struct TextCaptureSheet: View {
                     .lineLimit(5...12)
                     .focused($isFocused)
                 Toggle("Garder sur l'iPhone", isOn: $keepLocal)
+                    .tint(.green)
                     .font(.subheadline)
                 Spacer()
             }

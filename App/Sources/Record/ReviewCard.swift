@@ -30,6 +30,7 @@ struct ReviewCard: View {
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityLabel("Transcription à vérifier")
             Toggle("Garder sur l'iPhone", isOn: $draft.keepLocal)
+                .tint(.green)
                 .font(.subheadline)
             HStack(spacing: 12) {
                 if audioURL != nil {

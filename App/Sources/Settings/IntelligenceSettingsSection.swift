@@ -22,9 +22,11 @@ struct IntelligenceSettingsSection: View {
         Section {
             LabeledContent("IA d'Apple (sur l'iPhone)", value: apple.text)
             Toggle("Tout garder sur l'iPhone", isOn: $keepEverythingLocal)
+                .tint(.green)
                 .onChange(of: keepEverythingLocal) { _, value in model.perform { try model.settings.set(value, for: .keepEverythingLocal) } }
             if !keepEverythingLocal {
                 Toggle("Santé : garder sur l'iPhone", isOn: $healthStaysLocal)
+                    .tint(.green)
                     .onChange(of: healthStaysLocal) { _, value in model.perform { try model.settings.set(value, for: .healthStaysLocal) } }
             }
             if !counts.isEmpty {
