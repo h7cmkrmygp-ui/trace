@@ -38,3 +38,8 @@ extension MemoryStore {
         }
     }
 }
+
+extension MemoryStore {
+    /// Chiffres d'une semaine pour son résumé.
+    public func weekStats(from start: Date, to end: Date) throws -> WeekStats { WeekStats(notes: 0, done: 0, open: 0) }
+}

@@ -34,4 +34,21 @@ struct ReminderStoreTests {
         #expect(items.first { $0.title.hasPrefix("Changer") }?.isPrivate == true)
         #expect(items.allSatisfy { $0.dueHasTime && $0.dueAt != nil })
     }
+
+    /// Le résumé de la semaine : notes de la semaine, choses faites, choses encore à faire (la corbeille ne compte pas).
+    @Test func weekStatsCountNotesDoneAndOpen() throws {
+        let env = try StoreTestEnvironment()
+        let start = env.dates.now().addingTimeInterval(-3_600)
+        let end = env.dates.now().addingTimeInterval(7 * 86_400)
+        let open = try env.saveNote("Tailler la haie demain à 15 h")
+        _ = try env.filer.file([dated("Tailler la haie demain à 15 h")], sourceID: open.sourceID)
+        let done = try env.saveNote("Laver l'auto demain à 15 h")
+        let filedDone = try env.filer.file([dated("Laver l'auto demain à 15 h")], sourceID: done.sourceID)
+        _ = try env.memories.setStatus(.archived, for: try #require(filedDone.memories.first?.id), actor: .user)
+        _ = try env.saveNote("Une idée en vrac")
+        let thrown = try env.saveNote("Vieille idée à jeter")
+        _ = try env.memories.setStatus(.trashed, for: thrown.id, actor: .user)
+
+        #expect(try env.memories.weekStats(from: start, to: end) == WeekStats(notes: 3, done: 1, open: 1))
+    }
 }
