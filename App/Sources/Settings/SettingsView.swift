@@ -15,6 +15,8 @@ struct SettingsView: View {
     @State private var calendarAccess: CalendarAccess = .notDetermined
     @State private var remindersOn = true
     @State private var remindersAllowed = true
+    @State private var morningOn = true
+    @State private var weeklyOn = true
 
     var body: some View {
         Form {
@@ -61,10 +63,24 @@ struct SettingsView: View {
                         Label("Autoriser les notifications", systemImage: "bell.badge")
                     }
                 }
+                if remindersOn {
+                    Toggle("Résumé du matin (8 h)", isOn: $morningOn)
+                        .tint(.green)
+                        .onChange(of: morningOn) { _, value in
+                            model.perform { try model.settings.set(value, for: .digestMorning) }
+                            Task { await model.syncReminders() }
+                        }
+                    Toggle("Résumé de la semaine (dimanche)", isOn: $weeklyOn)
+                        .tint(.green)
+                        .onChange(of: weeklyOn) { _, value in
+                            model.perform { try model.settings.set(value, for: .digestWeekly) }
+                            Task { await model.syncReminders() }
+                        }
+                }
             } header: {
                 Text("Rappels")
             } footer: {
-                Text("Une notification à l'heure dite (1 h avant un rendez-vous), ou à 9 h le jour même sans heure. Une note gardée sur l'iPhone n'affiche que « Rappel Engram ». « Fait » ou corbeille : le rappel disparaît.")
+                Text("Une notification à l'heure dite (1 h avant un rendez-vous), ou à 9 h le jour même sans heure, avec « Fait », « Dans 1 h » et « Demain ». Le matin : ce qui est prévu et ce qui est en retard ; le dimanche : ta semaine. Une note gardée sur l'iPhone n'affiche que « Rappel Engram ».")
             }
             TranscriptionSettingsSection()
             IntelligenceSettingsSection()
@@ -99,6 +115,8 @@ struct SettingsView: View {
         .onAppear(perform: loadCalendarSettings)
         .task {
             remindersOn = model.remindersEnabled
+            morningOn = model.morningDigestEnabled
+            weeklyOn = model.weeklyDigestEnabled
             let allowed = await model.reminders.isAllowed()
             let undecided = await model.reminders.isUndecided()
             remindersAllowed = allowed || undecided

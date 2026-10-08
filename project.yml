@@ -20,7 +20,15 @@ targets:
     platform: iOS
     sources:
       - path: App/Sources
+      - path: Shared
+    entitlements:
+      path: App/Engram.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
     dependencies:
+      - target: EngramWidgets
+      - target: EngramShare
       - package: EngramKit
         product: EngramCore
       - package: EngramKit
@@ -58,9 +66,96 @@ targets:
         NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
         NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."
         NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."
+        # AltStore (compte gratuit) renomme le dossier partagé et écrit son vrai nom ici.
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        # engram://record (widgets, Centre de contrôle) et engram://today.
+        CFBundleURLTypes:
+          - CFBundleURLName: io.github.h7cmkrmygpui.engram
+            CFBundleURLSchemes:
+              - engram
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+  # Widgets « Aujourd'hui » et « Enregistrer », bouton du Centre de contrôle.
+  EngramWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    dependencies:
+      - package: EngramKit
+        product: EngramCore
+    entitlements:
+      path: Widgets/EngramWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Engram
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+  # « Partager › Engram » depuis les autres apps.
+  EngramShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+      - path: Shared
+    dependencies:
+      - package: EngramKit
+        product: EngramCore
+    entitlements:
+      path: Share/EngramShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
+    info:
+      path: Share/Info.plist
+      properties:
+        CFBundleDisplayName: Engram
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.share
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""

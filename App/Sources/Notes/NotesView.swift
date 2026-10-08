@@ -86,6 +86,12 @@ struct NotesView: View {
                     model.errorMessage = AppModel.describe(error)
                 }
             }
+            // Résumé du matin ou widget « Aujourd'hui » touché : « À faire » s'ouvre.
+            .task(id: model.openTodoRequest) {
+                guard model.consumeTodoRequest() else { return }
+                path = NavigationPath()
+                path.append(NotesRoute.todo)
+            }
             // Toucher sur un rappel : la note s'ouvre (même si l'onglet n'était pas encore affiché).
             .task(id: model.openMemoryRequest) {
                 guard let id = model.openMemoryRequest else { return }

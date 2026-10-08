@@ -11,6 +11,48 @@ struct RecallReply: Sendable {
     let query: RecallQuery
 }
 
+/// La conversation de Retrouver, gardée sur l'iPhone (30 derniers échanges) : la question, la réponse et les notes
+/// trouvées (par leur identifiant ; une note supprimée depuis disparaît simplement).
+enum RecallHistory {
+    struct Saved: Codable {
+        let question: String
+        let answer: String
+        let hitIDs: [UUID]
+    }
+
+    static let limit = 30
+
+    static var url: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("recall-conversation.json")
+    }
+
+    /// Tests d'interface (notes inventées) : rien n'est gardé d'un lancement à l'autre.
+    static var isEnabled: Bool {
+        #if DEBUG
+        return !UITestSeed.isActive
+        #else
+        return true
+        #endif
+    }
+
+    static func load() -> [Saved] {
+        guard isEnabled, let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([Saved].self, from: data)) ?? []
+    }
+
+    static func save(_ exchanges: [Saved]) {
+        guard isEnabled else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard let data = try? JSONEncoder().encode(Array(exchanges.suffix(limit))) else { return }
+        try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    static func clear() {
+        try? FileManager.default.removeItem(at: url)
+    }
+}
+
 /// « Retrouver » : on demande à sa mémoire, par écrit ou à voix haute, comme dans une conversation.
 @MainActor
 @Observable
@@ -49,11 +91,35 @@ final class RecallModel {
         exchanges[index].reply = RecallReply(answer: nil, hits: result.hits, query: result.query)
         let answer = await app.recallAnswer(question, result: result)
         if let index = exchanges.firstIndex(where: { $0.id == id }) { exchanges[index].reply?.answer = answer }
+        persist()
     }
 
     func clear() {
         exchanges = []
         notice = nil
+        RecallHistory.clear()
+    }
+
+    /// Reprend la conversation gardée (à l'ouverture de l'onglet), avec les notes telles qu'elles sont aujourd'hui.
+    func restore(app: AppModel) {
+        guard exchanges.isEmpty else { return }
+        let saved = RecallHistory.load()
+        guard !saved.isEmpty else { return }
+        let documents = Dictionary(uniqueKeysWithValues: ((try? app.memories.recallDocuments()) ?? []).map { ($0.id, $0) })
+        exchanges = saved.map { item in
+            var exchange = Exchange(question: item.question)
+            let hits = item.hitIDs.compactMap { documents[$0] }.map { RecallHit(document: $0, score: 1) }
+            let query = RecallQuery.parse(item.question, now: Date(), calendar: AppModel.recallCalendar)
+            exchange.reply = RecallReply(answer: item.answer, hits: hits, query: query)
+            return exchange
+        }
+    }
+
+    private func persist() {
+        RecallHistory.save(exchanges.compactMap { exchange in
+            guard let reply = exchange.reply, let answer = reply.answer else { return nil }
+            return RecallHistory.Saved(question: exchange.question, answer: answer, hitIDs: reply.hits.map(\.document.id))
+        })
     }
 
     /// Toucher le micro : écouter la question ; s'arrête tout seul après 2 s de silence, ou au deuxième toucher.
@@ -140,6 +206,14 @@ struct RecallView: View {
             .onChange(of: model.recorder.state) { _, state in
                 // Silence après la question : on la traite tout de suite.
                 if state == .finished { Task { await model.finishListening(app: app) } }
+            }
+            .onAppear { model.restore(app: app) }
+            // Résumé de la semaine touché : la question est posée toute seule.
+            .task(id: app.recallQuestionRequest) {
+                guard let question = app.recallQuestionRequest else { return }
+                app.recallQuestionRequest = nil
+                model.restore(app: app)
+                await model.ask(question, app: app)
             }
         }
     }

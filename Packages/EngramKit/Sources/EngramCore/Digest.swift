@@ -93,29 +93,45 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         public let isAppointment: Bool
     }
 
+    /// Une chose à faire datée, titre déjà masqué si la note est privée.
+    public struct Upcoming: Codable, Sendable, Equatable {
+        public let title: String
+        public let due: Date
+        public let hasTime: Bool
+        public let isAppointment: Bool
+    }
+
     public var generatedAt: Date = .distantPast
+    /// Les retards et les 8 prochains jours : le widget recalcule « aujourd'hui » lui-même les jours suivants.
+    public var upcoming: [Upcoming] = []
     public var today: [Entry] = []
     public var lateCount = 0
 
     public init() {}
 
-    /// La journée vue à une autre date (le widget, les jours suivants).
-    public func day(at date: Date, calendar: Calendar) -> (today: [Entry], lateCount: Int) { (today, lateCount) }
+    /// La journée vue à une date donnée : d'abord ce qui est pour la journée (sans heure), puis par heure.
+    public func day(at date: Date, calendar: Calendar) -> (today: [Entry], lateCount: Int) {
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return ([], 0) }
+        let today = upcoming.filter { $0.due >= start && $0.due < end }
+            .sorted { ($0.hasTime ? 1 : 0, $0.due) < ($1.hasTime ? 1 : 0, $1.due) }
+            .map { Entry(title: $0.title, time: $0.hasTime ? ReminderPlanner.clock($0.due, calendar: calendar) : nil,
+                         isAppointment: $0.isAppointment) }
+        return (today, upcoming.filter { !$0.isAppointment && $0.due < start }.count)
+    }
 
     public static func make(_ items: [ReminderPlanner.Item], now: Date, calendar: Calendar) -> WidgetSnapshot {
-        let start = calendar.startOfDay(for: now)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return WidgetSnapshot() }
-        let open = items.filter(DigestPlanner.isOpen)
-        let today = open.filter { ($0.dueAt ?? .distantPast) >= start && ($0.dueAt ?? .distantPast) < end }
-            .sorted { ($0.dueHasTime ? 1 : 0, $0.dueAt ?? .distantPast) < ($1.dueHasTime ? 1 : 0, $1.dueAt ?? .distantPast) }
+        let horizon = calendar.date(byAdding: .day, value: 8, to: calendar.startOfDay(for: now)) ?? now
         var snapshot = WidgetSnapshot()
         snapshot.generatedAt = now
-        snapshot.today = today.map { item in
-            Entry(title: item.isPrivate ? "Rappel privé" : item.title,
-                  time: item.dueHasTime ? item.dueAt.map { ReminderPlanner.clock($0, calendar: calendar) } : nil,
-                  isAppointment: item.kind == .appointment)
+        snapshot.upcoming = items.filter(DigestPlanner.isOpen).compactMap { item in
+            guard let due = item.dueAt, due < horizon else { return nil }
+            return Upcoming(title: item.isPrivate ? "Rappel privé" : item.title, due: due, hasTime: item.dueHasTime,
+                            isAppointment: item.kind == .appointment)
         }
-        snapshot.lateCount = open.filter { $0.kind == .task && ($0.dueAt ?? .distantFuture) < start }.count
+        let day = snapshot.day(at: now, calendar: calendar)
+        snapshot.today = day.today
+        snapshot.lateCount = day.lateCount
         return snapshot
     }
 }

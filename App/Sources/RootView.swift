@@ -15,6 +15,7 @@ struct RootView: View {
             Tab("Retrouver", systemImage: "magnifyingglass", value: AppTab.recall, role: .search) { RecallView() }
         }
         .errorAlert($model.errorMessage)
+        .onOpenURL { model.open($0) }
         .task { await model.resumePendingWork() }
         // Les rappels suivent la base pendant toute la vie de l'app.
         .task { await model.watchReminders() }

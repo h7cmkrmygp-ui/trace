@@ -55,15 +55,34 @@ jobs:
             -archivePath "$RUNNER_TEMP/Engram.xcarchive" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-      - name: Empaqueter le .ipa
+      - name: Empaqueter les .ipa
         run: |
+          APP="$RUNNER_TEMP/Engram.xcarchive/Products/Applications/Engram.app"
+          # Engram-simple.ipa : comme avant (sans extensions ni signature), si AltStore refusait la complète.
+          mkdir -p "$RUNNER_TEMP/simple/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/simple/Payload/"
+          rm -rf "$RUNNER_TEMP/simple/Payload/Engram.app/PlugIns"
+          (cd "$RUNNER_TEMP/simple" && zip -qry Engram-simple.ipa Payload)
+          # Engram.ipa : widgets et partage compris. Signature « ad hoc » (sans certificat) qui porte les droits
+          # (dossier partagé) : AltStore les lit, puis signe avec le compte du propriétaire.
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
-          cp -R "$RUNNER_TEMP/Engram.xcarchive/Products/Applications/Engram.app" "$RUNNER_TEMP/ipa/Payload/"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          FULL="$RUNNER_TEMP/ipa/Payload/Engram.app"
+          find "$FULL" \( -name "*.framework" -o -name "*.dylib" \) -prune -print | while read -r item; do
+            codesign --force --sign - "$item"
+          done
+          codesign --force --sign - --entitlements Widgets/EngramWidgets.entitlements "$FULL/PlugIns/EngramWidgets.appex"
+          codesign --force --sign - --entitlements Share/EngramShare.entitlements "$FULL/PlugIns/EngramShare.appex"
+          codesign --force --sign - --entitlements App/Engram.entitlements "$FULL"
+          codesign -d --entitlements - "$FULL" 2>/dev/null | grep -c application-groups
           (cd "$RUNNER_TEMP/ipa" && zip -qry Engram.ipa Payload)
-          ls -lh "$RUNNER_TEMP/ipa/Engram.ipa"
+          mv "$RUNNER_TEMP/simple/Engram-simple.ipa" "$RUNNER_TEMP/ipa/"
+          ls -lh "$RUNNER_TEMP/ipa/"*.ipa
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: Engram-ipa-${{ github.run_number }}
-          path: ${{ runner.temp }}/ipa/Engram.ipa
+          path: |
+            ${{ runner.temp }}/ipa/Engram.ipa
+            ${{ runner.temp }}/ipa/Engram-simple.ipa
           retention-days: 7
           if-no-files-found: error

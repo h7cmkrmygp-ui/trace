@@ -7,6 +7,7 @@ import EngramStore
 import Foundation
 import Observation
 import UIKit
+import WidgetKit
 
 /// Onglets de l'app.
 enum AppTab: Hashable {
@@ -27,8 +28,14 @@ final class AppModel {
     @ObservationIgnored private var servedRecordingRequest = 0
     /// Note à ouvrir (toucher sur un rappel).
     var openMemoryRequest: UUID?
+    /// Augmente quand le résumé du matin est touché : les Notes ouvrent « À faire ».
+    private(set) var openTodoRequest = 0
+    @ObservationIgnored private var servedTodoRequest = 0
+    /// Question à poser dans Retrouver (résumé de la semaine touché).
+    var recallQuestionRequest: String?
     /// Rappels de l'iPhone (notifications locales).
     let reminders = ReminderScheduler()
+    private let snoozes = ReminderSnoozes()
     let database: AppDatabase
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
@@ -82,6 +89,46 @@ final class AppModel {
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: router)
         reminders.onOpen = { [weak self] id in self?.openMemory(id) }
+        reminders.onAction = { [weak self] action, id in
+            Task { await self?.handleReminderAction(action, memoryID: id) }
+        }
+        reminders.onOpenTodo = { [weak self] in self?.openTodo() }
+        reminders.onOpenWeekly = { [weak self] in self?.openWeeklySummary() }
+    }
+
+    func openTodo() {
+        selectedTab = .notes
+        openTodoRequest += 1
+    }
+
+    /// Vrai une seule fois par demande (les Notes ne rouvrent jamais « À faire » pour une vieille demande).
+    func consumeTodoRequest() -> Bool {
+        guard openTodoRequest > servedTodoRequest else { return false }
+        servedTodoRequest = openTodoRequest
+        return true
+    }
+
+    func openWeeklySummary() {
+        selectedTab = .recall
+        recallQuestionRequest = "Résume ce que j'ai noté cette semaine"
+    }
+
+    /// « Fait », « Dans 1 h », « Demain » depuis un rappel (l'app peut être lancée en arrière-plan pour ça).
+    func handleReminderAction(_ action: String, memoryID: UUID) async {
+        switch action {
+        case ReminderScheduler.doneAction:
+            perform { _ = try memories.setStatus(.archived, for: memoryID, actor: .user) }
+            snoozes.remove(memoryID)
+        case ReminderScheduler.laterAction:
+            snoozes.set(memoryID, until: Date().addingTimeInterval(3_600))
+        case ReminderScheduler.tomorrowAction:
+            let calendar = Calendar.current
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())) ?? Date()
+            snoozes.set(memoryID, until: calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow)
+        default:
+            return
+        }
+        await syncReminders()
     }
 
     // MARK: - Navigation (Siri, rappels)
@@ -119,14 +166,58 @@ final class AppModel {
         }
     }
 
+    var morningDigestEnabled: Bool { (try? settings.bool(.digestMorning, default: true)) ?? true }
+    var weeklyDigestEnabled: Bool { (try? settings.bool(.digestWeekly, default: true)) ?? true }
+
+    /// Rappels, résumés du matin et de la semaine, pastille de l'icône et widgets : tout est recalculé ensemble.
     func syncReminders(_ items: [ReminderPlanner.Item]? = nil) async {
+        let current = items ?? ((try? memories.reminderItems()) ?? [])
+        let now = Date()
+        let calendar = Self.recallCalendar
+        writeWidgetSnapshot(current, now: now, calendar: calendar)
         guard remindersEnabled else {
             await reminders.removeAll()
+            await reminders.setBadge(0)
             return
         }
         guard await reminders.isAllowed() else { return }
-        let current = items ?? ((try? memories.reminderItems()) ?? [])
-        await reminders.apply(ReminderPlanner.plan(current, now: Date(), calendar: .current), calendar: .current)
+        var requests = ReminderPlanner.plan(current, snoozes: snoozes.active(at: now), now: now, calendar: calendar, limit: 55)
+            .map { (reminder: $0, kind: ReminderScheduler.Kind.reminder) }
+        if morningDigestEnabled {
+            requests += DigestPlanner.mornings(current, now: now, calendar: calendar).map { (reminder: $0, kind: .digest) }
+        }
+        if weeklyDigestEnabled, let week = calendar.dateInterval(of: .weekOfYear, for: now),
+           let stats = try? memories.weekStats(from: week.start, to: week.end),
+           let weekly = DigestPlanner.weekly(stats, now: now, calendar: calendar) {
+            requests.append((reminder: weekly, kind: .weekly))
+        }
+        await reminders.apply(requests, calendar: calendar)
+        await reminders.setBadge(DigestPlanner.badgeCount(current, now: now, calendar: calendar))
+    }
+
+    /// Résumé du jour pour les widgets, dans le dossier partagé (rien de secret en clair). Sans dossier partagé, rien.
+    func writeWidgetSnapshot(_ items: [ReminderPlanner.Item], now: Date, calendar: Calendar) {
+        if SharedContainer.writeSnapshot(WidgetSnapshot.make(items, now: now, calendar: calendar)) {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
+    /// Éléments partagés vers Engram depuis d'autres apps : enregistrés puis classés comme une note écrite.
+    func importSharedItems() async {
+        guard let inbox = SharedContainer.inbox else { return }
+        for item in inbox.drain() where !item.noteText.isEmpty {
+            await captureText(item.noteText, keepLocal: false)
+        }
+    }
+
+    /// engram://record (widget, Centre de contrôle) et engram://today (widget Aujourd'hui).
+    func open(_ url: URL) {
+        guard url.scheme == "engram" else { return }
+        switch url.host {
+        case "record": requestRecording()
+        case "today": openTodo()
+        default: break
+        }
     }
 
     /// Après une note datée : l'autorisation des rappels est demandée une seule fois, au moment où elle sert.
@@ -502,6 +593,7 @@ final class AppModel {
         isResuming = true
         defer { isResuming = false }
         adoptOrphanedRecordings()
+        await importSharedItems()
         if let pending = try? memories.sourcesAwaitingTranscription() {
             for source in pending {
                 if let path = source.audioPath { _ = await transcribe(sourceID: source.id, audioPath: path) }
