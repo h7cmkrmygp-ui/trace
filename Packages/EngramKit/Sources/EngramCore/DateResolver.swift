@@ -20,6 +20,10 @@ public enum DateResolver {
     /// ou du même jour : jamais de l'heure d'un autre jour (celle de l'événement collée au jour du rappel).
     public static func firstDate(in expressions: [String], excerpt: String, relativeTo now: Date,
                                  calendar: Calendar) -> ResolvedDate? {
+        // « dans 10 minutes », « dans 2 heures » : un moment précis à partir de maintenant, prioritaire.
+        for text in expressions + [excerpt] {
+            if let moment = relativeMoment(normalize(text), now: now) { return ResolvedDate(date: moment, hasTime: true) }
+        }
         let today = calendar.startOfDay(for: now)
         var day: Date?
         var time: (hour: Int, minute: Int)?
@@ -54,6 +58,7 @@ public enum DateResolver {
     }
 
     public static func resolve(_ expression: String, relativeTo now: Date, calendar: Calendar) -> ResolvedDate? {
+        if let moment = relativeMoment(normalize(expression), now: now) { return ResolvedDate(date: moment, hasTime: true) }
         let today = calendar.startOfDay(for: now)
         let parts = components(of: normalize(expression), today: today, calendar: calendar)
         return combine(day: parts.day, time: parts.time, now: now, calendar: calendar)
@@ -182,6 +187,14 @@ public enum DateResolver {
     }
 
     // MARK: - Heures
+
+    /// « dans 10 minutes », « dans 2 heures », « dans une heure », « in 30 minutes » : maintenant + la durée dite.
+    static func relativeMoment(_ text: String, now: Date) -> Date? {
+        guard let groups = match(#"\b(?:dans|in)\s+(\d{1,3}|une|un|an|a|one)\s*(minutes?|min|mn|heures?|h|hours?)\b"#, in: text),
+              let unit = groups[2] else { return nil }
+        let count = groups[1].flatMap(Int.init) ?? 1
+        return now.addingTimeInterval(Double(count) * (unit.hasPrefix("m") ? 60 : 3_600))
+    }
 
     static func timeOfDay(_ rawText: String) -> (hour: Int, minute: Int)? {
         // Une durée n'est pas une heure : « dans 2 heures », « pendant 3 h », « 2 heures de route ».
