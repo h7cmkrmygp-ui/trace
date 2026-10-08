@@ -38,6 +38,20 @@ struct RetranscriptionTests {
         #expect(try env.memories.memory(id: filed.memories[0].id)?.title == "Corrigé à la main")
     }
 
+    /// Un événement existe déjà dans le calendrier de l'iPhone : remplacer la note créerait un doublon.
+    @Test func keepsMemoriesLinkedToACalendarEvent() throws {
+        let env = try StoreTestEnvironment()
+        let recording = try env.memories.saveVoiceNote(audioPath: "audio/z.caf", duration: 5, transcript: "dentiste vendredi",
+                                                       languages: [], engine: "apple-speech")
+        let filed = try env.filer.file([valid("dentiste vendredi", path: ["Santé"])], sourceID: recording.sourceID)
+        try CalendarLinkStore(database: env.database, dates: env.dates)
+            .link(memoryID: filed.memories[0].id, eventIdentifier: "event-1", calendarIdentifier: nil)
+        let interim = try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Dentiste vendredi à 14 h",
+                                                    languages: [], engine: nil)
+        #expect(interim == nil)
+        #expect(try env.memories.memory(id: filed.memories[0].id) != nil)
+    }
+
     @Test func refusesAnEmptyTranscriptOrATextNote() throws {
         let env = try StoreTestEnvironment()
         let recording = try env.memories.saveVoiceRecording(audioPath: "audio/x.caf", duration: 1)
