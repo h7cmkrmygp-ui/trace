@@ -44,6 +44,12 @@ final class ScreenshotTests: XCTestCase {
             snap(app, "04-a-verifier-\(mode)")
             if tap(app.cells.firstMatch) {
                 snap(app, "05-verifie-ta-note-\(mode)")
+                // Confirmer la dictée : elle quitte « À vérifier » et va au classement (sur le simulateur, sans
+                // service en ligne, elle reste sur l'iPhone).
+                if tap(app.buttons["Classer"]) {
+                    sleep(3)
+                    snap(app, "05b-apres-classer-\(mode)")
+                }
                 goBack(app)
             }
             goBack(app)
@@ -57,11 +63,20 @@ final class ScreenshotTests: XCTestCase {
                 if cell.waitForExistence(timeout: 3) {
                     cell.swipeLeft()
                     snap(app, "08-corbeille-balayage-\(mode)")
+                    // Bug signalé : seul « Restaurer » apparaissait. Les deux actions doivent être là.
+                    XCTAssertTrue(app.buttons["Restaurer"].exists, "Restaurer manquant dans la corbeille")
+                    XCTAssertTrue(app.buttons["Supprimer"].exists, "Supprimer manquant dans la corbeille")
                     app.navigationBars.firstMatch.tap()
                 }
                 if tap(app.buttons["Tout supprimer"]) {
                     snap(app, "09-tout-supprimer-\(mode)")
-                    dismissDialog(app)
+                    // Bug signalé : pas de « Tout supprimer ». On vide la corbeille pour de vrai (notes inventées).
+                    if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Supprimer 1 note")).firstMatch) {
+                        XCTAssertTrue(app.staticTexts["Corbeille vide"].waitForExistence(timeout: 5), "La corbeille ne s'est pas vidée")
+                        snap(app, "09b-corbeille-vide-\(mode)")
+                    } else {
+                        dismissDialog(app)
+                    }
                 }
                 goBack(app)
             }
