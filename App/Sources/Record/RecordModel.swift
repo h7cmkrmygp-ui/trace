@@ -85,7 +85,7 @@ final class RecordModel {
                 return
             }
             if let source = try? app.memories.source(id: memory.sourceID), source.needsReview {
-                review = ReviewDraft(sourceID: source.id, text: source.originalText ?? "")
+                review = ReviewDraft(sourceID: source.id, text: source.referenceText ?? "")
                 reviewAudioURL = result.url
                 phase = .review
                 return

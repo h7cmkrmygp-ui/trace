@@ -90,7 +90,7 @@ struct ReviewScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard let source = try? model.memories.source(id: sourceID), source.needsReview else { return }
-            draft = ReviewDraft(sourceID: sourceID, text: source.originalText ?? "")
+            draft = ReviewDraft(sourceID: sourceID, text: source.referenceText ?? "")
             audioURL = source.audioPath.map { AudioFiles.url(forRelativePath: $0, in: model.storageDirectory) }
         }
     }
@@ -120,7 +120,7 @@ struct ReviewQueueView: View {
         List(sources) { source in
             NavigationLink(value: NotesRoute.review(source.id)) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(source.originalText ?? "Note vocale")
+                    Text(source.referenceText ?? "Note vocale")
                         .lineLimit(2)
                     Text(source.capturedAt, format: .relative(presentation: .named))
                         .font(.footnote)
