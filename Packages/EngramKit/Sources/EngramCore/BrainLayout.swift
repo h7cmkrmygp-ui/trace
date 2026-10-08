@@ -44,6 +44,8 @@ public enum BrainLayout {
     static let goldenAngle = 2.399963229728653
 
     public static func layout(categories: [CategoryInput], items: [ItemInput], size: Double) -> [Node] {
+        // Mémoire vide : rien à dessiner, pas même le centre (sinon un point apparaît sous « Ton cerveau est vide »).
+        if categories.isEmpty && items.isEmpty { return [] }
         let ringRadius = size * 0.32
         let known = Set(categories.map(\.id))
         var counts: [UUID: Int] = [:]
