@@ -75,16 +75,29 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
     private let store: WhisperModelStore
     private let lock = NSLock()
     private var pipeline: WhisperKit?
+    private var strategyValue: TranscriptionStrategy
 
     /// Fenêtre de Whisper : 30 s à 16 kHz.
     static let windowSamples = 480_000
 
-    public init(model: WhisperModel, store: WhisperModelStore) {
+    public init(model: WhisperModel, store: WhisperModelStore, strategy: TranscriptionStrategy = .default) {
         self.model = model
         self.store = store
+        self.strategyValue = strategy
+    }
+
+    /// Stratégie utilisée par `transcribe(url:)` (réglée dans les Réglages).
+    public var strategy: TranscriptionStrategy {
+        get { lock.withLock { strategyValue } }
+        set { lock.withLock { strategyValue = newValue } }
     }
 
     public func transcribe(url: URL) async throws -> Transcript {
+        try await transcribe(url: url, strategy: strategy)
+    }
+
+    /// Transcription avec une stratégie précise (le banc d'essai compare les trois avec le même modèle chargé).
+    public func transcribe(url: URL, strategy: TranscriptionStrategy) async throws -> Transcript {
         let kit = try await loadedPipeline()
         let audio: [Float]
         do {
@@ -104,8 +117,18 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         var pieces: [Hypothesis] = []
         for samples in chunks {
             try Task.checkCancellation()
+            if strategy == .automatic {
+                // Détection libre : Whisper choisit seul sa langue, un seul décodage.
+                let results = try await kit.transcribe(audioArray: samples,
+                                                       decodeOptions: Self.options(language: nil, prompt: prompt))
+                let hypothesis = Self.hypothesis(language: results.first?.language ?? "auto", results: results)
+                if let best = HypothesisPicker.best([hypothesis]) { pieces.append(best) }
+                continue
+            }
             let plan: LanguagePlan
-            if let detection = try? await kit.detectLangauge(audioArray: samples) {
+            if let fixed = strategy.fixedPlan {
+                plan = fixed
+            } else if let detection = try? await kit.detectLangauge(audioArray: samples) {
                 let logProbability = Double(detection.langProbs[detection.language] ?? -.infinity)
                 plan = LanguagePlan.decide(detected: detection.language,
                                            probability: LanguagePlan.probability(fromLog: logProbability))
@@ -150,9 +173,11 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         return loaded
     }
 
-    static func options(language: String, prompt: [Int]?) -> DecodingOptions {
+    /// `language` nil : détection par Whisper lui-même. La tâche reste toujours `transcribe` (jamais de traduction).
+    static func options(language: String?, prompt: [Int]?) -> DecodingOptions {
         DecodingOptions(task: .transcribe, language: language, temperature: 0, usePrefillPrompt: true,
-                        detectLanguage: false, skipSpecialTokens: true, withoutTimestamps: true, promptTokens: prompt)
+                        detectLanguage: language == nil, skipSpecialTokens: true, withoutTimestamps: true,
+                        promptTokens: prompt)
     }
 
     static func promptTokens(for kit: WhisperKit) -> [Int]? {

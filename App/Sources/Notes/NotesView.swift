@@ -12,6 +12,7 @@ enum NotesRoute: Hashable {
     case review(UUID)
     case settings
     case evaluation
+    case benchmark
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -22,6 +23,7 @@ enum NotesRoute: Hashable {
         case .review(let sourceID): ReviewScreen(sourceID: sourceID)
         case .settings: SettingsView()
         case .evaluation: EvaluationView()
+        case .benchmark: BenchmarkView()
         }
     }
 }

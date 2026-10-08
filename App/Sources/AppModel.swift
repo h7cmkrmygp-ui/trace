@@ -62,6 +62,17 @@ final class AppModel {
         (try? settings.bool(.reviewBeforeFiling, default: true)) ?? true
     }
 
+    var whisperStrategy: TranscriptionStrategy {
+        TranscriptionStrategy(rawValue: ((try? settings.string(.whisperStrategy)) ?? nil) ?? "") ?? .default
+    }
+
+    /// Dossier du banc d'essai (enregistrements des phrases lues, résultats) : hors du dossier Engram,
+    /// donc jamais pris pour des notes, jamais exporté.
+    var benchmarkDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Benchmark", isDirectory: true)
+    }
+
     func whisperTranscriber(for model: WhisperModel) -> WhisperTranscriber {
         if let existing = whisperTranscribers[model] { return existing }
         let created = WhisperTranscriber(model: model, store: whisperModels)
@@ -138,7 +149,7 @@ final class AppModel {
             if whisperModels.isDownloaded(model) {
                 let whisper = whisperTranscriber(for: model)
                 do {
-                    let transcript = try await whisper.transcribe(url: url)
+                    let transcript = try await whisper.transcribe(url: url, strategy: whisperStrategy)
                     transcriptionNotice = nil
                     return (transcript, whisper.engineName)
                 } catch {
@@ -188,7 +199,7 @@ final class AppModel {
         defer { transcribing.remove(sourceID) }
         do {
             let whisper = whisperTranscriber(for: model)
-            let transcript = try await whisper.transcribe(url: url)
+            let transcript = try await whisper.transcribe(url: url, strategy: whisperStrategy)
             guard !transcript.text.isEmpty else {
                 errorMessage = "Whisper n'a reconnu aucune parole dans cet enregistrement."
                 return false

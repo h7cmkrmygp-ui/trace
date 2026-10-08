@@ -7,6 +7,7 @@ struct TranscriptionSettingsSection: View {
     @Environment(AppModel.self) private var model
     @State private var engine: TranscriptionEngine = .default
     @State private var whisperModel: WhisperModel = .default
+    @State private var strategy: TranscriptionStrategy = .default
     @State private var review = true
     @State private var downloaded: Set<WhisperModel> = []
     @State private var retranscription: (done: Int, total: Int)?
@@ -25,6 +26,13 @@ struct TranscriptionSettingsSection: View {
                 }
                 .onChange(of: whisperModel) { _, value in model.perform { try model.settings.set(value.rawValue, for: .whisperModel) } }
                 ForEach(WhisperModel.allCases) { modelRow($0) }
+                Picker("Langues", selection: $strategy) {
+                    ForEach(TranscriptionStrategy.allCases) { Text($0.label).tag($0) }
+                }
+                .onChange(of: strategy) { _, value in model.perform { try model.settings.set(value.rawValue, for: .whisperStrategy) } }
+                NavigationLink(value: NotesRoute.benchmark) {
+                    Label("Banc d'essai : Turbo ou Large V3", systemImage: "gauge.with.dots.needle.50percent")
+                }
             }
             Toggle("Vérifier avant de classer", isOn: $review)
                 .onChange(of: review) { _, value in model.perform { try model.settings.set(value, for: .reviewBeforeFiling) } }
@@ -101,6 +109,7 @@ struct TranscriptionSettingsSection: View {
     private func load() {
         engine = model.transcriptionEngine
         whisperModel = model.whisperModel
+        strategy = model.whisperStrategy
         review = model.reviewsBeforeFiling
         refreshDownloaded()
     }

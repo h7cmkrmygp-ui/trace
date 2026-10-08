@@ -64,6 +64,34 @@ public enum LanguagePlan: Equatable, Sendable {
     }
 }
 
+/// Façon de choisir la langue de chaque morceau de parole. Le banc d'essai compare les trois ;
+/// le propriétaire valide lui-même un éventuel changement.
+public enum TranscriptionStrategy: String, CaseIterable, Identifiable, Sendable {
+    /// Langue dominante si elle est nette, sinon double décodage français et anglais (par défaut).
+    case bilingual
+    /// Toujours en français (les mots anglais restent souvent tels quels, mais une phrase anglaise peut être traduite).
+    case frenchOnly = "french"
+    /// Détection libre de Whisper, sans double décodage.
+    case automatic
+
+    public static let `default` = TranscriptionStrategy.bilingual
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .bilingual: "Bilingue (par défaut)"
+        case .frenchOnly: "Français imposé"
+        case .automatic: "Détection libre"
+        }
+    }
+
+    /// Plan fixe, sans détection de langue ; nil quand il dépend de chaque morceau.
+    public var fixedPlan: LanguagePlan? {
+        self == .frenchOnly ? .single("fr") : nil
+    }
+}
+
 /// Un décodage d'un morceau de parole dans une langue.
 public struct Hypothesis: Equatable, Sendable {
     public let language: String

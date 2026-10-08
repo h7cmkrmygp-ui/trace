@@ -17,6 +17,8 @@ public struct SettingStore: Sendable {
         case whisperModel = "transcription.whisperModel"
         /// « 1 » (défaut) : afficher « Vérifie ta note » avant de classer une dictée.
         case reviewBeforeFiling = "transcription.reviewBeforeFiling"
+        /// Stratégie de langue de Whisper : « bilingual » (défaut), « french » ou « automatic ».
+        case whisperStrategy = "transcription.whisperStrategy"
     }
 
     public let database: AppDatabase
