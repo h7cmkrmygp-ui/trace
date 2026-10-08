@@ -129,6 +129,7 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 
 **Constats**
 - Notes, Corbeille (Restaurer et Supprimer visibles, « Tout supprimer » avec confirmation), « Vérifie ta note », Réglages, Cerveau et Calendrier s'affichent correctement dans les deux modes.
+- Le test agit aussi, comme toi : il confirme une dictée (« Classer », elle quitte « À vérifier »), balaie une note de la corbeille (Restaurer et Supprimer présents) et vide la corbeille pour de vrai (« Corbeille vide »).
 - Défauts trouvés et corrigés : étiquette du Cerveau coupée, zones des jours trop petites, recherche cachée.
 
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
