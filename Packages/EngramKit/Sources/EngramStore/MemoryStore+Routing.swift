@@ -17,6 +17,23 @@ extension MemoryStore {
         }
     }
 
+    /// Combien de notes dictées depuis `date` ont été classées par chaque service (« gemini », « groq », « apple »).
+    public func routeCounts(since date: Date) throws -> [String: Int] {
+        try database.writer.read { db in
+            var counts: [String: Int] = [:]
+            for row in try Row.fetchAll(db, sql: """
+                SELECT analysis_provider AS provider, count(*) AS n FROM source
+                WHERE analysis_provider IS NOT NULL AND captured_at >= ?
+                GROUP BY analysis_provider
+                """, arguments: [date]) {
+                let provider: String = row["provider"]
+                let n: Int = row["n"]
+                counts[provider] = n
+            }
+            return counts
+        }
+    }
+
     /// Notes classées sur l'iPhone parce que le service en ligne ne répondait pas (quota, réseau).
     public func sourcesNeedingCloudRetry(limit: Int = 20) throws -> [Source] {
         try database.writer.read { db in

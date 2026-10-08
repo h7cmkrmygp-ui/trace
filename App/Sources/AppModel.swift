@@ -29,6 +29,8 @@ final class AppModel {
     var modelDownloads: [WhisperModel: Double] = [:]
     /// Dernier repli vers la reconnaissance d'Apple, expliqué dans les Réglages.
     var transcriptionNotice: String?
+    /// Quotas gratuits de Gemini et Groq (pauses après « quota atteint », analyses du jour).
+    let quota: CloudQuota
     private var whisperTranscribers: [WhisperModel: WhisperTranscriber] = [:]
     private var isResuming = false
     private var isSyncingCalendar = false
@@ -44,8 +46,85 @@ final class AppModel {
         calendarLinks = CalendarLinkStore(database: database)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         whisperModels = WhisperModelStore(directory: support.appendingPathComponent("WhisperModels", isDirectory: true))
+        let quota = CloudQuota()
+        self.quota = quota
+        let settings = self.settings
+        // Neutre → Gemini, personnel → Groq, secret → l'iPhone ; le contrôleur de confidentialité décide sur l'iPhone.
+        let router = RoutedAnalyzer(local: AppleThoughtAnalyzer(), judge: ApplePrivacyJudge(),
+                                    providers: { AppModel.cloudProviders(settings: settings) },
+                                    healthStaysLocal: { (try? settings.bool(.healthStaysLocal, default: false)) ?? false },
+                                    quota: quota)
         processor = ThoughtProcessor(memories: memories, categories: categories,
-                                     filer: ThoughtFiler(database: database), analyzer: AppleThoughtAnalyzer())
+                                     filer: ThoughtFiler(database: database), analyzer: router)
+    }
+
+    // MARK: - Services en ligne
+
+    /// Modèles Gemini utilisés tant que la clé n'a pas été testée (alias de Google vers les derniers Flash).
+    nonisolated static let defaultGeminiModels = ["gemini-flash-latest", "gemini-flash-lite-latest"]
+
+    /// Services disponibles, relus à chaque note : seulement ceux dont la clé est dans le trousseau.
+    nonisolated static func cloudProviders(settings: SettingStore) -> RoutedAnalyzer.Providers {
+        let gemini = SecretStore.read(.gemini).map { key -> CloudProvider in
+            let saved = ((try? settings.string(.geminiModels)) ?? nil)?
+                .split(separator: ",").map(String.init).filter { !$0.isEmpty } ?? []
+            return CloudProvider(name: GeminiThoughtAnalyzer.providerName,
+                                 analyzer: GeminiThoughtAnalyzer(client: GeminiClient(apiKey: key),
+                                                                 models: saved.isEmpty ? defaultGeminiModels : saved))
+        }
+        let groq = SecretStore.read(.groq).map { key in
+            CloudProvider(name: GroqThoughtAnalyzer.providerName, analyzer: GroqThoughtAnalyzer(client: GroqClient(apiKey: key)))
+        }
+        return (gemini, groq)
+    }
+
+    /// Enregistre la clé collée par le propriétaire (vide = supprimer), puis la teste. Le message ne contient jamais la clé.
+    func saveCloudKey(_ value: String, for account: SecretStore.Account) async -> String {
+        guard SecretStore.save(value, for: account) else { return "Impossible d'enregistrer la clé dans le trousseau de l'iPhone." }
+        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            if account == .gemini { try? settings.set(nil, for: .geminiModels) }
+            return "Clé supprimée de l'iPhone."
+        }
+        return await testCloudKey(account)
+    }
+
+    func testCloudKey(_ account: SecretStore.Account) async -> String {
+        guard let key = SecretStore.read(account) else { return "Aucune clé enregistrée." }
+        do {
+            switch account {
+            case .gemini:
+                let picked = GeminiModelPicker.pick(from: try await GeminiClient(apiKey: key).listModels())
+                let models = [picked.primary, picked.lite].compactMap { $0 }
+                guard !models.isEmpty else { return "Clé valide, mais aucun modèle Flash n'est disponible avec elle." }
+                try? settings.set(models.joined(separator: ","), for: .geminiModels)
+                return "Clé valide. Modèles : \(models.joined(separator: ", "))."
+            case .groq:
+                try await GroqClient(apiKey: key).checkKey()
+                return "Clé valide. Modèle : \(GroqClient.model)."
+            }
+        } catch let error as CloudError {
+            switch error {
+            case .invalidKey: return "Clé refusée : vérifie que tu l'as copiée en entier."
+            case .network: return "Pas de connexion : réessaie plus tard."
+            case .quotaExceeded: return "Clé valide, mais le quota gratuit est atteint pour l'instant."
+            default: return "Le service ne répond pas correctement pour l'instant."
+            }
+        } catch {
+            return "Le test a échoué."
+        }
+    }
+
+    /// Notes classées sur l'iPhone faute de service : reclassées par le bon service dès qu'il répond,
+    /// seulement si le propriétaire n'y a pas touché (10 au plus à chaque retour dans l'app).
+    func retryCloudClassifications() async {
+        let (neutral, personal) = Self.cloudProviders(settings: settings)
+        guard neutral != nil || personal != nil else { return }
+        for source in (try? memories.sourcesNeedingCloudRetry(limit: 10)) ?? [] {
+            let provider = source.privacyLevel == .neutral ? (neutral ?? personal) : personal
+            guard let provider, !quota.isPaused(provider.name) else { continue }
+            guard (try? memories.reopenForCloudRetry(sourceID: source.id)) == true else { continue }
+            _ = await processor.process(sourceID: source.id)
+        }
     }
 
     // MARK: - Réglages de transcription
@@ -243,6 +322,7 @@ final class AppModel {
             }
         }
         _ = await processor.processPending()
+        await retryCloudClassifications()
         await syncAppointments(askPermission: false)
     }
 

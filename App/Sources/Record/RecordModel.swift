@@ -115,9 +115,9 @@ final class RecordModel {
         reviewAudioURL = nil
     }
 
-    func submit(text: String, app: AppModel) async {
+    func submit(text: String, keepLocal: Bool = false, app: AppModel) async {
         do {
-            switch try app.memories.saveTextNoteWithoutAnalysis(text) {
+            switch try app.memories.saveTextNoteWithoutAnalysis(text, keepLocal: keepLocal) {
             case .duplicate:
                 phase = .message("Cette pensée vient déjà d'être enregistrée.")
             case .saved(let memory):

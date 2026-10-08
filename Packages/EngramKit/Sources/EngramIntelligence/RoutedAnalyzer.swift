@@ -88,10 +88,12 @@ public final class CloudQuota: @unchecked Sendable {
 public struct RoutedAnalyzer: MemoryAnalyzer {
     public static let localProvider = "apple"
 
+    public typealias Providers = (neutral: CloudProvider?, personal: CloudProvider?)
+
     let local: any MemoryAnalyzer
     let judge: (any PrivacyJudge)?
-    let neutral: CloudProvider?
-    let personal: CloudProvider?
+    /// Relu à chaque note : une clé collée dans les Réglages sert tout de suite.
+    let providers: @Sendable () -> Providers
     let healthStaysLocal: @Sendable () -> Bool
     let quota: CloudQuota
     let timeZone: TimeZone
@@ -99,10 +101,16 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     public init(local: any MemoryAnalyzer, judge: (any PrivacyJudge)?, neutral: CloudProvider?, personal: CloudProvider?,
                 healthStaysLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
                 timeZone: TimeZone = .current) {
+        self.init(local: local, judge: judge, providers: { (neutral, personal) }, healthStaysLocal: healthStaysLocal,
+                  quota: quota, timeZone: timeZone)
+    }
+
+    public init(local: any MemoryAnalyzer, judge: (any PrivacyJudge)?, providers: @escaping @Sendable () -> Providers,
+                healthStaysLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
+                timeZone: TimeZone = .current) {
         self.local = local
         self.judge = judge
-        self.neutral = neutral
-        self.personal = personal
+        self.providers = providers
         self.healthStaysLocal = healthStaysLocal
         self.quota = quota
         self.timeZone = timeZone
@@ -115,6 +123,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
         let decision = await PrivacyGate.evaluate(text, keepLocal: context.keepLocal,
                                                   healthStaysLocal: healthStaysLocal(), judge: judge)
+        let (neutral, personal) = providers()
         let candidates: [CloudProvider] = switch decision.level {
         case .neutral: [neutral, personal].compactMap { $0 }
         case .personal: [personal].compactMap { $0 }

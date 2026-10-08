@@ -41,7 +41,7 @@ struct RecordView: View {
                 }
             }
             .sheet(isPresented: $isTyping) {
-                TextCaptureSheet { text in Task { await model.submit(text: text, app: app) } }
+                TextCaptureSheet { text, keepLocal in Task { await model.submit(text: text, keepLocal: keepLocal, app: app) } }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
             .onChange(of: model.recorder.level) { _, level in

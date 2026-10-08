@@ -19,6 +19,10 @@ public struct SettingStore: Sendable {
         case reviewBeforeFiling = "transcription.reviewBeforeFiling"
         /// Stratégie de langue de Whisper : « bilingual » (défaut), « french » ou « automatic ».
         case whisperStrategy = "transcription.whisperStrategy"
+        /// « 1 » : les notes de santé restent sur l'iPhone (jamais envoyées à Groq).
+        case healthStaysLocal = "privacy.healthStaysLocal"
+        /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
+        case geminiModels = "cloud.gemini.models"
     }
 
     public let database: AppDatabase

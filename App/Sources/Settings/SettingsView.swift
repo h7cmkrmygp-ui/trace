@@ -3,7 +3,7 @@ import EngramIntelligence
 import EngramStore
 import SwiftUI
 
-/// Réglages (ouverts depuis Notes) : état de l'IA, évaluation, export.
+/// Réglages (ouverts depuis Notes) : calendrier, transcription, intelligence, export.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var exportURL: URL?
@@ -12,7 +12,6 @@ struct SettingsView: View {
     @State private var targetCalendar: String?
     @State private var calendars: [CalendarInfo] = []
     @State private var calendarAccess: CalendarAccess = .notDetermined
-    private let intelligence = AppleThoughtAnalyzer.availabilityDescription()
 
     var body: some View {
         Form {
@@ -43,16 +42,7 @@ struct SettingsView: View {
                 Text("Les rendez-vous datés que tu dictes y sont ajoutés (1 h si l'heure est connue, durée estimée). Un compte Google ajouté dans Réglages › Calendrier › Comptes apparaît dans la liste.")
             }
             TranscriptionSettingsSection()
-            Section {
-                LabeledContent("IA sur l'iPhone", value: intelligence.text)
-                NavigationLink(value: NotesRoute.evaluation) {
-                    Label("Évaluer le classement", systemImage: "checklist")
-                }
-            } header: {
-                Text("Intelligence")
-            } footer: {
-                Text("Le classement se fait sur ton iPhone, sans rien envoyer sur Internet.")
-            }
+            IntelligenceSettingsSection()
             Section {
                 Button {
                     Task { await export() }

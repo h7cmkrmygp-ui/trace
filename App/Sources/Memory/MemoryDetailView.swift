@@ -41,6 +41,17 @@ struct MemoryDetailView: View {
                 ForEach(assigned) { Label($0.name, systemImage: "folder") }
                 Button("Choisir les catégories…", systemImage: "folder.badge.plus") { isPickingCategories = true }
             }
+            if let source, let provider = source.analysisProvider {
+                Section("Classement") {
+                    Label(Self.providerLabel(provider), systemImage: provider == "apple" ? "iphone" : "cloud")
+                    if let level = source.privacyLevel {
+                        LabeledContent("Confidentialité", value: Self.levelLabel(level))
+                    }
+                    if let reason = source.routeReason, !reason.isEmpty {
+                        Text(reason).font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+            }
             if let original = source?.originalText {
                 Section("Source") {
                     Text(original)
@@ -126,6 +137,22 @@ struct MemoryDetailView: View {
                     run { _ = try model.memories.setStatus(.trashed, for: memoryID, actor: .user) }
                 }
             }
+        }
+    }
+
+    static func providerLabel(_ provider: String) -> String {
+        switch provider {
+        case "gemini": "Classée par Gemini"
+        case "groq": "Classée par Groq"
+        default: "Classée sur l'iPhone (IA d'Apple)"
+        }
+    }
+
+    static func levelLabel(_ level: PrivacyLevel) -> String {
+        switch level {
+        case .neutral: "Neutre"
+        case .personal: "Personnelle"
+        case .secret: "Gardée sur l'iPhone"
         }
     }
 

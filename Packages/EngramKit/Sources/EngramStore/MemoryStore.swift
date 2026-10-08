@@ -66,7 +66,8 @@ public struct MemoryStore: Sendable {
     // MARK: - Note texte sans analyse (en attendant le moteur IA du plan P2)
 
     /// Enregistre une note texte comme un souvenir « À classer », en une seule transaction.
-    public func saveTextNoteWithoutAnalysis(_ text: String) throws -> TextNoteSave {
+    /// - Parameter keepLocal: « Garder sur l'iPhone » : la note ne sera jamais envoyée à un service en ligne.
+    public func saveTextNoteWithoutAnalysis(_ text: String, keepLocal: Bool = false) throws -> TextNoteSave {
         let now = dates.now()
         return try database.writer.write { db in
             switch try insertTextSource(db, text: text, now: now) {
@@ -80,6 +81,7 @@ public struct MemoryStore: Sendable {
                     status: .unsorted, analysisVersion: Self.interimAnalysisVersion)
                 let memory = try createMemory(db, draft: draft, actor: .system, now: now)
                 source.processingStatus = .waiting
+                source.keepLocal = keepLocal
                 source.updatedAt = now
                 try source.update(db)
                 return .saved(memory)
