@@ -4,6 +4,7 @@ import EngramPipeline
 import EngramStore
 import Foundation
 import Observation
+import UIKit
 
 /// Parcours d'une capture : enregistrer → sauvegarder → transcrire → classer → afficher le résultat.
 /// À chaque étape, la pensée est déjà sauvegardée : un échec ne fait jamais rien perdre.
@@ -45,6 +46,8 @@ final class RecordModel {
         }
         do {
             try recorder.start(in: app.storageDirectory)
+            // L'écran ne se verrouille pas pendant une dictée (sinon l'enregistrement serait coupé).
+            UIApplication.shared.isIdleTimerDisabled = true
             items = []
             phase = .recording
         } catch {
@@ -53,6 +56,7 @@ final class RecordModel {
     }
 
     func finish(app: AppModel) async {
+        UIApplication.shared.isIdleTimerDisabled = false
         guard let result = recorder.stop() else {
             phase = .idle
             return
@@ -84,6 +88,7 @@ final class RecordModel {
     }
 
     func cancel() {
+        UIApplication.shared.isIdleTimerDisabled = false
         recorder.cancel()
         phase = .idle
     }

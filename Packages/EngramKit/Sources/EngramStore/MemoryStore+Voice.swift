@@ -41,6 +41,12 @@ extension MemoryStore {
     func attachTranscript(_ db: Database, sourceID: UUID, transcript: String, languages: [String],
                           engine: String?, now: Date) throws -> Memory? {
         guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
+        // Une transcription tardive (traitement en double) ne rouvre jamais une source déjà transcrite ou classée.
+        guard source.processingStatus == .pending else {
+            return try Memory
+                .filter(Column("source_id") == sourceID && Column("analysis_version") == Self.interimAnalysisVersion)
+                .fetchOne(db)
+        }
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         source.originalText = text.isEmpty ? nil : text
         source.languages = languages
@@ -85,6 +91,13 @@ extension MemoryStore {
                 .filter(Column("kind") == SourceKind.voice && Column("processing_status") == ProcessingStatus.pending)
                 .order(Column("captured_at"))
                 .fetchAll(db)
+        }
+    }
+
+    /// Fichiers audio déjà connus (pour retrouver les enregistrements orphelins).
+    public func referencedAudioPaths() throws -> Set<String> {
+        try database.writer.read { db in
+            Set(try String.fetchAll(db, sql: "SELECT audio_path FROM source WHERE audio_path IS NOT NULL"))
         }
     }
 

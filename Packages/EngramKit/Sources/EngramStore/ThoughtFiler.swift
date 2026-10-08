@@ -28,17 +28,40 @@ public struct ThoughtFiler: Sendable {
         self.calendar = calendar
     }
 
-    public func file(_ thoughts: [ValidThought], sourceID: UUID) throws -> FilingSummary {
+    /// Part minimale du texte que les extraits doivent couvrir pour remplacer la note provisoire.
+    public static let minimumCoverage = 0.6
+
+    /// - Parameters:
+    ///   - keepInterimIfUncovered: garder la note provisoire (texte complet, « À classer ») si les extraits
+    ///     couvrent moins de `minimumCoverage` du texte.
+    ///   - forceKeepInterim: la garder quoi qu'il arrive (des pensées ont été rejetées par le validateur).
+    public func file(_ thoughts: [ValidThought], sourceID: UUID, keepInterimIfUncovered: Bool = false,
+                     forceKeepInterim: Bool = false) throws -> FilingSummary {
         let now = dates.now()
         let memoryStore = MemoryStore(database: database, dates: dates)
         let categoryStore = CategoryStore(database: database, dates: dates)
         return try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
+            // Déjà classée (traitement en double) : rien ne change.
+            if source.processingStatus == .done {
+                let existing = try Memory.filter(Column("source_id") == sourceID).order(Column("created_at")).fetchAll(db)
+                return FilingSummary(memories: existing, categoryPaths: [], pathByMemory: [:])
+            }
             let interims = try Memory
                 .filter(Column("source_id") == sourceID && Column("analysis_version") == MemoryStore.interimAnalysisVersion)
                 .fetchAll(db)
-            let kept = interims.filter(\.userEdited)
-            for memory in interims where !memory.userEdited { _ = try memory.delete(db) }
+            // Une note provisoire que le propriétaire a touchée (texte, statut, catégorie, tag) n'est jamais remplacée.
+            var touched: [Memory] = []
+            var untouched: [Memory] = []
+            for memory in interims {
+                if try Self.isTouchedByOwner(db, memory) { touched.append(memory) } else { untouched.append(memory) }
+            }
+            let coverage = AnalysisValidator.coverage(of: thoughts.map(\.excerpt), in: source.referenceText ?? "")
+            let keepUntouched = forceKeepInterim || (keepInterimIfUncovered && coverage < Self.minimumCoverage)
+            if touched.isEmpty && !keepUntouched {
+                for memory in untouched { _ = try memory.delete(db) }
+            }
+            let kept = touched
 
             var filedIDs: [UUID] = []
             var paths: [String] = []
@@ -64,6 +87,7 @@ public struct ThoughtFiler: Sendable {
             }
 
             if kept.isEmpty {
+                if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
                 for thought in thoughts {
                     let due = DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
                                                      relativeTo: source.capturedAt, calendar: calendar)
@@ -78,9 +102,12 @@ public struct ThoughtFiler: Sendable {
                     filedIDs.append(memory.id)
                 }
             } else {
-                // Le propriétaire a déjà modifié sa note : on ne la remplace pas, on la classe seulement.
+                // Le propriétaire a déjà touché sa note : on ne la remplace pas. Si elle est encore en usage,
+                // on la classe seulement ; si elle est archivée ou à la corbeille, on n'y touche pas du tout.
                 for memory in kept {
-                    if let first = thoughts.first { try classify(memory.id, with: first) }
+                    if memory.status == .active || memory.status == .unsorted, let first = thoughts.first {
+                        try classify(memory.id, with: first)
+                    }
                     filedIDs.append(memory.id)
                 }
             }
@@ -91,6 +118,15 @@ public struct ThoughtFiler: Sendable {
             let memories = try filedIDs.compactMap { try Memory.fetchOne(db, key: $0) }
             return FilingSummary(memories: memories, categoryPaths: paths, pathByMemory: pathByMemory)
         }
+    }
+
+    /// Texte modifié, statut changé (archive, corbeille, classée), ou catégorie/tag posé ou retiré à la main.
+    static func isTouchedByOwner(_ db: Database, _ memory: Memory) throws -> Bool {
+        if memory.userEdited || memory.status != .unsorted { return true }
+        return try Bool.fetchOne(db, sql: """
+            SELECT EXISTS(SELECT 1 FROM memory_category WHERE memory_id = ? AND origin = 'user')
+                OR EXISTS(SELECT 1 FROM memory_tag WHERE memory_id = ? AND origin = 'user')
+            """, arguments: [memory.id, memory.id]) ?? false
     }
 
     /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close.

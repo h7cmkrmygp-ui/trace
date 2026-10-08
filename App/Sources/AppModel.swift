@@ -23,6 +23,9 @@ final class AppModel {
     let calendarService = CalendarService()
     var errorMessage: String?
     private var isResuming = false
+    private var isSyncingCalendar = false
+    /// Transcriptions en cours : une même note n'est jamais transcrite deux fois en parallèle.
+    private var transcribing: Set<UUID> = []
 
     init(database: AppDatabase, storageDirectory: URL) {
         self.database = database
@@ -40,7 +43,8 @@ final class AppModel {
         Result {
             let model = AppModel(database: try AppDatabase.openOnDisk(),
                                  storageDirectory: try DatabaseRecovery.storageDirectory())
-            _ = try model.categories.archiveUnusedSeeds()
+            // Un échec du nettoyage ne doit pas empêcher l'app de s'ouvrir.
+            _ = try? model.categories.archiveUnusedSeeds()
             return model
         }
     }
@@ -49,6 +53,9 @@ final class AppModel {
 
     /// Transcrit une note vocale. Renvoie `false` si ce n'est pas possible pour l'instant (la note reste en attente).
     func transcribe(sourceID: UUID, audioPath: String) async -> Bool {
+        guard !transcribing.contains(sourceID) else { return false }
+        transcribing.insert(sourceID)
+        defer { transcribing.remove(sourceID) }
         let url = AudioFiles.url(forRelativePath: audioPath, in: storageDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
             // Fichier introuvable : on clôt la transcription pour ne pas réessayer indéfiniment (la note reste « À classer »).
@@ -74,6 +81,7 @@ final class AppModel {
         guard !isResuming else { return }
         isResuming = true
         defer { isResuming = false }
+        adoptOrphanedRecordings()
         if let pending = try? memories.sourcesAwaitingTranscription() {
             for source in pending {
                 if let path = source.audioPath { _ = await transcribe(sourceID: source.id, audioPath: path) }
@@ -86,20 +94,35 @@ final class AppModel {
     /// Ajoute au calendrier de l'iPhone les rendez-vous datés pas encore ajoutés, si l'option est active.
     /// `askPermission` : demander l'accès au calendrier s'il n'a jamais été demandé (juste après une dictée).
     func syncAppointments(askPermission: Bool) async {
+        guard !isSyncingCalendar else { return }
+        isSyncingCalendar = true
+        defer { isSyncingCalendar = false }
         guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true else { return }
-        guard let pending = try? calendarLinks.unlinkedAppointments(), !pending.isEmpty else { return }
+        guard let waiting = try? calendarLinks.unlinkedAppointments(), !waiting.isEmpty else { return }
         if calendarService.access == .notDetermined {
             guard askPermission, await calendarService.requestAccess() else { return }
         }
         guard calendarService.access == .granted || calendarService.access == .writeOnly else { return }
         let target = (try? settings.string(.calendarTarget)) ?? nil
+        // Relire la liste après l'attente de l'autorisation, et revérifier chaque lien juste avant d'ajouter.
+        guard let pending = try? calendarLinks.unlinkedAppointments() else { return }
         for memory in pending {
-            guard let start = memory.dueAt else { continue }
+            guard let start = memory.dueAt, (try? calendarLinks.link(for: memory.id)) == nil else { continue }
             guard let added = try? calendarService.addAppointment(title: memory.title, start: start,
                                                                   hasTime: memory.dueHasTime, notes: memory.summary,
                                                                   calendarIdentifier: target) else { continue }
             try? calendarLinks.link(memoryID: memory.id, eventIdentifier: added.eventID, calendarIdentifier: added.calendarID)
         }
+    }
+
+    /// Enregistrements restés sur le disque sans note (app fermée pendant l'enregistrement) : ils deviennent
+    /// des notes vocales à transcrire. Seuls les fichiers de plus de 6 minutes sont pris (jamais celui en cours).
+    func adoptOrphanedRecordings() {
+        guard let referenced = try? memories.referencedAudioPaths(),
+              let orphans = try? AudioFiles.orphanedRecordings(in: storageDirectory, referenced: referenced,
+                                                               olderThan: Date().addingTimeInterval(-6 * 60))
+        else { return }
+        for path in orphans { _ = try? memories.saveVoiceRecording(audioPath: path, duration: nil) }
     }
 
     /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé.

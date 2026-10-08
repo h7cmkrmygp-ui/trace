@@ -22,14 +22,7 @@ public enum AnalysisValidator {
 
         let summary = thought.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        var path: [String] = []
-        if let category = cleanName(thought.category, maxLength: maxCategoryLength) {
-            path.append(category)
-            if let sub = thought.subcategory.flatMap({ cleanName($0, maxLength: maxCategoryLength) }),
-               TextNormalizer.normalizedName(sub) != TextNormalizer.normalizedName(category) {
-                path.append(sub)
-            }
-        }
+        let path = categoryPath(category: thought.category, subcategory: thought.subcategory)
 
         var seen = Set<String>()
         var tags: [String] = []
@@ -51,9 +44,37 @@ public enum AnalysisValidator {
             kind: thought.kind,
             tags: tags,
             categoryPath: path,
+            // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
             mentionedDates: thought.mentionedDates
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty })
+                .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) })
+    }
+
+    /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Lexus » dans un seul champ :
+    /// on découpe sur « › », « > » et « / », et on retire un parent répété dans la sous-catégorie.
+    static func categoryPath(category: String, subcategory: String?) -> [String] {
+        func parts(_ raw: String?) -> [String] {
+            guard let raw else { return [] }
+            return raw.components(separatedBy: CharacterSet(charactersIn: "›>/"))
+                .compactMap { cleanName($0, maxLength: maxCategoryLength) }
+        }
+        let categoryParts = parts(category)
+        guard !categoryParts.isEmpty else { return [] }
+        var path: [String] = []
+        for part in categoryParts + parts(subcategory) {
+            let key = TextNormalizer.normalizedName(part)
+            if path.contains(where: { TextNormalizer.normalizedName($0) == key }) { continue }
+            path.append(part)
+        }
+        return Array(path.prefix(2))
+    }
+
+    /// Part des mots du texte (0 à 1) que l'on retrouve dans les extraits.
+    public static func coverage(of excerpts: [String], in text: String) -> Double {
+        let words = TextNormalizer.matchingForm(text).split(separator: " ")
+        guard !words.isEmpty else { return 1 }
+        let covered = Set(excerpts.flatMap { TextNormalizer.matchingForm($0).split(separator: " ") })
+        return Double(words.filter { covered.contains($0) }.count) / Double(words.count)
     }
 
     /// Espaces réduits ; `nil` si le nom ne contient ni lettre ni chiffre ; coupé à `maxLength`.

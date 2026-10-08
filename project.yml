@@ -52,6 +52,8 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - audio
         NSMicrophoneUsageDescription: "Engram utilise le micro pour enregistrer les pensées que tu dictes. L'audio reste sur ton iPhone."
         NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
         NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."

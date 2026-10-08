@@ -18,4 +18,22 @@ public enum AudioFiles {
     public static func url(forRelativePath path: String, in base: URL) -> URL {
         base.appendingPathComponent(path)
     }
+
+    /// Enregistrements présents sur le disque mais inconnus de la base (app fermée pendant l'enregistrement),
+    /// plus anciens que `olderThan` pour ne jamais prendre un enregistrement en cours.
+    public static func orphanedRecordings(in base: URL, referenced: Set<String>, olderThan limit: Date,
+                                          fileManager: FileManager = .default) throws -> [String] {
+        let directory = base.appendingPathComponent("audio", isDirectory: true)
+        guard fileManager.fileExists(atPath: directory.path) else { return [] }
+        let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
+        return try files
+            .filter { $0.pathExtension == "caf" }
+            .filter { url in
+                let modified = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantFuture
+                return modified < limit
+            }
+            .map { "audio/\($0.lastPathComponent)" }
+            .filter { !referenced.contains($0) }
+            .sorted()
+    }
 }

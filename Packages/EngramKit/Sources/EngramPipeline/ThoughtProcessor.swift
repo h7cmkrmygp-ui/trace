@@ -28,7 +28,19 @@ public actor ThoughtProcessor {
         self.analyzer = analyzer
     }
 
+    /// Traitements en cours : un second appel pour la même source attend le premier au lieu de la classer deux fois.
+    private var inFlight: [UUID: Task<ProcessingOutcome, Never>] = [:]
+
     public func process(sourceID: UUID) async -> ProcessingOutcome {
+        if let running = inFlight[sourceID] { return await running.value }
+        let task = Task { await self.run(sourceID: sourceID) }
+        inFlight[sourceID] = task
+        let outcome = await task.value
+        inFlight[sourceID] = nil
+        return outcome
+    }
+
+    private func run(sourceID: UUID) async -> ProcessingOutcome {
         do {
             guard let source = try memories.source(id: sourceID) else { return .fallback }
             let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -43,13 +55,17 @@ public actor ThoughtProcessor {
                 do {
                     let analysis = try await analyzer.analyze(text: text, existingCategories: paths)
                     let valid = try AnalysisValidator.validate(analysis, against: text)
-                    return .filed(try filer.file(valid, sourceID: sourceID))
+                    // Des pensées rejetées ou un texte mal couvert : la note complète reste aussi « À classer ».
+                    return .filed(try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
+                                                 forceKeepInterim: valid.count < analysis.thoughts.count))
                 } catch AnalyzerError.unavailable(let reason) {
                     return .waiting(reason)
                 } catch AnalyzerError.invalidOutput where attempt < 2 {
                     continue
-                } catch AnalyzerError.busy where attempt < 2 {
-                    continue
+                } catch AnalyzerError.busy {
+                    // Modèle occupé (souvent quand l'app passe en arrière-plan) : un nouvel essai, puis on réessaiera plus tard.
+                    if attempt < 2 { continue }
+                    return .waiting("Le modèle est occupé : la note sera classée au prochain retour dans l'app.")
                 }
             }
         } catch {

@@ -15,26 +15,44 @@ public struct ResolvedDate: Sendable, Hashable {
 /// Déterministe : l'IA ne fait que relever les expressions, la date n'est jamais inventée.
 /// Une expression vague (« bientôt », « la semaine prochaine ») ne donne aucune date.
 public enum DateResolver {
-    /// Première expression comprise ; à défaut, cherche dans l'extrait lui-même.
+    /// Combine le premier jour et la première heure trouvés dans les expressions (« vendredi », « 14 h »),
+    /// et complète ce qui manque avec l'extrait lui-même.
     public static func firstDate(in expressions: [String], excerpt: String, relativeTo now: Date,
                                  calendar: Calendar) -> ResolvedDate? {
+        let today = calendar.startOfDay(for: now)
+        var day: Date?
+        var time: (hour: Int, minute: Int)?
         for expression in expressions {
-            if let resolved = resolve(expression, relativeTo: now, calendar: calendar) { return resolved }
+            let parts = components(of: normalize(expression), today: today, calendar: calendar)
+            if day == nil { day = parts.day }
+            if time == nil { time = parts.time }
         }
-        return resolve(excerpt, relativeTo: now, calendar: calendar)
+        if day == nil || time == nil {
+            let parts = components(of: normalize(excerpt), today: today, calendar: calendar)
+            if day == nil { day = parts.day }
+            if time == nil { time = parts.time }
+        }
+        return combine(day: day, time: time, today: today, calendar: calendar)
     }
 
     public static func resolve(_ expression: String, relativeTo now: Date, calendar: Calendar) -> ResolvedDate? {
-        let text = normalize(expression)
-        guard !text.isEmpty else { return nil }
         let today = calendar.startOfDay(for: now)
+        let parts = components(of: normalize(expression), today: today, calendar: calendar)
+        return combine(day: parts.day, time: parts.time, today: today, calendar: calendar)
+    }
+
+    static func components(of text: String, today: Date, calendar: Calendar) -> (day: Date?, time: (hour: Int, minute: Int)?) {
+        guard !text.isEmpty else { return (nil, nil) }
         let day = explicitDayMonth(text, today: today, calendar: calendar)
             ?? numericDate(text, today: today, calendar: calendar)
             ?? dayOfMonth(text, today: today, calendar: calendar)
             ?? relativeDay(text, today: today, calendar: calendar)
             ?? inSomeDays(text, today: today, calendar: calendar)
             ?? weekday(text, today: today, calendar: calendar)
-        let time = timeOfDay(text)
+        return (day, timeOfDay(text))
+    }
+
+    static func combine(day: Date?, time: (hour: Int, minute: Int)?, today: Date, calendar: Calendar) -> ResolvedDate? {
         if day == nil && time == nil { return nil }
         let base = day ?? today
         guard let time else { return ResolvedDate(date: base, hasTime: false) }
@@ -78,10 +96,12 @@ public enum DateResolver {
         return nil
     }
 
-    /// « 29/10 », « 29/10/2027 », « 29/10/27 » (jour/mois).
+    /// « le 29/10 », « avant le 29/10 », « 29/10/2027 » (jour/mois). Sans mot de contexte ni année, « 24/7 » ou
+    /// « 1/2 litre » ne sont pas des dates.
     static func numericDate(_ text: String, today: Date, calendar: Calendar) -> Date? {
-        guard let groups = match(#"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b"#, in: text),
-              let day = groups[1].flatMap(Int.init), let month = groups[2].flatMap(Int.init) else { return nil }
+        let groups = match(#"\b(?:le|du|au|pour|avant|apres|on|by|before|until)\s+(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b"#, in: text)
+            ?? match(#"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b"#, in: text)
+        guard let groups, let day = groups[1].flatMap(Int.init), let month = groups[2].flatMap(Int.init) else { return nil }
         var year = groups[3].flatMap(Int.init)
         if let short = year, short < 100 { year = 2000 + short }
         return makeDate(year: year, month: month, day: day, today: today, calendar: calendar)
@@ -140,6 +160,12 @@ public enum DateResolver {
     // MARK: - Heures
 
     static func timeOfDay(_ rawText: String) -> (hour: Int, minute: Int)? {
+        // Une durée n'est pas une heure : « dans 2 heures », « pendant 3 h », « 2 heures de route ».
+        if contains(#"\b(dans|pendant|durant|in|for)\s+\d{1,2}\s*(h|heures?|hours?)\b"#, in: rawText)
+            || contains(#"\b\d{1,2}\s*heures?\s+de\b(?!\s*l'?apres)"#, in: rawText) {
+            return nil
+        }
+        let isAfternoon = contains(#"(apres[- ]midi|\bsoir\b|\bsoiree\b|this evening|tonight|in the evening|in the afternoon)"#, in: rawText)
         // « après-midi » n'est pas « midi ».
         let text = rawText.replacingOccurrences(of: "apres-midi", with: " ").replacingOccurrences(of: "apres midi", with: " ")
         if contains(#"\b(midi|noon)\b"#, in: text) { return (12, 0) }
@@ -163,6 +189,9 @@ public enum DateResolver {
             guard (1...12).contains(resolvedHour) else { return nil }
             if meridiem == "pm" && resolvedHour < 12 { resolvedHour += 12 }
             if meridiem == "am" && resolvedHour == 12 { resolvedHour = 0 }
+        } else if isAfternoon && (1...11).contains(resolvedHour) {
+            // « 3 h de l'après-midi », « 8 h ce soir » : heures de l'après-midi et du soir.
+            resolvedHour += 12
         }
         guard (0..<24).contains(resolvedHour), (0..<60).contains(minute) else { return nil }
         return (resolvedHour, minute)

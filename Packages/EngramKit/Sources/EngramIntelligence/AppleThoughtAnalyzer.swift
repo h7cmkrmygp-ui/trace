@@ -102,9 +102,8 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             switch error {
             case .contextSizeExceeded where depth < 3:
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, depth: depth)
-            case .unsupportedLanguageOrLocale:
-                throw AnalyzerError.unavailable("Cette langue n'est pas prise en charge par le modèle.")
-            case .guardrailViolation, .refusal:
+            case .unsupportedLanguageOrLocale, .guardrailViolation, .refusal:
+                // Problème propre à cette note : repli pour elle seule (ne bloque pas les suivantes).
                 throw AnalyzerError.refused
             case .rateLimited, .timeout:
                 throw AnalyzerError.busy
