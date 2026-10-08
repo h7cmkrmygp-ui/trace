@@ -96,6 +96,8 @@ struct CalendarView: View {
                         Text(access == .notDetermined
                              ? "Pour voir tes événements ici et y ajouter tes rendez-vous dictés. Un compte Google ajouté au Calendrier de l'iPhone fonctionne aussi."
                              : "L'accès complet au calendrier n'est pas autorisé. Dans Réglages › Engram › Calendriers, choisis « Accès complet » pour voir tes événements ici.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

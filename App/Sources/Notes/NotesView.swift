@@ -51,7 +51,7 @@ struct NotesView: View {
                 if isSearching { searchResults } else { folders }
             }
             .navigationTitle("Notes")
-            .searchable(text: $query, prompt: "Chercher dans ta mémoire")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Chercher dans ta mémoire")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Nouvelle note", systemImage: "plus") { isWriting = true }
