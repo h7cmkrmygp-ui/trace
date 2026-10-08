@@ -33,7 +33,7 @@ jobs:
           TEST_RUNNER_ENGRAM_RUN_APPLE_EVAL: "1"
         run: |
           xcodebuild test -scheme EngramKit-Package -destination "id=$UDID" \
-            -only-testing:EngramIntelligenceTests/AppleEvaluationTests 2>&1 | tail -n 15 || true
+            -only-testing:EngramIntelligenceTests/AppleEvaluationTests -test-timeouts-enabled YES -default-test-execution-time-allowance 2400 2>&1 | tail -n 15 || true
           REPORT="$(find ~/Library/Developer/CoreSimulator/Devices/$UDID -name engram-eval.txt 2>/dev/null | head -1)"
           if [ -n "$REPORT" ]; then cp "$REPORT" "$RUNNER_TEMP/rapport.txt"; cat "$REPORT"; else echo "Aucun rapport trouvé"; fi
       - uses: actions/upload-artifact@v7.0.1

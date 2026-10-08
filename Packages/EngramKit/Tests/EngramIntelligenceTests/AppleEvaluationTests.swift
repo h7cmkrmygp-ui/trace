@@ -37,7 +37,16 @@ struct AppleEvaluationTests {
         ("Le mot de passe du wifi est soleil123", .secret),
     ]
 
+    /// Un simulateur fraîchement démarré prépare encore le modèle : on attend qu'il soit prêt (15 min au plus).
+    static func waitForModel() async {
+        for _ in 0..<60 {
+            if AppleThoughtAnalyzer.availabilityDescription().isAvailable { return }
+            try? await Task.sleep(for: .seconds(15))
+        }
+    }
+
     @Test(.enabled(if: enabled)) func appleModelClassifiesTheEvaluationSet() async throws {
+        await Self.waitForModel()
         let availability = AppleThoughtAnalyzer.availabilityDescription()
         Self.report("MODELE APPLE : \(availability.text)")
         guard availability.isAvailable else { return }
@@ -63,6 +72,7 @@ struct AppleEvaluationTests {
     }
 
     @Test(.enabled(if: enabled)) func applePrivacyJudgeOnFictionalNotes() async throws {
+        await Self.waitForModel()
         guard AppleThoughtAnalyzer.availabilityDescription().isAvailable else { return }
         let judge = ApplePrivacyJudge()
         var safe = 0
