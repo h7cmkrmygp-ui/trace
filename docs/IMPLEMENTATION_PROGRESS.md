@@ -108,3 +108,26 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 - Boutons principaux et interrupteurs toujours lisibles en mode sombre.
 
 Laissé tel quel (choix de design, non demandé) : « Fait » par balayage plutôt qu'en case à cocher.
+
+**Ajouts suivants**
+- Pas de jugement de confidentialité inutile quand aucun service n'est configuré.
+- Table officielle des modèles Whisper par puce : signalée dans les Réglages, prise en compte par le banc d'essai.
+- Descriptions des anciennes catégories, écrites sur l'iPhone.
+- Bouton « + » dans les Notes, recherche toujours visible.
+- Cerveau ajusté à l'écran, jours du calendrier plus faciles à toucher.
+
+### Vérification visuelle sans iPhone (simulateur)
+
+Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une base en mémoire remplie de notes **inventées**. Ce mode n'existe qu'en développement, jamais dans l'IPA installée.
+
+**Contrôles**
+- Captures de chaque écran, en mode clair et en mode sombre.
+- Audit d'accessibilité d'iOS : contraste, libellés, zones touchables, texte coupé.
+
+**Constats**
+- Notes, Corbeille (Restaurer et Supprimer visibles, « Tout supprimer » avec confirmation), « Vérifie ta note », Réglages, Cerveau et Calendrier s'affichent correctement dans les deux modes.
+- Défauts trouvés et corrigés : étiquette du Cerveau coupée, zones des jours trop petites, recherche cachée.
+
+Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
+
+Tests automatiques : **265** (Core 65, Store 116, Pipeline 12, Intelligence 53, Capture 19).
