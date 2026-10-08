@@ -126,10 +126,17 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     }
 
     public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
-        let decision = keepEverythingLocal()
-            ? PrivacyDecision(level: .secret, reasons: ["Réglage « Tout garder sur l'iPhone » activé."])
-            : await PrivacyGate.evaluate(text, keepLocal: context.keepLocal, healthStaysLocal: healthStaysLocal(), judge: judge)
         let (neutral, personal) = providers()
+        let decision: PrivacyDecision
+        if keepEverythingLocal() {
+            decision = PrivacyDecision(level: .secret, reasons: ["Réglage « Tout garder sur l'iPhone » activé."])
+        } else if neutral == nil && personal == nil {
+            // Aucun service en ligne : la note reste sur l'iPhone, inutile de faire juger sa confidentialité.
+            decision = PrivacyDecision(level: .secret, reasons: ["Aucun service en ligne configuré."])
+        } else {
+            decision = await PrivacyGate.evaluate(text, keepLocal: context.keepLocal, healthStaysLocal: healthStaysLocal(),
+                                                  judge: judge)
+        }
         let candidates: [CloudProvider] = switch decision.level {
         case .neutral: [neutral, personal].compactMap { $0 }
         case .personal: [personal].compactMap { $0 }
