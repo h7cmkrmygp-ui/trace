@@ -51,9 +51,10 @@ extension MemoryStore {
         if filters.includeArchived { statuses.append(.archived) }
 
         var sql = """
-            SELECT m.id AS memory_id, bm25(memory_fts, 0.0, 10.0, 4.0, 1.0, 2.0) AS rank
+            SELECT m.id AS memory_id, bm25(memory_fts, 10.0, 4.0, 1.0, 2.0) AS rank
             FROM memory_fts
-            JOIN memory m ON m.id = memory_fts.memory_id
+            JOIN memory_fts_map map ON map.fts_rowid = memory_fts.rowid
+            JOIN memory m ON m.id = map.memory_id
             WHERE memory_fts MATCH ?
               AND m.status IN (\(Self.placeholders(statuses.count)))
             """

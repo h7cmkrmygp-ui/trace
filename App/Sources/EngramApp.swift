@@ -13,11 +13,8 @@ struct EngramApp: App {
                     .environment(model)
                     .tint(.indigo)
             case .failure(let error):
-                ContentUnavailableView {
-                    Label("Impossible d'ouvrir ta mémoire", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text("Tes données n'ont pas été modifiées.\n\(AppModel.describe(error))")
-                }
+                RecoveryView(error: error)
+                    .tint(.indigo)
             }
         }
     }

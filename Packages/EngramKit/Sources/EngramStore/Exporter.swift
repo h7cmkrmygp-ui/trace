@@ -161,11 +161,19 @@ public struct Exporter: Sendable {
         return components
     }
 
+    /// Octets maximum pour la partie lisible d'un nom de fichier (le suffixe « -xxxxxxxx.md » s'y ajoute).
+    static let maxFileNameBytes = 120
+
     static func safeFileName(_ raw: String) -> String {
         let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|").union(.newlines).union(.controlCharacters)
         let replaced = String(String.UnicodeScalarView(raw.unicodeScalars.map { forbidden.contains($0) ? "-" : $0 }))
         let trimmed = replaced.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ".")))
-        let limited = String(trimmed.prefix(60))
+        // Limite en octets (le système de fichiers refuse les noms de plus de 255 octets), sans couper un caractère.
+        var limited = ""
+        for character in trimmed {
+            guard limited.utf8.count + character.utf8.count <= maxFileNameBytes else { break }
+            limited.append(character)
+        }
         return limited.isEmpty ? "sans-titre" : limited
     }
 

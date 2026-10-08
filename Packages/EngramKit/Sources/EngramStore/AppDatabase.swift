@@ -22,7 +22,7 @@ public struct AppDatabase: Sendable {
     /// Base de l'app, dans Application Support/Engram, protégée par la Data Protection d'iOS.
     public static func openOnDisk(fileManager: FileManager = .default) throws -> AppDatabase {
         let directory = try StorageLocation.engramDirectory(fileManager: fileManager)
-        let url = directory.appendingPathComponent("engram.sqlite")
+        let url = directory.appendingPathComponent(DatabaseRecovery.databaseFileName)
         return try AppDatabase(DatabasePool(path: url.path, configuration: makeConfiguration()))
     }
 

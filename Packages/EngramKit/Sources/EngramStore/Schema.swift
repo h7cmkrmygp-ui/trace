@@ -191,24 +191,36 @@ enum Schema {
         );
         """
 
-    /// Index plein texte : sa propre copie du texte, identifiée par `memory_id`,
-    /// pour ne pas dépendre du rowid (qu'un VACUUM peut changer).
+    /// Index plein texte : sa propre copie du texte. Chaque souvenir y a un rowid entier attribué par
+    /// `memory_fts_map` (clé entière explicite, stable même après un VACUUM) : les mises à jour et suppressions
+    /// visent la ligne par son rowid au lieu de parcourir tout l'index. L'index n'est réécrit que si le texte change.
     static let v1FullText = """
+        CREATE TABLE memory_fts_map (
+          fts_rowid INTEGER PRIMARY KEY,
+          memory_id BLOB NOT NULL UNIQUE
+        );
         CREATE VIRTUAL TABLE memory_fts USING fts5(
-          memory_id UNINDEXED, title, summary, content, excerpt,
+          title, summary, content, excerpt,
           tokenize = 'unicode61 remove_diacritics 2'
         );
         CREATE TRIGGER memory_fts_insert AFTER INSERT ON memory BEGIN
-          INSERT INTO memory_fts(memory_id, title, summary, content, excerpt)
-          VALUES (new.id, new.title, ifnull(new.summary, ''), new.content, new.excerpt);
+          INSERT INTO memory_fts_map(memory_id) VALUES (new.id);
+          INSERT INTO memory_fts(rowid, title, summary, content, excerpt)
+          VALUES ((SELECT fts_rowid FROM memory_fts_map WHERE memory_id = new.id),
+                  new.title, ifnull(new.summary, ''), new.content, new.excerpt);
         END;
         CREATE TRIGGER memory_fts_delete AFTER DELETE ON memory BEGIN
-          DELETE FROM memory_fts WHERE memory_id = old.id;
+          DELETE FROM memory_fts WHERE rowid = (SELECT fts_rowid FROM memory_fts_map WHERE memory_id = old.id);
+          DELETE FROM memory_fts_map WHERE memory_id = old.id;
         END;
-        CREATE TRIGGER memory_fts_update AFTER UPDATE OF title, summary, content, excerpt ON memory BEGIN
-          DELETE FROM memory_fts WHERE memory_id = old.id;
-          INSERT INTO memory_fts(memory_id, title, summary, content, excerpt)
-          VALUES (new.id, new.title, ifnull(new.summary, ''), new.content, new.excerpt);
+        CREATE TRIGGER memory_fts_update AFTER UPDATE OF title, summary, content, excerpt ON memory
+        WHEN old.title IS NOT new.title OR old.summary IS NOT new.summary
+          OR old.content IS NOT new.content OR old.excerpt IS NOT new.excerpt
+        BEGIN
+          DELETE FROM memory_fts WHERE rowid = (SELECT fts_rowid FROM memory_fts_map WHERE memory_id = old.id);
+          INSERT INTO memory_fts(rowid, title, summary, content, excerpt)
+          VALUES ((SELECT fts_rowid FROM memory_fts_map WHERE memory_id = new.id),
+                  new.title, ifnull(new.summary, ''), new.content, new.excerpt);
         END;
         """
 }
