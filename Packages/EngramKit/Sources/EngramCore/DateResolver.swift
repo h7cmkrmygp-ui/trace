@@ -32,13 +32,13 @@ public enum DateResolver {
             if day == nil { day = parts.day }
             if time == nil { time = parts.time }
         }
-        return combine(day: day, time: time, today: today, calendar: calendar)
+        return combine(day: day, time: time, now: now, calendar: calendar)
     }
 
     public static func resolve(_ expression: String, relativeTo now: Date, calendar: Calendar) -> ResolvedDate? {
         let today = calendar.startOfDay(for: now)
         let parts = components(of: normalize(expression), today: today, calendar: calendar)
-        return combine(day: parts.day, time: parts.time, today: today, calendar: calendar)
+        return combine(day: parts.day, time: parts.time, now: now, calendar: calendar)
     }
 
     static func components(of text: String, today: Date, calendar: Calendar) -> (day: Date?, time: (hour: Int, minute: Int)?) {
@@ -52,11 +52,17 @@ public enum DateResolver {
         return (day, timeOfDay(text))
     }
 
-    static func combine(day: Date?, time: (hour: Int, minute: Int)?, today: Date, calendar: Calendar) -> ResolvedDate? {
+    /// Une heure seule (« à 9 h ») déjà passée au moment de la dictée désigne le lendemain ;
+    /// un jour dit explicitement (« aujourd'hui à 9 h ») est toujours respecté.
+    static func combine(day: Date?, time: (hour: Int, minute: Int)?, now: Date, calendar: Calendar) -> ResolvedDate? {
         if day == nil && time == nil { return nil }
+        let today = calendar.startOfDay(for: now)
         let base = day ?? today
         guard let time else { return ResolvedDate(date: base, hasTime: false) }
-        guard let date = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: base) else { return nil }
+        guard var date = calendar.date(bySettingHour: time.hour, minute: time.minute, second: 0, of: base) else { return nil }
+        if day == nil, date < now, let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) {
+            date = tomorrow
+        }
         return ResolvedDate(date: date, hasTime: true)
     }
 

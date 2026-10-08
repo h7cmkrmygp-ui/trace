@@ -55,6 +55,7 @@ final class AppModel {
         let router = RoutedAnalyzer(local: AppleThoughtAnalyzer(), judge: ApplePrivacyJudge(),
                                     providers: { AppModel.cloudProviders(settings: settings) },
                                     healthStaysLocal: { (try? settings.bool(.healthStaysLocal, default: false)) ?? false },
+                                    keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? false },
                                     quota: quota)
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: router)

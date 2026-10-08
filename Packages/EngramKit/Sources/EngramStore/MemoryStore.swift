@@ -243,9 +243,11 @@ public struct MemoryStore: Sendable {
     }
 
     /// Liste observée : une nouvelle valeur à chaque modification.
+    /// Les dictées qui attendent « Vérifie ta note » n'y figurent pas : elles ont leur propre carte « À vérifier ».
     public func memoriesStream(statuses: Set<MemoryStatus>, limit: Int = 500) -> AsyncThrowingStream<[Memory], any Error> {
         database.stream { db in
             try Memory.filter(statuses.contains(Column("status")))
+                .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
                 .order(Column("captured_at").desc)
                 .limit(limit)
                 .fetchAll(db)

@@ -13,6 +13,7 @@ struct IntelligenceSettingsSection: View {
     @State private var geminiMessage: String?
     @State private var groqMessage: String?
     @State private var healthStaysLocal = false
+    @State private var keepEverythingLocal = false
     @State private var counts: [String: Int] = [:]
     @State private var isWorking = false
     private let apple = AppleThoughtAnalyzer.availabilityDescription()
@@ -20,8 +21,12 @@ struct IntelligenceSettingsSection: View {
     var body: some View {
         Section {
             LabeledContent("IA d'Apple (sur l'iPhone)", value: apple.text)
-            Toggle("Santé : garder sur l'iPhone", isOn: $healthStaysLocal)
-                .onChange(of: healthStaysLocal) { _, value in model.perform { try model.settings.set(value, for: .healthStaysLocal) } }
+            Toggle("Tout garder sur l'iPhone", isOn: $keepEverythingLocal)
+                .onChange(of: keepEverythingLocal) { _, value in model.perform { try model.settings.set(value, for: .keepEverythingLocal) } }
+            if !keepEverythingLocal {
+                Toggle("Santé : garder sur l'iPhone", isOn: $healthStaysLocal)
+                    .onChange(of: healthStaysLocal) { _, value in model.perform { try model.settings.set(value, for: .healthStaysLocal) } }
+            }
             if !counts.isEmpty {
                 LabeledContent("Ce mois-ci", value: Self.summary(counts))
             }
@@ -114,6 +119,7 @@ struct IntelligenceSettingsSection: View {
         hasGemini = SecretStore.hasKey(.gemini)
         hasGroq = SecretStore.hasKey(.groq)
         healthStaysLocal = (try? model.settings.bool(.healthStaysLocal, default: false)) ?? false
+        keepEverythingLocal = (try? model.settings.bool(.keepEverythingLocal, default: false)) ?? false
         let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         counts = (try? model.memories.routeCounts(since: monthAgo)) ?? [:]
     }

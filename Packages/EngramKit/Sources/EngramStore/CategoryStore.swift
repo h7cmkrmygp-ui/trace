@@ -451,8 +451,11 @@ public struct CategoryStore: Sendable {
             }
         }
         visit(nil, depth: 0)
+        // Les dictées qui attendent « Vérifie ta note » sont comptées dans « À vérifier », pas ici.
         func count(_ status: MemoryStatus) throws -> Int {
-            try Memory.filter(Column("status") == status).fetchCount(db)
+            try Memory.filter(Column("status") == status)
+                .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
+                .fetchCount(db)
         }
         return LibrarySummary(categories: flat, unsortedCount: try count(.unsorted),
                               archivedCount: try count(.archived), trashedCount: try count(.trashed))

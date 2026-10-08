@@ -21,6 +21,8 @@ public struct SettingStore: Sendable {
         case whisperStrategy = "transcription.whisperStrategy"
         /// « 1 » : les notes de santé restent sur l'iPhone (jamais envoyées à Groq).
         case healthStaysLocal = "privacy.healthStaysLocal"
+        /// « 1 » : aucune note n'est envoyée à un service en ligne (tout est classé par l'IA d'Apple).
+        case keepEverythingLocal = "privacy.keepEverythingLocal"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }
@@ -86,10 +88,13 @@ public struct CalendarLink: Codable, Sendable, Hashable, FetchableRecord, Persis
 public struct CalendarLinkStore: Sendable {
     public let database: AppDatabase
     public let dates: any DateProvider
+    /// Fuseau des journées (un rendez-vous « aujourd'hui » sans heure commence à minuit).
+    public let calendar: Calendar
 
-    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider()) {
+    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider(), calendar: Calendar = .current) {
         self.database = database
         self.dates = dates
+        self.calendar = calendar
     }
 
     /// Relie un souvenir à l'événement créé. Un souvenir déjà relié garde son premier événement.
@@ -106,9 +111,11 @@ public struct CalendarLinkStore: Sendable {
         try database.writer.read { db in try CalendarLink.fetchOne(db, key: memoryID) }
     }
 
-    /// Rendez-vous datés, à venir (depuis 12 h), actifs ou « À classer », sans événement créé.
+    /// Rendez-vous datés, à venir (depuis 12 h, et toute la journée en cours), actifs ou « À classer », sans événement créé.
+    /// Un rendez-vous d'aujourd'hui sans heure (échéance à minuit) est donc ajouté même dicté l'après-midi.
     public func unlinkedAppointments() throws -> [Memory] {
-        let since = dates.now().addingTimeInterval(-12 * 3600)
+        let now = dates.now()
+        let since = min(now.addingTimeInterval(-12 * 3600), calendar.startOfDay(for: now))
         return try database.writer.read { db in
             try Memory.fetchAll(db, sql: """
                 SELECT m.* FROM memory m

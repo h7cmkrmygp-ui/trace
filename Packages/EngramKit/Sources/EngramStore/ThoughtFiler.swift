@@ -110,6 +110,15 @@ public struct ThoughtFiler: Sendable {
                 for memory in kept {
                     if memory.status == .active || memory.status == .unsorted, let first = thoughts.first {
                         try classify(memory.id, with: first)
+                        // Le texte du propriétaire n'est pas touché, mais l'échéance dictée est posée si la note n'en a pas.
+                        if memory.dueAt == nil, var current = try Memory.fetchOne(db, key: memory.id),
+                           let due = DateResolver.firstDate(in: first.mentionedDates, excerpt: first.excerpt,
+                                                            relativeTo: source.capturedAt, calendar: calendar) {
+                            current.dueAt = due.date
+                            current.dueHasTime = due.hasTime
+                            current.updatedAt = now
+                            try current.update(db)
+                        }
                     }
                     filedIDs.append(memory.id)
                 }
