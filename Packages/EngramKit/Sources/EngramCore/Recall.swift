@@ -16,6 +16,8 @@ public struct RecallQuery: Sendable, Equatable {
 
     /// Mots utiles de la question, sans accents ni majuscules.
     public var keywords: [String] = []
+    /// Les mêmes mots tels qu'ils ont été dits, accents compris (pour chercher des mots proches).
+    public var spokenKeywords: [String] = []
     /// Types de notes demandés (vide = tous).
     public var kinds: Set<MemoryKind> = []
     /// Période demandée (nil = n'importe quand).
@@ -47,6 +49,7 @@ public struct RecallQuery: Sendable, Equatable {
             guard !RecallText.stopwords.contains(word), word.count >= 2 || word.allSatisfy(\.isNumber) else { return false }
             return seen.insert(word).inserted
         }
+        query.spokenKeywords = RecallText.spoken(query.keywords, in: question)
 
         if RecallText.contains(#"\b(resume|resumer|resumes|recapitule|recapituler|recap|summarize|summary|summarise)\b"#, in: text) {
             query.intent = .summarize
@@ -57,7 +60,15 @@ public struct RecallQuery: Sendable, Equatable {
     }
 
     /// Recherche « sur le même sujet » qu'un texte (notes liées) : ses mots utiles, sans période ni type.
-    public static func about(_ text: String) -> RecallQuery { RecallQuery() }
+    public static func about(_ text: String) -> RecallQuery {
+        var query = RecallQuery()
+        var seen: Set<String> = []
+        query.keywords = Array(RecallText.tokens(text).filter { word in
+            !RecallText.stopwords.contains(word) && word.count >= 3 && seen.insert(word).inserted
+        }.prefix(12))
+        query.spokenKeywords = RecallText.spoken(query.keywords, in: text)
+        return query
+    }
 
     /// Les types nommés gagnent sur le verbe « faire » (« une idée pour faire un jardin » = une idée).
     static func kinds(in text: String, isPlanning: Bool) -> Set<MemoryKind> {
@@ -137,7 +148,15 @@ public enum RecallRanker {
 
     /// Notes sur le même sujet qu'une note (jamais elle-même), seulement au-dessus d'un seuil de ressemblance.
     public static func related(to document: RecallDocument, in documents: [RecallDocument], now: Date,
-                               semanticScores: [UUID: Double] = [:], limit: Int = 3) -> [RecallHit] { [] }
+                               semanticScores: [UUID: Double] = [:], limit: Int = 3) -> [RecallHit] {
+        let query = RecallQuery.about(([document.title, document.text]).joined(separator: " "))
+        let others = documents.filter { $0.id != document.id && $0.status != .trashed }
+        return find(others, for: query, now: now, semanticScores: semanticScores, expansions: [:], limit: limit)
+            .filter { $0.score >= relatedThreshold }
+    }
+
+    /// Une note liée doit ressembler davantage qu'une simple réponse possible.
+    static let relatedThreshold = 0.6
 
     // MARK: Lister (période, type)
 
@@ -275,6 +294,17 @@ enum RecallText {
 
     static func tokens(_ text: String) -> [String] {
         normalize(text).split(separator: " ").map(String.init)
+    }
+
+    /// Forme dite (accents compris) de chaque mot normalisé, retrouvée dans le texte d'origine.
+    static func spoken(_ keywords: [String], in original: String) -> [String] {
+        var forms: [String: String] = [:]
+        let lowered = String(original.lowercased().map { $0.isLetter || $0.isNumber ? $0 : " " })
+        for word in lowered.split(separator: " ").map(String.init) {
+            let key = normalize(word)
+            if forms[key] == nil { forms[key] = word }
+        }
+        return keywords.map { forms[$0] ?? $0 }
     }
 
     /// Même mot, au pluriel ou au féminin près.

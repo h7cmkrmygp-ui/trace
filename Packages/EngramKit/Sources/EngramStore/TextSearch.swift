@@ -110,6 +110,39 @@ extension MemoryStore {
 }
 
 extension MemoryStore {
-    /// Ce que « Retrouver » peut lire.
-    public func recallDocuments(limit: Int = 5_000) throws -> [RecallDocument] { [] }
+    /// Ce que « Retrouver » peut lire : les notes actives, « À classer » et archivées (« Fait »), avec leurs dossiers et
+    /// étiquettes. Jamais la corbeille ni les dictées qui attendent « Vérifie ta note ». Rien ne quitte l'iPhone.
+    public func recallDocuments(limit: Int = 5_000) throws -> [RecallDocument] {
+        try database.writer.read { db in
+            let memories = try Memory
+                .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
+                .order(Column("captured_at").desc)
+                .limit(limit)
+                .fetchAll(db)
+            let categories = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+            let byID = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+            var paths: [UUID: [String]] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT memory_id, category_id FROM memory_category WHERE rejected = 0") {
+                let categoryID: UUID = row["category_id"]
+                guard let category = byID[categoryID] else { continue }
+                let memoryID: UUID = row["memory_id"]
+                paths[memoryID, default: []].append(CategoryPaths.display(CategoryPaths.components(of: category, in: byID)))
+            }
+            var tags: [UUID: [String]] = [:]
+            for row in try Row.fetchAll(db, sql: """
+                SELECT mt.memory_id AS memory_id, t.name AS name FROM memory_tag mt
+                JOIN tag t ON t.id = mt.tag_id WHERE mt.rejected = 0
+                """) {
+                let memoryID: UUID = row["memory_id"]
+                tags[memoryID, default: []].append(row["name"])
+            }
+            return memories.map { memory in
+                RecallDocument(id: memory.id, title: memory.title,
+                               text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
+                               kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
+                               categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted())
+            }
+        }
+    }
 }
