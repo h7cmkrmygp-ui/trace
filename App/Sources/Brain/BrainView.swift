@@ -27,7 +27,7 @@ struct BrainView: View {
     var body: some View {
         NavigationStack(path: $path) {
             GeometryReader { geometry in
-                let fit = min(geometry.size.width, geometry.size.height) / layoutSize * 1.15
+                let fit = fitScale(for: geometry.size)
                 canvas(fit: fit)
                     .contentShape(Rectangle())
                     .gesture(magnify.simultaneously(with: drag))
@@ -162,6 +162,18 @@ struct BrainView: View {
     }
 
     private var categoryNodes: [BrainLayout.Node] { nodes.filter { $0.kind == .category } }
+
+    /// Échelle qui fait tenir tout le nuage dans l'écran, étiquettes comprises (une étiquette ne déborde plus du bord).
+    private func fitScale(for size: CGSize) -> CGFloat {
+        let base = min(size.width, size.height) / layoutSize * 1.15
+        guard !nodes.isEmpty else { return base }
+        let maxX = nodes.map { abs($0.x) + $0.radius }.max() ?? 0
+        let maxY = nodes.map { abs($0.y) + $0.radius }.max() ?? 0
+        // Marges pour les étiquettes : environ 70 pt de large, 40 pt de haut.
+        let fitX = maxX > 0 ? (size.width / 2 - 70) / maxX : base
+        let fitY = maxY > 0 ? (size.height / 2 - 40) / maxY : base
+        return max(0.05, min(base * 1.6, fitX, fitY))
+    }
 
     /// Pensées rattachées directement à une catégorie.
     private func itemCount(in categoryID: UUID) -> Int {
