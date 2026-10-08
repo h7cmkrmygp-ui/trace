@@ -9,7 +9,7 @@ Colonnes : **Dessiné** (l'écran existe) · **Simulé** (fonctionne avec de fau
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | INFRA-1 | Compilation GitHub Actions et `.ipa` | n/a | n/a | ✅ | ✅ | n/a | — | premier run vert le 2026-10-07 |
-| INFRA-2 | Installation via AltStore | n/a | n/a | n/a | n/a | — | — | |
+| INFRA-2 | Installation via AltStore | n/a | n/a | n/a | n/a | ✅ | ✅ | confirmé par le propriétaire le 2026-10-07 (build 1) |
 | INFRA-3 | Relevé des API iOS 27 | n/a | n/a | ✅ | ✅ | n/a | ✅ | `docs/notes/2026-10-ios27-sdk.md` ; relevé ciblé complémentaire au début de P2 |
 | F1 | Capture vocale | — | — | — | — | — | — | plan P3 |
 | F2 | Transcription | — | — | — | — | — | — | plan P3 |
