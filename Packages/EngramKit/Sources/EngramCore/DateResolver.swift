@@ -23,11 +23,32 @@ public enum DateResolver {
         let today = calendar.startOfDay(for: now)
         var day: Date?
         var time: (hour: Int, minute: Int)?
-        for text in expressions + [excerpt] {
-            if day != nil && time != nil { break }
-            let parts = components(of: normalize(text), today: today, calendar: calendar)
+        // Heures dites pour un autre jour que celui retenu : jamais reprises, même depuis l'extrait.
+        var otherDayTimes: [(hour: Int, minute: Int)] = []
+        for expression in expressions {
+            let parts = components(of: normalize(expression), today: today, calendar: calendar)
             if day == nil { day = parts.day }
-            if time == nil, parts.day == nil || parts.day == day { time = parts.time }
+            guard let found = parts.time else { continue }
+            if parts.day == nil || parts.day == day {
+                if time == nil { time = found }
+            } else {
+                otherDayTimes.append(found)
+            }
+        }
+        if day == nil || time == nil {
+            let text = normalize(excerpt)
+            let whole = components(of: text, today: today, calendar: calendar)
+            // Un extrait qui nomme plusieurs jours (« dentiste mardi, rappelle-moi ça lundi à 18 h ») est lu
+            // proposition par proposition : l'heure vient de la proposition du jour retenu.
+            let clauses = text.split(whereSeparator: { ",;.!?\n".contains($0) })
+                .map { components(of: String($0), today: today, calendar: calendar) }
+            let namesSeveralDays = Set(clauses.compactMap { $0.day }).count > 1
+            if day == nil { day = namesSeveralDays ? clauses.lazy.compactMap { $0.day }.first : whole.day }
+            if time == nil {
+                let candidates = namesSeveralDays ? clauses.filter { $0.day == day }
+                                                  : [whole].filter { $0.day == nil || $0.day == day }
+                time = candidates.lazy.compactMap { $0.time }.first { found in !otherDayTimes.contains { $0 == found } }
+            }
         }
         return combine(day: day, time: time, now: now, calendar: calendar)
     }
