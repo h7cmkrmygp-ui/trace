@@ -47,6 +47,23 @@ struct ReminderMergerTests {
         #expect(merged.thoughts[0].mentionedDates == ["tomorrow"])
     }
 
+    /// Un rappel demandé fait d'une idée ou d'une info une chose « À faire » ; un rendez-vous reste un rendez-vous.
+    @Test func aReminderTurnsAnIdeaIntoATask() {
+        let text = "Idée de cadeau : un livre de cuisine, rappelle-moi ça samedi"
+        let idea = ThoughtAnalysis(thoughts: [
+            thought("Cadeau : livre de cuisine", excerpt: "Idée de cadeau : un livre de cuisine", kind: .idea),
+            thought("Rappel", excerpt: "rappelle-moi ça samedi", kind: .other, dates: ["samedi"]),
+        ])
+        #expect(ReminderMerger.merge(idea, in: text).thoughts.map(\.kind) == [.task])
+
+        let appointment = ThoughtAnalysis(thoughts: [
+            thought("Dentiste", excerpt: "Dentiste mardi à 10 h", kind: .appointment, dates: ["mardi à 10 h"]),
+            thought("Rappel", excerpt: "rappelle-moi ça lundi", kind: .other, dates: ["lundi"]),
+        ])
+        #expect(ReminderMerger.merge(appointment, in: "Dentiste mardi à 10 h, rappelle-moi ça lundi").thoughts.map(\.kind)
+                == [.appointment])
+    }
+
     @Test func aReminderWithItsOwnSubjectStaysSeparate() {
         let text = "Demander congé pour le 24 novembre, rappelle-moi d'appeler le garage demain"
         let analysis = ThoughtAnalysis(thoughts: [
