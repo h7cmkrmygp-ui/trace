@@ -51,6 +51,30 @@ struct RoutingStoreTests {
         #expect(try env.memories.sourcesAwaitingAnalysis().isEmpty)
     }
 
+    @Test func aTypedNoteCanBeKeptOnTheIPhone() throws {
+        let env = try StoreTestEnvironment()
+        guard case .saved(let memory) = try env.memories.saveTextNoteWithoutAnalysis("Code du casier : 1234", keepLocal: true) else {
+            Issue.record("la note devait être enregistrée")
+            return
+        }
+        #expect(try env.memories.source(id: memory.sourceID)?.keepLocal == true)
+        #expect(try env.saveNote("Acheter du lait").sourceID != memory.sourceID)
+    }
+
+    @Test func routeCountsSummarizeWhereNotesWereFiled() throws {
+        let env = try StoreTestEnvironment()
+        for (text, provider) in [("Acheter du lait", "gemini"), ("Acheter du pain", "gemini"), ("Je pèse 75 kg", "groq"),
+                                 ("Mon NIP", "apple")] {
+            let note = try env.saveNote(text)
+            try env.memories.recordRoute(sourceID: note.sourceID,
+                                         route: AnalysisRoute(level: .neutral, provider: provider, reason: "", needsCloudRetry: false))
+        }
+        _ = try env.saveNote("Pas encore classée")
+        let counts = try env.memories.routeCounts(since: Fixtures.date.addingTimeInterval(-86_400))
+        #expect(counts == ["gemini": 2, "groq": 1, "apple": 1])
+        #expect(try env.memories.routeCounts(since: Fixtures.date.addingTimeInterval(86_400)).isEmpty)
+    }
+
     @Test func aNewCategoryGetsTheDescriptionProposedByTheAI() throws {
         let env = try StoreTestEnvironment()
         let first = try env.saveNote("Tailler la haie")
