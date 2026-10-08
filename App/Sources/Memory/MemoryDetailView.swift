@@ -117,7 +117,7 @@ struct MemoryDetailView: View {
                     run { _ = try model.memories.setStatus(.trashed, for: memoryID, actor: .user) }
                 }
             case .active, .unsorted:
-                if let source, source.kind == .voice, source.audioPath != nil {
+                if let source, source.kind == .voice, source.audioPath != nil, !source.correctedByOwner {
                     Button("Retranscrire avec Whisper", systemImage: "waveform") {
                         isRetranscribing = true
                         Task {

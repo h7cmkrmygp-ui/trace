@@ -273,6 +273,10 @@ final class AppModel {
     @discardableResult
     func retranscribe(sourceID: UUID) async -> Bool {
         guard let source = try? memories.source(id: sourceID), let path = source.audioPath else { return false }
+        guard !source.correctedByOwner else {
+            errorMessage = "Tu as corrigé cette transcription à la main : elle n'est pas remplacée."
+            return false
+        }
         let url = AudioFiles.url(forRelativePath: path, in: storageDirectory)
         guard FileManager.default.fileExists(atPath: url.path) else {
             errorMessage = "L'enregistrement de cette note n'existe plus."
