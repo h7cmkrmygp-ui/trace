@@ -22,6 +22,13 @@ struct ReviewTests {
         #expect(try env.memories.source(id: recording.sourceID)?.needsReview == true)
     }
 
+    @Test func theReviewQueueIsObservable() async throws {
+        let env = try StoreTestEnvironment()
+        let recording = try transcribedForReview(env)
+        var iterator = env.memories.sourcesAwaitingReviewStream().makeAsyncIterator()
+        #expect(try #require(try await iterator.next()).map(\.id) == [recording.sourceID])
+    }
+
     @Test func confirmingKeepsTheOriginalAndStoresTheCorrection() throws {
         let env = try StoreTestEnvironment()
         let recording = try transcribedForReview(env)
