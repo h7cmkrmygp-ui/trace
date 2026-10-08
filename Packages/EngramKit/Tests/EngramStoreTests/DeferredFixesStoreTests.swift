@@ -49,6 +49,19 @@ struct DeferredFixesStoreTests {
         #expect(kept.dueAt == CalendarDataTests.toronto(2027, 1, 22))
     }
 
+    /// Le Calendrier d'Engram masque les événements qu'Engram a créés lui-même (sinon un rendez-vous apparaît deux fois).
+    @Test func linkedEventIdentifiersAreListed() throws {
+        let env = try StoreTestEnvironment()
+        let interim = try env.saveNote("Dentiste demain. Garage vendredi")
+        let filed = try env.filer.file([valid("Dentiste demain", kind: .appointment, dates: ["demain"]),
+                                        valid("Garage vendredi", kind: .appointment, dates: ["vendredi"], path: ["Automobile"])],
+                                       sourceID: interim.sourceID)
+        let links = CalendarLinkStore(database: env.database, dates: env.dates)
+        try links.link(memoryID: filed.memories[0].id, eventIdentifier: "evt-a", calendarIdentifier: nil)
+        try links.link(memoryID: filed.memories[1].id, eventIdentifier: "evt-b", calendarIdentifier: nil)
+        #expect(try links.linkedEventIdentifiers() == ["evt-a", "evt-b"])
+    }
+
     @Test func theExportIncludesCalendarLinks() throws {
         let env = try StoreTestEnvironment()
         let interim = try env.saveNote("Dentiste demain")
