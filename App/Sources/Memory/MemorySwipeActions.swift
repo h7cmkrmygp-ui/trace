@@ -12,7 +12,7 @@ struct MemorySwipeActions: View {
             Button("Restaurer", systemImage: "arrow.uturn.backward") {
                 model.perform { _ = try model.memories.restore(memory.id) }
             }
-            .tint(.indigo)
+            .tint(.gray)
         case .archived:
             Button("Corbeille", systemImage: "trash", role: .destructive) {
                 model.perform { _ = try model.memories.setStatus(.trashed, for: memory.id, actor: .user) }
@@ -20,7 +20,7 @@ struct MemorySwipeActions: View {
             Button("Désarchiver", systemImage: "arrow.uturn.backward") {
                 model.perform { _ = try model.memories.restore(memory.id) }
             }
-            .tint(.indigo)
+            .tint(.gray)
         case .active, .unsorted:
             Button("Corbeille", systemImage: "trash", role: .destructive) {
                 model.perform { _ = try model.memories.setStatus(.trashed, for: memory.id, actor: .user) }
@@ -28,7 +28,7 @@ struct MemorySwipeActions: View {
             Button("Archiver", systemImage: "archivebox") {
                 model.perform { _ = try model.memories.setStatus(.archived, for: memory.id, actor: .user) }
             }
-            .tint(.indigo)
+            .tint(.gray)
         }
     }
 }

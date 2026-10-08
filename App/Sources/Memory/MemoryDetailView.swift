@@ -84,7 +84,7 @@ struct MemoryDetailView: View {
                             titleVisibility: .visible) {
             Button("Supprimer définitivement", role: .destructive) {
                 model.perform {
-                    _ = try model.memories.deletePermanently(memoryID)
+                    try model.deletePermanently(memoryID)
                     dismiss()
                 }
             }

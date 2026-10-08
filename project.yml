@@ -25,6 +25,12 @@ targets:
         product: EngramCore
       - package: EngramKit
         product: EngramStore
+      - package: EngramKit
+        product: EngramPipeline
+      - package: EngramKit
+        product: EngramIntelligence
+      - package: EngramKit
+        product: EngramCapture
     info:
       path: App/Info.plist
       properties:
@@ -44,6 +50,8 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: "Engram utilise le micro pour enregistrer les pensées que tu dictes. L'audio reste sur ton iPhone."
+        NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram

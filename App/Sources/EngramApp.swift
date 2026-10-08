@@ -11,10 +11,10 @@ struct EngramApp: App {
             case .success(let model):
                 RootView()
                     .environment(model)
-                    .tint(.indigo)
+                    .tint(.primary)
             case .failure(let error):
                 RecoveryView(error: error)
-                    .tint(.indigo)
+                    .tint(.primary)
             }
         }
     }
