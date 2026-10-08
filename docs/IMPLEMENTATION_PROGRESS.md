@@ -96,6 +96,7 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 **Dates et calendrier**
 - Un rendez-vous suivi d'un rappel (« dentiste mardi à 10 h, rappelle-moi ça lundi ») va au calendrier à sa propre date, pas à celle du rappel.
 - Un rappel ajouté à une idée ou à une info en fait une chose « À faire ».
+- L'heure d'un autre jour n'est plus collée à l'échéance (« réserver la salle le 24 novembre à 14 h, rappelle-moi ça demain » : demain, sans 14 h).
 - Une heure seule déjà passée (« à 9 h » dit à 10 h) désigne le lendemain.
 - Un rendez-vous d'aujourd'hui sans heure est ajouté au calendrier, même dicté l'après-midi.
 - Une note modifiée à la main reçoit quand même son échéance.
@@ -132,4 +133,4 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
 
-Tests automatiques : **269** (Core 66, Store 116, Pipeline 12, Intelligence 56 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).
+Tests automatiques : **270** (Core 67, Store 116, Pipeline 12, Intelligence 56 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).

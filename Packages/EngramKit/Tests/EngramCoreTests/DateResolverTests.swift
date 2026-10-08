@@ -93,6 +93,10 @@ struct DateResolverTests {
         let sameDay = DateResolver.firstDate(in: ["demain"], excerpt: "Appeler le garage demain à 10 h",
                                              relativeTo: Self.now, calendar: Self.calendar)
         #expect(sameDay == ResolvedDate(date: Self.day(2026, 10, 9, 10, 0), hasTime: true))
+        // Un seul jour nommé : l'extrait est lu en entier, « ce soir » garde son sens même après une virgule.
+        let evening = DateResolver.firstDate(in: ["ce soir"], excerpt: "Appeler Marc ce soir, vers 8 h",
+                                             relativeTo: Self.now, calendar: Self.calendar)
+        #expect(evening == ResolvedDate(date: Self.day(2026, 10, 8, 20, 0), hasTime: true))
     }
 
     @Test func firstDateUsesTheFirstUnderstoodExpression() {
