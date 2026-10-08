@@ -60,8 +60,10 @@ struct ReminderMergerTests {
             thought("Dentiste", excerpt: "Dentiste mardi à 10 h", kind: .appointment, dates: ["mardi à 10 h"]),
             thought("Rappel", excerpt: "rappelle-moi ça lundi", kind: .other, dates: ["lundi"]),
         ])
-        #expect(ReminderMerger.merge(appointment, in: "Dentiste mardi à 10 h, rappelle-moi ça lundi").thoughts.map(\.kind)
-                == [.appointment])
+        let merged = ReminderMerger.merge(appointment, in: "Dentiste mardi à 10 h, rappelle-moi ça lundi").thoughts
+        #expect(merged.map(\.kind) == [.appointment])
+        // Le calendrier reçoit le rendez-vous à sa date (mardi à 10 h), pas à la date du rappel.
+        #expect(merged.first?.mentionedDates == ["mardi à 10 h", "lundi"])
     }
 
     @Test func aReminderWithItsOwnSubjectStaysSeparate() {

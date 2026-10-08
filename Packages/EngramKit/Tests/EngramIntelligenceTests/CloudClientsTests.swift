@@ -50,6 +50,13 @@ struct CloudClientsTests {
         #expect(thought.mentionedDates == ["demain", "24 novembre"])
     }
 
+    /// Un rendez-vous garde sa propre date en premier : c'est elle qui va dans le calendrier, pas la date du rappel.
+    @Test func anAppointmentKeepsItsOwnDateFirst() throws {
+        let answer = #"{"notes":[{"title":"Dentiste","summary":"","excerpt":"Dentiste mardi à 10 h, rappelle-moi ça lundi","kind":"appointment","category":"Santé","categoryDescription":"","subcategory":"","tags":[],"dates":[{"phrase":"lundi","role":"reminder"},{"phrase":"mardi à 10 h","role":"event"}]}]}"#
+        let thought = try #require(try CloudDecoder.decode(answer).thoughts.first)
+        #expect(thought.mentionedDates == ["mardi à 10 h", "lundi"])
+    }
+
     @Test func geminiErrorsAreUnderstood() throws {
         let quota = Data(#"{"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"Quota exceeded","details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"30s"}]}}"#.utf8)
         #expect(throws: CloudError.quotaExceeded(retryAfter: 30)) { try GeminiClient.parse(data: quota, status: 429, headers: [:]) }

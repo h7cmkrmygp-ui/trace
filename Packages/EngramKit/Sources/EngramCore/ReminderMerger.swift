@@ -46,6 +46,8 @@ public enum ReminderMerger {
 
     static func combine(_ previous: AnalyzedThought, with reminder: AnalyzedThought, in text: String) -> AnalyzedThought {
         var result = previous
+        // Un rappel demandé en fait une chose « À faire » (un rendez-vous reste un rendez-vous).
+        if previous.kind != .appointment { result.kind = .task }
         var dates: [String] = []
         for date in reminder.mentionedDates + previous.mentionedDates where !dates.contains(date) { dates.append(date) }
         result.mentionedDates = dates
