@@ -35,11 +35,14 @@ public struct CategoryStore: Sendable {
         public let depth: Int
         /// Souvenirs actifs ou « À classer » liés directement à cette catégorie.
         public let memoryCount: Int
+        /// Les mêmes, sous-catégories comprises.
+        public let totalCount: Int
         public var id: UUID { category.id }
     }
 
     public struct LibrarySummary: Sendable, Equatable {
-        /// Catégories actives, en arbre aplati (parent puis enfants, par ordre alphabétique).
+        /// Catégories actives **qui contiennent au moins une note** (elles ou leurs sous-catégories),
+        /// en arbre aplati (parent puis enfants, par ordre alphabétique).
         public let categories: [CategorySummary]
         public let unsortedCount: Int
         public let archivedCount: Int
@@ -389,12 +392,21 @@ public struct CategoryStore: Sendable {
             counts[id] = n
         }
         let children = Dictionary(grouping: categories, by: \.parentID)
+        var totals: [UUID: Int] = [:]
+        func total(_ id: UUID) -> Int {
+            if let known = totals[id] { return known }
+            let sum = (counts[id] ?? 0) + (children[id] ?? []).reduce(0) { $0 + total($1.id) }
+            totals[id] = sum
+            return sum
+        }
         var flat: [CategorySummary] = []
         func visit(_ parentID: UUID?, depth: Int) {
             let siblings = (children[parentID] ?? [])
+                .filter { total($0.id) > 0 }
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             for category in siblings {
-                flat.append(CategorySummary(category: category, depth: depth, memoryCount: counts[category.id] ?? 0))
+                flat.append(CategorySummary(category: category, depth: depth, memoryCount: counts[category.id] ?? 0,
+                                            totalCount: total(category.id)))
                 visit(category.id, depth: depth + 1)
             }
         }

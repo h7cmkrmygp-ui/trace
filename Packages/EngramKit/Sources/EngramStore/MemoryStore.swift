@@ -179,17 +179,30 @@ public struct MemoryStore: Sendable {
     public func deletePermanently(_ id: UUID) throws -> PermanentDeletion {
         try database.writer.write { db in
             guard let memory = try Memory.fetchOne(db, key: id) else { throw StoreError.notFound }
-            guard memory.status == .trashed else {
-                throw StoreError.invalidOperation("mettre le souvenir à la corbeille avant de le supprimer définitivement")
-            }
-            _ = try memory.delete(db)
-            let remaining = try Memory.filter(Column("source_id") == memory.sourceID).fetchCount(db)
-            guard remaining == 0, let source = try Source.fetchOne(db, key: memory.sourceID) else {
-                return PermanentDeletion(memoryID: id, deletedSourceID: nil, audioPathToRemove: nil)
-            }
-            _ = try source.delete(db)
-            return PermanentDeletion(memoryID: id, deletedSourceID: source.id, audioPathToRemove: source.audioPath)
+            return try Self.deletePermanently(db, memory)
         }
+    }
+
+    /// Vide la corbeille : supprime définitivement, en une seule transaction, toutes les notes qui y sont.
+    @discardableResult
+    public func emptyTrash() throws -> [PermanentDeletion] {
+        try database.writer.write { db in
+            try Memory.filter(Column("status") == MemoryStatus.trashed).fetchAll(db)
+                .map { try Self.deletePermanently(db, $0) }
+        }
+    }
+
+    static func deletePermanently(_ db: Database, _ memory: Memory) throws -> PermanentDeletion {
+        guard memory.status == .trashed else {
+            throw StoreError.invalidOperation("mettre le souvenir à la corbeille avant de le supprimer définitivement")
+        }
+        _ = try memory.delete(db)
+        let remaining = try Memory.filter(Column("source_id") == memory.sourceID).fetchCount(db)
+        guard remaining == 0, let source = try Source.fetchOne(db, key: memory.sourceID) else {
+            return PermanentDeletion(memoryID: memory.id, deletedSourceID: nil, audioPathToRemove: nil)
+        }
+        _ = try source.delete(db)
+        return PermanentDeletion(memoryID: memory.id, deletedSourceID: source.id, audioPathToRemove: source.audioPath)
     }
 
     // MARK: - Lecture

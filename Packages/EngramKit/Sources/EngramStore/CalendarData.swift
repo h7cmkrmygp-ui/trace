@@ -126,7 +126,8 @@ extension MemoryStore {
     }
 }
 
-/// Ce qu'affiche le Cerveau : catégories actives et pensées avec leur catégorie la plus précise.
+/// Ce qu'affiche le Cerveau : pensées vivantes avec leur catégorie la plus précise, et seulement les catégories
+/// qui en contiennent (avec leurs parents).
 public struct BrainSnapshot: Sendable, Equatable {
     public let categories: [BrainLayout.CategoryInput]
     public let items: [BrainLayout.ItemInput]
@@ -145,8 +146,10 @@ extension CategoryStore {
         var deepest: [UUID: UUID] = [:]
         for row in try Row.fetchAll(db, sql: """
             SELECT mc.memory_id AS memory_id, mc.category_id AS category_id
-            FROM memory_category mc JOIN category c ON c.id = mc.category_id
-            WHERE mc.rejected = 0 AND c.status = 'active'
+            FROM memory_category mc
+            JOIN category c ON c.id = mc.category_id
+            JOIN memory m ON m.id = mc.memory_id
+            WHERE mc.rejected = 0 AND c.status = 'active' AND m.status IN ('active','unsorted')
             """) {
             let memoryID: UUID = row["memory_id"]
             let categoryID: UUID = row["category_id"]
@@ -156,8 +159,15 @@ extension CategoryStore {
         let memories = try Memory
             .filter([MemoryStatus.active, MemoryStatus.unsorted].contains(Column("status")))
             .fetchAll(db)
+        // Catégories qui contiennent une pensée, et tous leurs parents.
+        var shown: Set<UUID> = []
+        for categoryID in deepest.values {
+            var next: UUID? = categoryID
+            while let id = next, shown.insert(id).inserted { next = byID[id]?.parentID }
+        }
         return BrainSnapshot(
-            categories: categories.map { BrainLayout.CategoryInput(id: $0.id, name: $0.name, parentID: $0.parentID) },
+            categories: categories.filter { shown.contains($0.id) }
+                .map { BrainLayout.CategoryInput(id: $0.id, name: $0.name, parentID: $0.parentID) },
             items: memories.map { BrainLayout.ItemInput(id: $0.id, title: $0.title, categoryID: deepest[$0.id]) })
     }
 }
