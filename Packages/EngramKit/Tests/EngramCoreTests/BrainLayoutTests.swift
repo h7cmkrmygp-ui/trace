@@ -16,9 +16,11 @@ struct BrainLayoutTests {
         ((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)).squareRoot()
     }
 
-    @Test func emptyMemoryShowsOnlyTheCenter() {
-        let nodes = BrainLayout.layout(categories: [], items: [], size: 800)
-        #expect(nodes.map(\.kind) == [.center])
+    /// Bug signalé : « Ton cerveau est vide » s'affichait par-dessus des points. Mémoire vide : aucun point, pas même le centre.
+    @Test func emptyMemoryHasNoNodes() {
+        #expect(BrainLayout.layout(categories: [], items: [], size: 800).isEmpty)
+        // Une seule pensée « À classer » suffit pour revoir le centre.
+        #expect(BrainLayout.layout(categories: [], items: items(1, in: nil), size: 800).map(\.kind) == [.center, .item])
     }
 
     @Test func placesEveryCategoryAndThoughtDeterministically() {
