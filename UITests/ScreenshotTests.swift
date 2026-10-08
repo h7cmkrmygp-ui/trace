@@ -26,6 +26,17 @@ final class ScreenshotTests: XCTestCase {
 
         if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Maison")).firstMatch) {
             snap(app, "03-categorie-maison-\(mode)")
+            if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tailler la haie")).firstMatch) {
+                snap(app, "03b-detail-note-\(mode)")
+                app.swipeUp()
+                snap(app, "03c-detail-classement-\(mode)")
+                goBack(app)
+            }
+            goBack(app)
+        }
+
+        if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "À faire")).firstMatch) {
+            snap(app, "03d-a-faire-\(mode)")
             goBack(app)
         }
 
@@ -69,6 +80,12 @@ final class ScreenshotTests: XCTestCase {
             snap(app, "13-reglages-intelligence-\(mode)")
             app.swipeUp()
             snap(app, "14-reglages-cles-\(mode)")
+            app.swipeDown()
+            app.swipeDown()
+            if tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Banc d'essai")).firstMatch) {
+                snap(app, "14b-banc-d-essai-\(mode)")
+                goBack(app)
+            }
             goBack(app)
         }
 
