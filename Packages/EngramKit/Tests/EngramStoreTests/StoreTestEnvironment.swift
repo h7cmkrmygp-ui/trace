@@ -8,11 +8,13 @@ struct StoreTestEnvironment {
     let database: AppDatabase
     let dates: TestDateProvider
     let memories: MemoryStore
+    let categories: CategoryStore
 
     init() throws {
         database = try AppDatabase.inMemory()
         dates = TestDateProvider(Fixtures.date)
         memories = MemoryStore(database: database, dates: dates)
+        categories = CategoryStore(database: database, dates: dates)
     }
 
     @discardableResult
@@ -21,6 +23,10 @@ struct StoreTestEnvironment {
             throw StoreTestFailure.unexpectedDuplicate
         }
         return memory
+    }
+
+    func status(of memory: Memory) throws -> MemoryStatus? {
+        try memories.memory(id: memory.id)?.status
     }
 }
 
