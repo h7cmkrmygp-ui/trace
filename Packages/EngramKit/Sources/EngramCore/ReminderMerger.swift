@@ -13,11 +13,21 @@ public enum ReminderMerger {
                 merged.append(thought)
             }
         }
+        // Une note qui demande un rappel est une chose « À faire », même non découpée (un rendez-vous reste un rendez-vous).
+        for index in merged.indices where merged[index].kind != .appointment && asksForReminder(merged[index].excerpt) {
+            merged[index].kind = .task
+        }
         return ThoughtAnalysis(thoughts: merged, route: analysis.route)
     }
 
     /// Formules qui ouvrent un simple rappel.
     static let triggers: [[String]] = [["rappelle", "moi"], ["fais", "moi", "penser"], ["remind", "me"]]
+
+    /// L'extrait contient une demande de rappel (« rappelle-moi », « fais-moi penser », « remind me »).
+    static func asksForReminder(_ excerpt: String) -> Bool {
+        let words = tokens(excerpt)
+        return triggers.contains { trigger in words.indices.contains { words[$0...].starts(with: trigger) } }
+    }
 
     /// Mots qui peuvent suivre la formule sans ajouter de sujet : renvois (« ça », « it ») et expressions de temps.
     static let allowed: Set<String> = [
