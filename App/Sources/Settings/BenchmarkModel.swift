@@ -58,6 +58,8 @@ final class BenchmarkModel {
     private(set) var notes: [Recording] = []
     private(set) var progress: (done: Int, total: Int)?
     private(set) var statusMessage: String?
+    /// Modèles qu'Argmax déclare pris en charge par cette puce (nil : table inconnue, sans effet sur la règle).
+    var supportedModels: Set<String>?
     let recorder = VoiceRecorder()
     private var runTask: Task<Void, Never>?
 
@@ -285,7 +287,8 @@ final class BenchmarkModel {
             if recording.sentenceID != nil { sentencesRead += 1 } else { correctedNotes += 1 }
         }
         let speed = rows.first { $0.id == candidate }?.realTimeFactor
-        let runsWell = !saved.measures.loadFailures.contains(candidateModel.rawValue)
+        let runsWell = (supportedModels.map { $0.contains(candidateModel.rawValue) } ?? true)
+            && !saved.measures.loadFailures.contains(candidateModel.rawValue)
             && !saved.measures.seriousHeat.contains(candidateModel.rawValue)
             && (speed.map { $0 <= 1.0 } ?? false)
         return BenchmarkEvidence(sentencesRead: sentencesRead, sentencesTotal: BilingualTestSet.sentences.count,

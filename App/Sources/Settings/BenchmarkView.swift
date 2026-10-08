@@ -30,6 +30,7 @@ struct BenchmarkView: View {
         }
         .navigationTitle("Banc d'essai")
         .onAppear { bench.load(app: app) }
+        .task { bench.supportedModels = await WhisperModelStore.supportedModelsOnThisDevice() }
         .onDisappear { if isRecording { bench.cancelRecording() } }
         .confirmationDialog("Effacer les phrases lues et les résultats ?", isPresented: $isConfirmingReset, titleVisibility: .visible) {
             Button("Effacer", role: .destructive) { bench.reset(app: app) }
