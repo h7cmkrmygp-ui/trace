@@ -27,6 +27,22 @@ struct DeferredFixesStoreTests {
         #expect(try #require(try await after.next()).unsortedCount == 1)
     }
 
+    /// Une dictée qui attend « Vérifie ta note » n'est ni dans la recherche ni dans le Cerveau ; elle y arrive une fois classée.
+    @Test func notesAwaitingReviewStayOutOfSearchAndBrain() async throws {
+        let env = try StoreTestEnvironment()
+        let recording = try env.memories.saveVoiceRecording(audioPath: "audio/b.caf", duration: 2)
+        _ = try env.memories.attachTranscript(sourceID: recording.sourceID, transcript: "Acheter des piles", languages: [],
+                                              engine: nil, needsReview: true)
+        #expect(try env.memories.searchText("piles").isEmpty)
+        var brain = env.categories.brainSnapshotStream().makeAsyncIterator()
+        #expect(try #require(try await brain.next()).items.isEmpty)
+
+        _ = try env.memories.confirmReview(sourceID: recording.sourceID, text: "Acheter des piles", keepLocal: false)
+        #expect(try env.memories.searchText("piles").count == 1)
+        var after = env.categories.brainSnapshotStream().makeAsyncIterator()
+        #expect(try #require(try await after.next()).items.count == 1)
+    }
+
     /// Un rendez-vous d'aujourd'hui sans heure, dicté l'après-midi, est quand même ajouté au calendrier.
     @Test func todaysAllDayAppointmentIsAddedEvenInTheAfternoon() throws {
         let env = try StoreTestEnvironment()
