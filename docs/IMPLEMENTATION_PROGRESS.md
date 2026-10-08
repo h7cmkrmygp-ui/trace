@@ -47,3 +47,13 @@ Vérification iPhone de P1 par le propriétaire le 2026-10-08 : points 1 à 7 et
 | — | Évaluation (40 phrases fictives) | ✅ | n/a | ✅ | ✅ | ⏳ | — | Réglages › Évaluer le classement |
 
 Tests automatiques : **115** (Core 31, Store 69, Pipeline 8, Intelligence 5, Capture 2).
+
+## P3 — « Cerveau et Calendrier » (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| F25–F27 | Cerveau (nuage de points, zoom, ouverture) | ✅ | n/a | ✅ | ✅ (disposition) | ⏳ | — | |
+| F49/F50 | Calendrier + rendez-vous ajoutés au calendrier de l'iPhone | ✅ | n/a | ✅ | ✅ (données) | ⏳ | — | Google via les comptes iOS |
+| F51/F57 | Échéances calculées depuis les dates dites | ✅ | n/a | ✅ | ✅ | ⏳ | — | DateResolver déterministe |
+
+Tests automatiques : **149** (Core 48, Store 83, Pipeline 10, Intelligence 5, Capture 3). Relecture indépendante P2+P3 faite ; 1 critique et 9 importants corrigés.
