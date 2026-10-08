@@ -52,7 +52,7 @@ struct BenchmarkView: View {
                                 Task { await bench.startRecording(app: app) }
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.prominent)
                         .tint(isRecording ? .red : .accentColor)
                         if isRecording {
                             Text(RecordView.clock(bench.recorder.elapsed)).monospacedDigit().foregroundStyle(.secondary)
@@ -152,7 +152,7 @@ struct BenchmarkView: View {
             case .proposeSwitch(let reason):
                 Label(reason, systemImage: "arrow.up.circle").font(.footnote)
                 Button("Valider ce changement", action: apply)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.prominent)
             }
         }
         .padding(.vertical, 2)

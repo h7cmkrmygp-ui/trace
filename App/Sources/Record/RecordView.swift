@@ -83,7 +83,7 @@ struct RecordView: View {
                         refreshWhisperStatus()
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.prominent)
             }
         }
         .padding(14)

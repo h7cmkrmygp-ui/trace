@@ -43,7 +43,7 @@ struct ReviewCard: View {
                 Button("Annuler", role: .destructive, action: onDiscard)
                     .tint(.red)
                 Button("Classer", action: onConfirm)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.prominent)
                     .disabled(draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
