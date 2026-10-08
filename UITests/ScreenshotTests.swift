@@ -71,6 +71,10 @@ final class ScreenshotTests: XCTestCase {
                 }
                 if tap(app.buttons["Tout supprimer"]) {
                     snap(app, "09-tout-supprimer-\(mode)")
+                    let tree = XCTAttachment(string: app.debugDescription)
+                    tree.name = "arbre-09-tout-supprimer-\(mode).txt"
+                    tree.lifetime = .keepAlways
+                    add(tree)
                     // Bug signalé : pas de « Tout supprimer ». On vide la corbeille pour de vrai (notes inventées).
                     if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Supprimer 1 note")).firstMatch) {
                         XCTAssertTrue(app.staticTexts["Corbeille vide"].waitForExistence(timeout: 5), "La corbeille ne s'est pas vidée")
