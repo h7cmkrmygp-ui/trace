@@ -14,6 +14,9 @@ enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains(argument) }
     static var wantsDarkMode: Bool { ProcessInfo.processInfo.arguments.contains(darkArgument) }
     static var wantsEmptyMemory: Bool { ProcessInfo.processInfo.arguments.contains(emptyArgument) }
+    /// L'écran Enregistrer s'ouvre sur « Vérifie ta note » (dictée inventée), comme après un enregistrement.
+    static let recordReviewArgument = "-engramUITestRecordReview"
+    static var wantsRecordReview: Bool { ProcessInfo.processInfo.arguments.contains(recordReviewArgument) }
 
     @MainActor
     static func makeModel() throws -> AppModel {

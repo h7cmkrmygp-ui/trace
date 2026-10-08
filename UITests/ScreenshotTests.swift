@@ -11,6 +11,24 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor func testScreensInDarkMode() { captureAll(dark: true) }
 
+    /// Bug signalé sur l'iPhone : l'app se fermait en touchant « Classer » sur la carte « Vérifie ta note » de l'écran
+    /// Enregistrer (la note était pourtant enregistrée et classée au redémarrage).
+    @MainActor func testConfirmingAReviewOnTheRecordScreen() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-engramUITestSeed", "-engramUITestRecordReview", "-AppleLanguages", "(fr)", "-AppleLocale", "fr_CA"]
+        app.launch()
+        let editor = app.textViews["Transcription à vérifier"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 8), "Carte « Vérifie ta note » absente de l'écran Enregistrer")
+        editor.tap()
+        editor.typeText(" svp")
+        snap(app, "19-verifie-enregistrer-clair")
+        XCTAssertTrue(tap(app.buttons["Classer"]), "Bouton « Classer » introuvable")
+        sleep(4)
+        XCTAssertEqual(app.state, .runningForeground, "L'app s'est fermée après « Classer »")
+        XCTAssertFalse(app.textViews["Transcription à vérifier"].exists, "La carte devrait avoir disparu")
+        snap(app, "19b-apres-classer-enregistrer-clair")
+    }
+
     /// Bug signalé : « Ton cerveau est vide » s'affichait par-dessus des points. Mémoire vide : seulement le message.
     @MainActor func testEmptyMemory() {
         let app = XCUIApplication()

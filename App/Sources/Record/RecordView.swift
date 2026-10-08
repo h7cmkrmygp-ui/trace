@@ -1,4 +1,6 @@
 import EngramCapture
+import EngramCore
+import EngramStore
 import SwiftUI
 
 /// Écran principal : un grand cercle, toucher pour parler, toucher pour arrêter.
@@ -54,7 +56,16 @@ struct RecordView: View {
             .onChange(of: model.recorder.state) { _, state in
                 if state == .finished { Task { await model.finish(app: app) } }
             }
-            .onAppear(perform: refreshWhisperStatus)
+            .onAppear {
+                refreshWhisperStatus()
+                #if DEBUG
+                // Tests d'interface : la carte « Vérifie ta note » d'une dictée inventée, sans micro.
+                if UITestSeed.wantsRecordReview, model.phase == .idle,
+                   let source = try? app.memories.sourcesAwaitingReview().first {
+                    model.showReview(of: source, audioURL: nil)
+                }
+                #endif
+            }
             .onChange(of: app.preparingModels) { _, _ in refreshWhisperStatus() }
         }
     }

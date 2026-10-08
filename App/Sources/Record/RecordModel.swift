@@ -85,15 +85,20 @@ final class RecordModel {
                 return
             }
             if let source = try? app.memories.source(id: memory.sourceID), source.needsReview {
-                review = ReviewDraft(sourceID: source.id, text: source.referenceText ?? "")
-                reviewAudioURL = result.url
-                phase = .review
+                showReview(of: source, audioURL: result.url)
                 return
             }
             await file(sourceID: memory.sourceID, app: app)
         } catch {
             phase = .message(AppModel.describe(error))
         }
+    }
+
+    /// Affiche « Vérifie ta note » pour une dictée transcrite qui attend la confirmation du propriétaire.
+    func showReview(of source: Source, audioURL: URL?) {
+        review = ReviewDraft(sourceID: source.id, text: source.referenceText ?? "")
+        reviewAudioURL = audioURL
+        phase = .review
     }
 
     /// « Classer » sur la carte de vérification.
