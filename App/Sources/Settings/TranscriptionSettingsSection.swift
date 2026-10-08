@@ -13,6 +13,8 @@ struct TranscriptionSettingsSection: View {
     @State private var retranscription: (done: Int, total: Int)?
     @State private var retranscriptionResult: String?
     @State private var isConfirmingRetranscribeAll = false
+    /// Modèles qu'Argmax déclare pris en charge par cet iPhone (nil tant que la table n'est pas lue, ou hors ligne).
+    @State private var supportedModels: Set<String>?
 
     var body: some View {
         Section {
@@ -65,6 +67,7 @@ struct TranscriptionSettingsSection: View {
             Text("Whisper fonctionne sur ton iPhone, gratuitement et sans rien envoyer. Il comprend le français québécois et l'anglais mélangés et ne traduit jamais. Le modèle se télécharge une seule fois (Wi-Fi conseillé, garde l'app ouverte pendant le téléchargement).")
         }
         .onAppear(perform: load)
+        .task { supportedModels = await WhisperModelStore.supportedModelsOnThisDevice() }
         .confirmationDialog("Retranscrire avec Whisper ?", isPresented: $isConfirmingRetranscribeAll, titleVisibility: .visible) {
             Button("Retranscrire mes notes vocales") { Task { await retranscribeAll() } }
         } message: {
@@ -77,6 +80,9 @@ struct TranscriptionSettingsSection: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.label)
                 Text("\(item.approximateSizeMB) Mo").font(.footnote).foregroundStyle(.secondary)
+                if let supportedModels, !supportedModels.contains(item.rawValue) {
+                    Text("Non recommandé pour cet iPhone (table d'Argmax)").font(.footnote).foregroundStyle(.orange)
+                }
             }
             Spacer()
             if model.preparingModels.contains(item) {
