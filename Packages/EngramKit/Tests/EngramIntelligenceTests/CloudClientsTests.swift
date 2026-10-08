@@ -55,6 +55,13 @@ struct CloudClientsTests {
         let answer = #"{"notes":[{"title":"Dentiste","summary":"","excerpt":"Dentiste mardi à 10 h, rappelle-moi ça lundi","kind":"appointment","category":"Santé","categoryDescription":"","subcategory":"","tags":[],"dates":[{"phrase":"lundi","role":"reminder"},{"phrase":"mardi à 10 h","role":"event"}]}]}"#
         let thought = try #require(try CloudDecoder.decode(answer).thoughts.first)
         #expect(thought.mentionedDates == ["mardi à 10 h", "lundi"])
+        #expect(thought.kind == .appointment)
+    }
+
+    /// Un rappel demandé fait d'une idée une chose « À faire », même quand le service rend une seule note.
+    @Test func aReminderMakesATask() throws {
+        let answer = #"{"notes":[{"title":"Cadeau : livre de cuisine","summary":"","excerpt":"Idée de cadeau : un livre de cuisine, rappelle-moi ça samedi","kind":"idea","category":"Famille","categoryDescription":"","subcategory":"","tags":[],"dates":[{"phrase":"samedi","role":"reminder"}]}]}"#
+        #expect(try CloudDecoder.decode(answer).thoughts.first?.kind == .task)
     }
 
     @Test func geminiErrorsAreUnderstood() throws {
