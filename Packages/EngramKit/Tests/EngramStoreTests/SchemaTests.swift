@@ -8,7 +8,7 @@ import Testing
 struct SchemaTests {
     @Test func createsAllTables() throws {
         let database = try AppDatabase.inMemory()
-        try database.writer.read { db in
+        try database.writer.read { (db: Database) throws in
             for table in ["source", "memory", "memory_version", "category", "memory_category", "tag",
                           "memory_tag", "embedding", "memory_fts", "processing_job", "change_log", "setting"] {
                 #expect(try db.tableExists(table), "table manquante : \(table)")
