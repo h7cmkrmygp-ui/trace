@@ -19,6 +19,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 1. **Notes** : seulement des dossiers qui contiennent quelque chose, chacun avec une courte description ou son nombre de notes. Aucune ligne vide.
 2. **Menu « … » en haut des Notes** : Archives, Corbeille, Réglages.
+   - Le bouton **« + »** à côté ouvre « Écrire » : la note est classée toute seule.
+   - Tes anciennes catégories reçoivent une courte description après une ou deux réouvertures de l'app. Elle est écrite par l'IA d'Apple, sur l'iPhone.
 3. **Balayer une note active** : le bouton « Corbeille » est rouge et son icône est visible.
 4. **Dans la Corbeille, balayer une note** : « Restaurer » et « Supprimer ». « Supprimer » demande une confirmation.
 5. **Corbeille › « Tout supprimer »** (en haut à droite) : confirmation, puis la corbeille est vide.
@@ -60,6 +62,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
     - En mode avion, dicte « Acheter des piles » : la note est classée sur l'iPhone.
     - Remets le réseau, ferme puis rouvre l'app : la note est reclassée par Gemini, si tu n'y as pas touché.
 25. **Réglages › Intelligence › « Santé : garder sur l'iPhone »**, puis redis la phrase du poids : elle reste sur l'iPhone.
+    - **« Tout garder sur l'iPhone »** : plus rien n'est envoyé. Le détail de chaque note dit « Réglage « Tout garder sur l'iPhone » activé ». Désactive-le ensuite.
 26. **Réglages › Intelligence** : la ligne « Ce mois-ci » montre la répartition Gemini · Groq · iPhone, et les analyses du jour.
 27. **Réglages › Intelligence › « Évaluer le classement sur l'iPhone »** : lance l'évaluation et note le score (sur 43).
 
@@ -75,7 +78,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## E. Calendrier et le reste (P3)
 
 31. **Dis** : « Dentiste vendredi à 14 h » : le rendez-vous est ajouté au calendrier de l'iPhone (1 h).
-32. **Onglet Calendrier** : le rendez-vous apparaît le bon jour.
+32. **Onglet Calendrier** :
+    - le rendez-vous apparaît le bon jour, **une seule fois** (pas en double avec l'événement de l'iPhone) ;
+    - un événement de plusieurs jours apparaît chaque jour.
 33. **Onglet Cerveau** : les points des catégories et des notes s'affichent. Pince pour zoomer, touche pour ouvrir.
 34. **Recherche dans les Notes** : un mot d'une note la retrouve.
 35. **Réglages › « Exporter toute ma mémoire »** : un fichier ZIP est créé.
