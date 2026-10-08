@@ -12,25 +12,19 @@ jobs:
   inspect:
     runs-on: xcode-27
     steps:
-      - name: Versions
-        run: |
-          xcodebuild -version
-          echo "iOS SDK : $(xcrun --sdk iphoneos --show-sdk-version)"
-      - name: API ciblées (P2 « Je parle, c'est classé »)
+      - name: API ciblées (P3 Cerveau et Calendrier)
         run: |
           SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
           iface() { find "$SDK/System/Library/Frameworks/$1.framework" -name '*.swiftinterface' -path '*arm64e-apple-ios*' | head -1; }
-          FM="$(iface FoundationModels)"; SP="$(iface Speech)"
-          clean() { sed -E 's/(FoundationModels|Speech|Swift|Foundation|_Concurrency|AVFAudio|CoreMedia)::/ /g' | cut -c1-220; }
-          echo "::group::FoundationModels — respond / Generable / Guide"
-          grep -nE "func respond\(to|macro Generable|macro Guide|func maximumCount|func count\(|struct Response|var content" "$FM" | grep -v "Executor" | clean | head -40
+          clean() { sed -E 's/(FoundationModels|EventKit|Swift|Foundation)::/ /g' | cut -c1-220; }
+          FM="$(iface FoundationModels)"
+          echo "::group::FoundationModels — LanguageModelError (remplace GenerationError)"
+          grep -nE "LanguageModelError|deprecated.*GenerationError|GenerationError.*deprecated" "$FM" | clean | head -20
+          awk '/enum LanguageModelError|struct LanguageModelError/{f=1} f{print NR": "$0} f&&/^  }$/{exit}' "$FM" | grep -E "case |static (let|var)|enum |struct " | clean | head -40
           echo "::endgroup::"
-          echo "::group::FoundationModels — GenerationError"
-          awk '/enum GenerationError/{f=1} f{print NR": "$0} /^  }$/{if(f)exit}' "$FM" | grep -E "case |enum GenerationError" | clean | head -30
-          echo "::endgroup::"
-          echo "::group::FoundationModels — UnavailableReason"
-          awk '/enum UnavailableReason/{f=1} f{print NR": "$0} /^    }$/{if(f)exit}' "$FM" | grep -E "case |enum Unavailable" | clean | head -15
-          echo "::endgroup::"
-          echo "::group::Speech — SpeechTranscriber options, Result, presets"
-          grep -nE "enum Preset|static (var|let) (transcription|progressiveTranscription|timeIndexedTranscriptionWithAlternatives|offlineTranscription|timeIndexed)|case (volatileResults|fastResults|alternativeTranscriptions|audioTimeRange|etiquetteReplacements|transcriptionConfidence)|struct Result|var text|var isFinal|var results|func supportedLocale|bestAvailableAudioFormat|finalizeAndFinish|func finish|func start\(|func analyzeSequence|downloadAndInstall|class AssetInstallationRequest|struct AnalyzerInput|init\(buffer" "$SP" | clean | head -80
+          echo "::group::EventKit (Objective-C) — en-têtes"
+          H="$SDK/System/Library/Frameworks/EventKit.framework/Headers"
+          grep -hnE "requestFullAccessToEvents|requestWriteOnlyAccessToEvents|EKAuthorizationStatusFullAccess|EKAuthorizationStatusWriteOnly|defaultCalendarForNewEvents|allowsContentModifications|predicateForEventsWithStartDate|saveEvent:span" "$H"/*.h | cut -c1-200 | head -30
+          ls "$SDK/System/Library/Frameworks/EventKit.framework/Modules" 2>/dev/null || true
+          EK="$(iface EventKit)"; [ -n "$EK" ] && grep -nE "func requestFullAccessToEvents|func requestWriteOnlyAccessToEvents" "$EK" | clean | head -10 || true
           echo "::endgroup::"
