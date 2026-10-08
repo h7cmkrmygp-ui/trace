@@ -2,7 +2,7 @@ import EngramCore
 import EngramIntelligence
 import SwiftUI
 
-/// Mesure la qualité du classement avec 40 phrases **inventées**. Rien n'est enregistré dans la mémoire.
+/// Mesure la qualité du classement **sur l'iPhone** avec des phrases **inventées**. Rien n'est enregistré dans la mémoire.
 struct EvaluationView: View {
     struct Row: Identifiable {
         let id = UUID()
@@ -31,7 +31,7 @@ struct EvaluationView: View {
                     Text(problem).foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("40 phrases inventées, en français et en anglais. Rien n'est enregistré dans ta mémoire.")
+                Text("\(EvaluationSet.cases.count) phrases inventées, en français et en anglais, classées par l'IA d'Apple sur ton iPhone. Rien n'est enregistré dans ta mémoire.")
             }
             Section {
                 ForEach(rows) { row in
@@ -58,12 +58,17 @@ struct EvaluationView: View {
         for item in EvaluationSet.cases {
             do {
                 let analysis = try await analyzer.analyze(text: item.sentence, existingCategories: known)
-                let path = try AnalysisValidator.validate(analysis, against: item.sentence).first?.categoryPath ?? []
+                let valid = try AnalysisValidator.validate(analysis, against: item.sentence)
+                let path = valid.first?.categoryPath ?? []
                 let display = path.joined(separator: " › ")
                 if let root = path.first, !known.contains(root) { known.append(root) }
                 if path.count == 2, !known.contains(display) { known.append(display) }
-                rows.append(Row(sentence: item.sentence, path: display.isEmpty ? "(aucune catégorie)" : display,
-                                isAccepted: item.accepts(categoryPath: path)))
+                // Quand le nombre de notes compte (un rappel ne doit pas devenir deux notes), il est vérifié aussi.
+                let countIsRight = item.expectedNotes.map { $0 == valid.count } ?? true
+                let label = display.isEmpty ? "(aucune catégorie)" : display
+                rows.append(Row(sentence: item.sentence,
+                                path: item.expectedNotes == nil ? label : "\(label) · \(valid.count) note\(valid.count > 1 ? "s" : "")",
+                                isAccepted: item.accepts(categoryPath: path) && countIsRight))
             } catch AnalyzerError.unavailable(let reason) {
                 problem = reason
                 return

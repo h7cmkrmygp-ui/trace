@@ -4,10 +4,13 @@ import EngramCore
 public struct EvaluationCase: Sendable, Hashable {
     public let sentence: String
     public let acceptedRoots: [String]
+    /// Nombre de notes attendu quand il compte (un rappel qui parle de la même chose = une seule note).
+    public let expectedNotes: Int?
 
-    public init(sentence: String, acceptedRoots: [String]) {
+    public init(sentence: String, acceptedRoots: [String], expectedNotes: Int? = nil) {
         self.sentence = sentence
         self.acceptedRoots = acceptedRoots
+        self.expectedNotes = expectedNotes
     }
 
     /// Vrai si la catégorie racine proposée correspond à une racine acceptée (accents, casse et pluriel ignorés).
@@ -18,7 +21,8 @@ public struct EvaluationCase: Sendable, Hashable {
     }
 }
 
-/// 40 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées.
+/// 43 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées, dont trois qui reprennent
+/// les erreurs constatées sur l'iPhone : un rappel coupé en deux notes, un poids classé en Finance, deux sujets fusionnés.
 public enum EvaluationSet {
     static let auto = ["Automobile", "Auto", "Voiture", "Véhicule", "Véhicules"]
     static let finance = ["Finance", "Finances", "Argent", "Placements", "Investissements", "Budget"]
@@ -72,5 +76,10 @@ public enum EvaluationSet {
         EvaluationCase(sentence: "Regarder le documentaire sur l'espace recommandé par Léa", acceptedRoots: ["Loisirs", "Divertissement", "Culture", "Films", "Documentaires", "Médias"]),
         EvaluationCase(sentence: "Acheter un nouveau chargeur pour mon iPhone", acceptedRoots: shopping + ["Technologie", "Électronique"]),
         EvaluationCase(sentence: "Envoyer la demande de remboursement des frais de déplacement", acceptedRoots: work + finance),
+        EvaluationCase(sentence: "Rappelle-moi de réserver la salle le 24 novembre, rappelle-moi ça demain",
+                       acceptedRoots: work + projects + ["Événements", "Rappels", "Loisirs"], expectedNotes: 1),
+        EvaluationCase(sentence: "Je pèse 75 kg ce matin", acceptedRoots: health, expectedNotes: 1),
+        EvaluationCase(sentence: "Appeler le garage pour les pneus, pis acheter du lait en revenant",
+                       acceptedRoots: auto + shopping + ["Alimentation"], expectedNotes: 2),
     ]
 }
