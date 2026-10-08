@@ -95,7 +95,7 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 
 **Dates et calendrier**
 - Un rendez-vous suivi d'un rappel (« dentiste mardi à 10 h, rappelle-moi ça lundi ») va au calendrier à sa propre date, pas à celle du rappel.
-- Un rappel ajouté à une idée ou à une info en fait une chose « À faire ».
+- Une note qui demande un rappel (« rappelle-moi », « fais-moi penser », « remind me ») va dans « À faire », quelle que soit l'IA qui l'a classée (un rendez-vous reste un rendez-vous).
 - L'heure d'un autre jour n'est plus collée à l'échéance (« réserver la salle le 24 novembre à 14 h, rappelle-moi ça demain » : demain, sans 14 h).
 - Une heure seule déjà passée (« à 9 h » dit à 10 h) désigne le lendemain.
 - Un rendez-vous d'aujourd'hui sans heure est ajouté au calendrier, même dicté l'après-midi.
@@ -104,11 +104,13 @@ Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, 
 - Calendrier : plus de rendez-vous affichés en double, rechargement après un ajout, accès refusé expliqué avec un lien vers les Réglages, événements de plusieurs jours affichés chaque jour.
 
 **Écrans**
+- Cerveau vide : plus aucun point derrière « Ton cerveau est vide » (le point central n'est plus dessiné).
 - Cerveau lisible par VoiceOver (liste des catégories).
 - Arrêt automatique à 5 min sans double fin.
 - « Ajouté au calendrier » sur la carte de résultat.
 - Bouton « + » dans les Notes.
 - Boutons principaux et interrupteurs toujours lisibles en mode sombre.
+- « Réécouter » sur la carte revient tout seul à la fin de la lecture, et la musique des autres apps reprend.
 
 Laissé tel quel (choix de design, non demandé) : « Fait » par balayage plutôt qu'en case à cocher.
 
@@ -134,4 +136,4 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
 
-Tests automatiques : **271** (Core 67, Store 117, Pipeline 12, Intelligence 56 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).
+Tests automatiques : **273** (Core 68, Store 117, Pipeline 12, Intelligence 57 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).

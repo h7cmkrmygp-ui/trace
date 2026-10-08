@@ -33,6 +33,17 @@ struct BrainView: View {
                     .gesture(magnify.simultaneously(with: drag))
                     .onTapGesture { location in open(at: location, in: geometry.size, fit: fit) }
             }
+            // VoiceOver : le nuage n'est pas lisible, on propose la liste des catégories à ouvrir. Seul le nuage est
+            // remplacé : le message « Ton cerveau est vide » reste lisible.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Cerveau : \(categoryNames.count) catégories, \(itemCount) pensées")
+            .accessibilityChildren {
+                ForEach(categoryNodes, id: \.id) { node in
+                    let count = itemCount(in: node.id)
+                    Button("\(node.label), \(count) pensée\(count > 1 ? "s" : "")") { openCategory(node.id) }
+                }
+            }
+            .accessibilityHidden(itemCount == 0)
             .overlay {
                 if itemCount == 0 {
                     ContentUnavailableView("Ton cerveau est vide", systemImage: "circle.dotted",
@@ -52,15 +63,6 @@ struct BrainView: View {
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
             .navigationDestination(for: NotesRoute.self) { $0.destination }
-            // VoiceOver : le nuage n'est pas lisible, on propose la liste des catégories à ouvrir.
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Cerveau : \(categoryNames.count) catégories, \(itemCount) pensées")
-            .accessibilityChildren {
-                ForEach(categoryNodes, id: \.id) { node in
-                    let count = itemCount(in: node.id)
-                    Button("\(node.label), \(count) pensée\(count > 1 ? "s" : "")") { openCategory(node.id) }
-                }
-            }
             .task {
                 do {
                     for try await snapshot in model.categories.brainSnapshotStream() {
