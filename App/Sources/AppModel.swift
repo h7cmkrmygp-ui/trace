@@ -256,6 +256,22 @@ final class AppModel {
         transcript.localeIdentifier.split(separator: "+").map(String.init).filter { !$0.isEmpty }
     }
 
+    /// Note écrite depuis l'onglet Notes : enregistrée tout de suite (rien n'est perdu), puis classée.
+    func captureText(_ text: String, keepLocal: Bool) async {
+        do {
+            switch try memories.saveTextNoteWithoutAnalysis(text, keepLocal: keepLocal) {
+            case .duplicate:
+                errorMessage = "Cette pensée vient déjà d'être enregistrée."
+            case .saved(let memory):
+                if case .filed = await processor.process(sourceID: memory.sourceID) {
+                    await syncAppointments(askPermission: true)
+                }
+            }
+        } catch {
+            errorMessage = Self.describe(error)
+        }
+    }
+
     /// « Vérifie ta note » confirmé : la correction est enregistrée, puis la note est classée.
     func confirmReview(sourceID: UUID, text: String, keepLocal: Bool) async -> ProcessingOutcome? {
         do {

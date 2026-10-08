@@ -36,6 +36,7 @@ struct NotesView: View {
     @State private var summary: CategoryStore.LibrarySummary?
     @State private var todo: [Memory] = []
     @State private var reviewCount = 0
+    @State private var isWriting = false
     @State private var query = ""
     @State private var results: [Memory] = []
 
@@ -52,7 +53,13 @@ struct NotesView: View {
             .navigationTitle("Notes")
             .searchable(text: $query, prompt: "Chercher dans ta mémoire")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { menu }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("Nouvelle note", systemImage: "plus") { isWriting = true }
+                    menu
+                }
+            }
+            .sheet(isPresented: $isWriting) {
+                TextCaptureSheet { text, keepLocal in Task { await model.captureText(text, keepLocal: keepLocal) } }
             }
             .navigationDestination(for: NotesRoute.self) { $0.destination }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
