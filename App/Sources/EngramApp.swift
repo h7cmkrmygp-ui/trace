@@ -12,10 +12,19 @@ struct EngramApp: App {
                 RootView()
                     .environment(model)
                     .tint(.primary)
+                    .preferredColorScheme(Self.forcedColorScheme)
             case .failure(let error):
                 RecoveryView(error: error)
                     .tint(.primary)
             }
         }
+    }
+
+    /// Mode sombre imposé pour les captures des tests d'interface (développement seulement) ; sinon, celui de l'iPhone.
+    static var forcedColorScheme: ColorScheme? {
+        #if DEBUG
+        if UITestSeed.wantsDarkMode { return .dark }
+        #endif
+        return nil
     }
 }

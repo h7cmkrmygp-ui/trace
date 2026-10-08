@@ -1,0 +1,64 @@
+name: UI screenshots
+# Captures d'écran de l'app sur un iPhone simulé, avec des notes inventées (mode développement seulement).
+on:
+  push:
+    paths: ["App/**", "UITests/**", "project.yml", ".github/workflows/ui.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  screenshots:
+    name: Captures d'écran (simulateur)
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-xcodegen
+      - name: Générer le projet Xcode
+        run: xcodegen generate
+      - name: Simulateur iPhone
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "iOS 27"; then
+            echo "Runtime iOS 27 absent : téléchargement"
+            xcodebuild -downloadPlatform iOS
+          fi
+          xcrun simctl list runtimes | grep iOS
+          # Un iPhone du runtime iOS 27 (l'app demande iOS 27), désigné par son identifiant.
+          LINE="$(xcrun simctl list devices available | awk '/^-- iOS 27/{f=1; next} /^--/{f=0} f && /iPhone/{print; exit}')"
+          echo "Simulateur : $LINE"
+          UDID="$(echo "$LINE" | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')"
+          [ -n "$UDID" ] || { echo "Aucun iPhone iOS 27 disponible"; exit 1; }
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+      - name: Tests d'interface
+        run: |
+          set -o pipefail
+          xcodebuild test -project Engram.xcodeproj -scheme Engram \
+            -destination "id=$UDID" \
+            -resultBundlePath "$RUNNER_TEMP/ui.xcresult" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 60
+      - name: Extraire les captures
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/raw" "$RUNNER_TEMP/captures"
+          xcrun xcresulttool export attachments --path "$RUNNER_TEMP/ui.xcresult" --output-path "$RUNNER_TEMP/raw" || true
+          python3 - "$RUNNER_TEMP/raw" "$RUNNER_TEMP/captures" <<'PY'
+          import json, os, shutil, sys
+          raw, out = sys.argv[1], sys.argv[2]
+          manifest = os.path.join(raw, "manifest.json")
+          if not os.path.exists(manifest):
+              sys.exit(0)
+          for test in json.load(open(manifest)):
+              for item in test.get("attachments", []):
+                  name = item.get("suggestedHumanReadableName") or item["exportedFileName"]
+                  shutil.copy(os.path.join(raw, item["exportedFileName"]), os.path.join(out, name))
+          PY
+          ls "$RUNNER_TEMP/captures" | head -50
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: captures-${{ github.run_number }}
+          path: ${{ runner.temp }}/captures
+          retention-days: 7

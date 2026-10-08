@@ -65,3 +65,34 @@ targets:
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
         CODE_SIGN_IDENTITY: ""
+  # Captures d'écran sur simulateur, avec des notes inventées (workflow « UI screenshots »).
+  EngramUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Engram
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.uitests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+        TEST_TARGET_NAME: Engram
+schemes:
+  Engram:
+    build:
+      targets:
+        Engram: all
+        EngramUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EngramUITests
+    archive:
+      config: Release

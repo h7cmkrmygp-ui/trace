@@ -198,7 +198,11 @@ final class AppModel {
 
     /// Ouvre la base sur l'appareil. Plus de catégories de départ : celles de P1 restées vides sont archivées.
     static func launch() -> Result<AppModel, any Error> {
-        Result {
+        #if DEBUG
+        // Tests d'interface : base en mémoire avec des notes inventées (jamais dans l'IPA installée).
+        if UITestSeed.isActive { return Result { try UITestSeed.makeModel() } }
+        #endif
+        return Result {
             let model = AppModel(database: try AppDatabase.openOnDisk(),
                                  storageDirectory: try DatabaseRecovery.storageDirectory())
             // Un échec du nettoyage ne doit pas empêcher l'app de s'ouvrir.
