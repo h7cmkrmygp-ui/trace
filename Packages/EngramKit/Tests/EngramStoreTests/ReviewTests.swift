@@ -39,6 +39,7 @@ struct ReviewTests {
         #expect(source.correctedText == "Appeler le garage demain")
         #expect(source.needsReview == false)
         #expect(source.keepLocal == true)
+        #expect(source.correctedByOwner == true)
         #expect(interim.content == "Appeler le garage demain")
         #expect(try env.memories.sourcesAwaitingAnalysis() == [recording.sourceID])
         #expect(try env.memories.sourcesAwaitingReview().isEmpty)
@@ -51,6 +52,33 @@ struct ReviewTests {
         let source = try #require(try env.memories.source(id: recording.sourceID))
         #expect(source.correctedText == nil)
         #expect(source.keepLocal == false)
+        #expect(source.correctedByOwner == false)
+    }
+
+    /// Une correction faite à la main est la vérité : une retranscription ne l'écrase jamais.
+    @Test func retranscriptionNeverOverwritesTheOwnersCorrection() throws {
+        let env = try StoreTestEnvironment()
+        let recording = try transcribedForReview(env)
+        _ = try env.memories.confirmReview(sourceID: recording.sourceID, text: "Appeler le garage demain", keepLocal: false)
+        #expect(throws: StoreError.protectedByUser) {
+            try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Appeler le garage demain matin",
+                                          languages: ["fr"], engine: "whisperkit-large-v3")
+        }
+        let source = try #require(try env.memories.source(id: recording.sourceID))
+        #expect(source.correctedText == "Appeler le garage demain")
+        #expect(source.correctedByOwner == true)
+    }
+
+    /// Une retranscription par Whisper n'est pas une correction du propriétaire (le banc d'essai ne doit pas la prendre pour référence).
+    @Test func aRetranscriptionIsNotAnOwnerCorrection() throws {
+        let env = try StoreTestEnvironment()
+        let recording = try env.memories.saveVoiceNote(audioPath: "audio/u.caf", duration: 3, transcript: "texte approximatif",
+                                                       languages: [], engine: "apple-speech")
+        _ = try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Texte exact", languages: ["fr"],
+                                          engine: "whisperkit-large-v3-turbo")
+        let source = try #require(try env.memories.source(id: recording.sourceID))
+        #expect(source.correctedText == "Texte exact")
+        #expect(source.correctedByOwner == false)
     }
 
     @Test func confirmingAnEmptyTextIsRefused() throws {
@@ -117,5 +145,6 @@ struct ReviewTests {
         #expect(source.analysisProvider == nil)
         #expect(source.routeReason == nil)
         #expect(source.needsCloudRetry == false)
+        #expect(source.correctedByOwner == false)
     }
 }

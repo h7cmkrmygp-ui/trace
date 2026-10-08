@@ -121,6 +121,23 @@ struct RoutedAnalyzerTests {
         #expect(env.gemini.receivedCategories == [["Achats"]])
     }
 
+    /// Gemini ne voit que les grandes catégories : une sous-catégorie peut porter un nom propre.
+    @Test func geminiOnlySeesBroadCategoryNames() async throws {
+        let env = Env()
+        _ = try await env.route("Acheter du lait",
+                                categories: ["Achats", "Famille › Julie", "Maison › Jardin", "Écrire à quelqu'un@example.com"])
+        let sent = try #require(env.gemini.receivedCategories.first)
+        #expect(!sent.contains { $0.contains("›") })
+        #expect(!sent.contains { $0.contains("Julie") || $0.contains("@") })
+        #expect(Set(sent).isSubset(of: ["Achats", "Famille", "Maison"]))
+    }
+
+    @Test func groqSeesTheFullCategoryPaths() async throws {
+        let env = Env()
+        _ = try await env.route("Je pèse 75 kg", categories: ["Santé", "Famille › Julie"])
+        #expect(env.groq.receivedCategories.first == ["Santé", "Famille › Julie"])
+    }
+
     @Test func quotaPausesExpireAndUsageIsCountedPerPacificDay() {
         let quota = CloudQuota(defaults: nil)
         let now = Date(timeIntervalSince1970: 1_791_475_200)
