@@ -1,3 +1,4 @@
+import EngramCalendar
 import EngramCapture
 import EngramCore
 import EngramIntelligence
@@ -16,7 +17,10 @@ final class AppModel {
     let memories: MemoryStore
     let categories: CategoryStore
     let processor: ThoughtProcessor
+    let settings: SettingStore
+    let calendarLinks: CalendarLinkStore
     let transcriber = FileTranscriber()
+    let calendarService = CalendarService()
     var errorMessage: String?
     private var isResuming = false
 
@@ -25,6 +29,8 @@ final class AppModel {
         self.storageDirectory = storageDirectory
         memories = MemoryStore(database: database)
         categories = CategoryStore(database: database)
+        settings = SettingStore(database: database)
+        calendarLinks = CalendarLinkStore(database: database)
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: AppleThoughtAnalyzer())
     }
@@ -74,6 +80,26 @@ final class AppModel {
             }
         }
         _ = await processor.processPending()
+        await syncAppointments(askPermission: false)
+    }
+
+    /// Ajoute au calendrier de l'iPhone les rendez-vous datés pas encore ajoutés, si l'option est active.
+    /// `askPermission` : demander l'accès au calendrier s'il n'a jamais été demandé (juste après une dictée).
+    func syncAppointments(askPermission: Bool) async {
+        guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true else { return }
+        guard let pending = try? calendarLinks.unlinkedAppointments(), !pending.isEmpty else { return }
+        if calendarService.access == .notDetermined {
+            guard askPermission, await calendarService.requestAccess() else { return }
+        }
+        guard calendarService.access == .granted || calendarService.access == .writeOnly else { return }
+        let target = (try? settings.string(.calendarTarget)) ?? nil
+        for memory in pending {
+            guard let start = memory.dueAt else { continue }
+            guard let added = try? calendarService.addAppointment(title: memory.title, start: start,
+                                                                  hasTime: memory.dueHasTime, notes: memory.summary,
+                                                                  calendarIdentifier: target) else { continue }
+            try? calendarLinks.link(memoryID: memory.id, eventIdentifier: added.eventID, calendarIdentifier: added.calendarID)
+        }
     }
 
     /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé.

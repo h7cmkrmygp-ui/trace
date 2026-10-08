@@ -31,6 +31,8 @@ targets:
         product: EngramIntelligence
       - package: EngramKit
         product: EngramCapture
+      - package: EngramKit
+        product: EngramCalendar
     info:
       path: App/Info.plist
       properties:
@@ -51,6 +53,8 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         ITSAppUsesNonExemptEncryption: false
         NSMicrophoneUsageDescription: "Engram utilise le micro pour enregistrer les pensées que tu dictes. L'audio reste sur ton iPhone."
+        NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
+        NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."
         NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."
     settings:
       base:

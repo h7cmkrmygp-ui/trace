@@ -8,6 +8,8 @@ struct RootView: View {
         @Bindable var model = model
         TabView {
             Tab("Enregistrer", systemImage: "waveform") { RecordView() }
+            Tab("Cerveau", systemImage: "circle.hexagongrid") { BrainView() }
+            Tab("Calendrier", systemImage: "calendar") { CalendarView() }
             Tab("Notes", systemImage: "square.stack") { NotesView() }
         }
         .errorAlert($model.errorMessage)

@@ -94,6 +94,7 @@ final class RecordModel {
         case .filed(let summary):
             items = summary.memories.map { FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id]) }
             phase = .result
+            await app.syncAppointments(askPermission: true)
         case .waiting(let reason):
             phase = .message("Pensée gardée dans « À classer ». \(reason)")
         case .fallback:

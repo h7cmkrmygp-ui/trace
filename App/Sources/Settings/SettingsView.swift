@@ -1,3 +1,4 @@
+import EngramCalendar
 import EngramIntelligence
 import EngramStore
 import SwiftUI
@@ -7,10 +8,40 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var exportURL: URL?
     @State private var isExporting = false
+    @State private var autoAdd = true
+    @State private var targetCalendar: String?
+    @State private var calendars: [CalendarInfo] = []
+    @State private var calendarAccess: CalendarAccess = .notDetermined
     private let intelligence = AppleThoughtAnalyzer.availabilityDescription()
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Ajouter mes rendez-vous au calendrier", isOn: $autoAdd)
+                    .onChange(of: autoAdd) { _, value in model.perform { try model.settings.set(value, for: .calendarAutoAdd) } }
+                if calendarAccess == .granted {
+                    Picker("Calendrier", selection: $targetCalendar) {
+                        Text("Calendrier par défaut").tag(String?.none)
+                        ForEach(calendars) { calendar in
+                            Text(calendar.accountTitle.isEmpty ? calendar.title : "\(calendar.title) · \(calendar.accountTitle)")
+                                .tag(Optional(calendar.id))
+                        }
+                    }
+                    .onChange(of: targetCalendar) { _, value in model.perform { try model.settings.set(value, for: .calendarTarget) } }
+                } else {
+                    Button("Autoriser l'accès au calendrier", systemImage: "calendar.badge.plus") {
+                        Task {
+                            _ = await model.calendarService.requestAccess()
+                            loadCalendarSettings()
+                            await model.syncAppointments(askPermission: false)
+                        }
+                    }
+                }
+            } header: {
+                Text("Calendrier")
+            } footer: {
+                Text("Les rendez-vous datés que tu dictes y sont ajoutés (1 h si l'heure est connue, durée estimée). Un compte Google ajouté dans Réglages › Calendrier › Comptes apparaît dans la liste.")
+            }
             Section {
                 LabeledContent("IA sur l'iPhone", value: intelligence.text)
                 NavigationLink(value: NotesRoute.evaluation) {
@@ -49,6 +80,14 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Réglages")
+        .onAppear(perform: loadCalendarSettings)
+    }
+
+    private func loadCalendarSettings() {
+        calendarAccess = model.calendarService.access
+        calendars = model.calendarService.writableCalendars()
+        autoAdd = (try? model.settings.bool(.calendarAutoAdd, default: true)) ?? true
+        targetCalendar = (try? model.settings.string(.calendarTarget)) ?? nil
     }
 
     private func export() async {
