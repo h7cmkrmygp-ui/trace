@@ -56,7 +56,9 @@ public actor ThoughtProcessor {
             while true {
                 attempt += 1
                 do {
-                    let analysis = try await analyzer.analyze(text: text, existingCategories: paths, context: context)
+                    // Un simple « rappelle-moi ça demain » rejoint la note précédente au lieu d'en créer une deuxième.
+                    let analysis = ReminderMerger.merge(
+                        try await analyzer.analyze(text: text, existingCategories: paths, context: context), in: text)
                     let valid = try AnalysisValidator.validate(analysis, against: text)
                     // Des pensées rejetées ou un texte mal couvert : la note complète reste aussi « À classer ».
                     let summary = try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
