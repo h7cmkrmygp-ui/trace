@@ -57,3 +57,23 @@ Tests automatiques : **115** (Core 31, Store 69, Pipeline 8, Intelligence 5, Cap
 | F51/F57 | Échéances calculées depuis les dates dites | ✅ | n/a | ✅ | ✅ | ⏳ | — | DateResolver déterministe |
 
 Tests automatiques : **149** (Core 48, Store 83, Pipeline 10, Intelligence 5, Capture 3). Relecture indépendante P2+P3 faite ; 1 critique et 9 importants corrigés.
+
+## P4 — « Vraie IA » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-08-engram-p4-vraie-ia-design.md` · Plan : `docs/superpowers/plans/2026-10-08-engram-p4-vraie-ia.md` · Vérification : `docs/VERIFICATION-IPHONE.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| BUG | Notes en dossiers, sans catégorie vide | ✅ | n/a | ✅ | ✅ | ⏳ | — | cartes « À vérifier », « À faire », « À classer », dossiers ; menu Archives, Corbeille, Réglages |
+| BUG | Corbeille : supprimer d'un geste, « Tout supprimer », boutons colorés | ✅ | n/a | ✅ | ✅ | ⏳ | — | confirmation avant toute suppression définitive |
+| BUG | Cerveau vide sans points fantômes | ✅ | n/a | ✅ | ✅ | ⏳ | — | seules les catégories qui contiennent une note (et leurs parents) |
+| F2 | Whisper bilingue sur l'iPhone (Large V3 Turbo par défaut, Large V3) | ✅ | n/a | ✅ | ✅ (logique) | ⏳ | — | WhisperKit 1.1.0 ; langue par morceau, double décodage si mélange, jamais de traduction ; repli Apple |
+| F2 | « Vérifie ta note » avant classement | ✅ | n/a | ✅ | ✅ | ⏳ | — | original toujours gardé ; « À vérifier » survit à une fermeture |
+| F2 | Retranscription des anciennes notes | ✅ | n/a | ✅ | ✅ | ⏳ | — | jamais sur une note corrigée ou modifiée à la main |
+| F2 | Banc d'essai Turbo / Large V3 | ✅ | n/a | ✅ | ✅ (mesures, règle) | ⏳ | — | 40 phrases fictives ; aucune bascule sans validation |
+| PRIV | Contrôleur de confidentialité (neutre, personnel, secret) | n/a | ✅ | ✅ | ✅ | ⏳ | — | détecteurs, lexique, jugement d'Apple ; le doute reste sur l'iPhone |
+| F10–F13 | Classement par Gemini (neutre) et Groq (personnel) | ✅ | ✅ | ✅ | ✅ | ⏳ | — | clés dans le trousseau ; quotas, reclassement ; Gemini ne voit que les grandes catégories |
+| F10–F13 | IA d'Apple améliorée et fusion des rappels | n/a | ✅ | ✅ | ✅ | ⏳ | — | consignes p4-v1, descriptions de catégories, indices par le sens |
+| DÉPÔT | Exemples fictifs à la place des exemples réels | n/a | n/a | ✅ | ✅ | n/a | ✅ | historique Git non réécrit (choix du propriétaire) |
+
+Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, Capture 16). Auto-relecture finale : 3 points importants corrigés (catégories envoyées à Gemini, corrections du propriétaire distinguées des retranscriptions, préparation de Whisper).

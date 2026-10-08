@@ -61,6 +61,15 @@ struct PrivacyGateTests {
         #expect(await level("Acheter un cadeau", judge: .secret) == .secret)
     }
 
+    /// Un code suivi de chiffres (casier, cadenas, porte, alarme) est un secret, même sans le mot « mot de passe ».
+    @Test func aCodeFollowedByDigitsIsASecret() async {
+        #expect(await level("Mon code de casier est 4821", judge: .neutral) == .secret)
+        #expect(await level("La combinaison du cadenas : 1 2 3 4", judge: .neutral) == .secret)
+        #expect(await level("Lock code is 0000", judge: .neutral) == .secret)
+        // Un code sans chiffres n'est pas un secret en soi.
+        #expect(await level("Apprendre à coder en Swift", judge: .neutral) == .neutral)
+    }
+
     @Test func detectorsFindContactDetailsAndAmounts() {
         let levels = { (text: String) in Set(SensitiveDetectors.signals(in: text).map(\.level)) }
         #expect(levels("Écrire à quelqu'un@example.com").contains(.personal))
