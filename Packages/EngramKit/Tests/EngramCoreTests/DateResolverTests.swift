@@ -52,7 +52,8 @@ struct DateResolverTests {
         ("14h30", day(2026, 10, 8, 14, 30)),
         ("14 h 30", day(2026, 10, 8, 14, 30)),
         ("14:30", day(2026, 10, 8, 14, 30)),
-        ("à 9 h", day(2026, 10, 8, 9, 0)),
+        // 9 h est déjà passé à 10 h : c'est 9 h demain (une heure seule ne tombe jamais dans le passé).
+        ("à 9 h", day(2026, 10, 9, 9, 0)),
         ("2 pm", day(2026, 10, 8, 14, 0)),
         ("midi", day(2026, 10, 8, 12, 0)),
         ("demain midi", day(2026, 10, 9, 12, 0)),

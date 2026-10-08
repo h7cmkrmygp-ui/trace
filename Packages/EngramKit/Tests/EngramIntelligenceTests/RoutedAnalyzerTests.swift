@@ -138,6 +138,21 @@ struct RoutedAnalyzerTests {
         #expect(env.groq.receivedCategories.first == ["Santé", "Famille › Julie"])
     }
 
+    /// Réglage global « Tout garder sur l'iPhone » : aucune note n'est envoyée, même avec des clés.
+    @Test func keepEverythingLocalSendsNothing() async throws {
+        let gemini = FakeCloud(.success(Self.thought))
+        let groq = FakeCloud(.success(Self.thought))
+        let router = RoutedAnalyzer(local: FakeAnalyzer([.success(Self.thought)]), judge: FakeJudge(verdict: .neutral),
+                                    providers: { (CloudProvider(name: "gemini", analyzer: gemini),
+                                                  CloudProvider(name: "groq", analyzer: groq)) },
+                                    keepEverythingLocal: { true }, quota: CloudQuota(defaults: nil))
+        let analysis = try await router.analyze(text: "Acheter du lait", existingCategories: [],
+                                                context: AnalysisContext(keepLocal: false, capturedAt: Date()))
+        #expect(analysis.route?.provider == "apple")
+        #expect(analysis.route?.level == .secret)
+        #expect(gemini.callCount == 0 && groq.callCount == 0)
+    }
+
     @Test func quotaPausesExpireAndUsageIsCountedPerPacificDay() {
         let quota = CloudQuota(defaults: nil)
         let now = Date(timeIntervalSince1970: 1_791_475_200)
