@@ -47,7 +47,8 @@ final class ScreenshotTests: XCTestCase {
                 // Confirmer la dictée : elle quitte « À vérifier » et va au classement (sur le simulateur, sans
                 // service en ligne, elle reste sur l'iPhone).
                 if tap(app.buttons["Classer"]) {
-                    sleep(3)
+                    XCTAssertTrue(app.staticTexts["Rien à vérifier"].waitForExistence(timeout: 10),
+                                  "La dictée confirmée devrait quitter « À vérifier »")
                     snap(app, "05b-apres-classer-\(mode)")
                 }
                 goBack(app)
@@ -142,7 +143,10 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor @discardableResult
     private func tap(_ element: XCUIElement) -> Bool {
-        guard element.waitForExistence(timeout: 4), element.isHittable else { return false }
+        guard element.waitForExistence(timeout: 4) else { return false }
+        // Une feuille ou un menu en cours d'animation n'est pas encore touchable : on lui laisse un peu de temps.
+        for _ in 0..<4 where !element.isHittable { sleep(1) }
+        guard element.isHittable else { return false }
         element.tap()
         return true
     }
