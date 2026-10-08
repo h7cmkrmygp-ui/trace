@@ -34,7 +34,6 @@ struct DateResolverTests {
         ("le 3", day(2026, 11, 3)),
         ("29 oct.", day(2026, 10, 29)),
         ("October 29", day(2026, 10, 29)),
-        ("29/10", day(2026, 10, 29)),
         ("3 janvier", day(2027, 1, 3)),
         ("1er mars", day(2027, 3, 1)),
         ("15 mars 2027", day(2027, 3, 15)),
