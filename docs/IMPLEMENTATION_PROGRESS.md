@@ -77,3 +77,34 @@ Spec : `docs/superpowers/specs/2026-10-08-engram-p4-vraie-ia-design.md` · Plan 
 | DÉPÔT | Exemples fictifs à la place des exemples réels | n/a | n/a | ✅ | ✅ | n/a | ✅ | historique Git non réécrit (choix du propriétaire) |
 
 Tests automatiques : **243** (Core 63, Store 110, Pipeline 12, Intelligence 42, Capture 16). Auto-relecture finale : 3 points importants corrigés (catégories envoyées à Gemini, corrections du propriétaire distinguées des retranscriptions, préparation de Whisper).
+
+### Corrections faites ensuite (en autonomie, propriétaire absent)
+
+**Réglage ajouté (prévu par la spec)**
+- « Tout garder sur l'iPhone ».
+
+**Confidentialité et transcription**
+- Un code suivi de chiffres est toujours secret.
+- Whisper ne traduit jamais : un test le garantit.
+
+**Notes et « Vérifie ta note »**
+- « À vérifier » n'apparaît plus aussi dans « À classer ».
+- La carte « Vérifie ta note » affiche la transcription la plus récente.
+- Pas de retranscription d'une note corrigée à la main.
+- Deux pensées au même extrait n'en font qu'une.
+
+**Dates et calendrier**
+- Une heure seule déjà passée (« à 9 h » dit à 10 h) désigne le lendemain.
+- Un rendez-vous d'aujourd'hui sans heure est ajouté au calendrier, même dicté l'après-midi.
+- Une note modifiée à la main reçoit quand même son échéance.
+- Les liens du calendrier sont dans l'export.
+- Calendrier : plus de rendez-vous affichés en double, rechargement après un ajout, accès refusé expliqué avec un lien vers les Réglages, événements de plusieurs jours affichés chaque jour.
+
+**Écrans**
+- Cerveau lisible par VoiceOver (liste des catégories).
+- Arrêt automatique à 5 min sans double fin.
+- « Ajouté au calendrier » sur la carte de résultat.
+- Bouton « + » dans les Notes.
+- Boutons principaux et interrupteurs toujours lisibles en mode sombre.
+
+Laissé tel quel (choix de design, non demandé) : « Fait » par balayage plutôt qu'en case à cocher.
