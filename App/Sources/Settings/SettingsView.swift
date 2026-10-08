@@ -42,6 +42,7 @@ struct SettingsView: View {
             } footer: {
                 Text("Les rendez-vous datés que tu dictes y sont ajoutés (1 h si l'heure est connue, durée estimée). Un compte Google ajouté dans Réglages › Calendrier › Comptes apparaît dans la liste.")
             }
+            TranscriptionSettingsSection()
             Section {
                 LabeledContent("IA sur l'iPhone", value: intelligence.text)
                 NavigationLink(value: NotesRoute.evaluation) {

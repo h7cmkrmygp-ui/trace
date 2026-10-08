@@ -6,7 +6,7 @@ import Foundation
 import Observation
 import UIKit
 
-/// Parcours d'une capture : enregistrer → sauvegarder → transcrire → classer → afficher le résultat.
+/// Parcours d'une capture : enregistrer → sauvegarder → transcrire → vérifier → classer → afficher le résultat.
 /// À chaque étape, la pensée est déjà sauvegardée : un échec ne fait jamais rien perdre.
 @MainActor
 @Observable
@@ -15,6 +15,8 @@ final class RecordModel {
         case idle
         case recording
         case transcribing
+        /// « Vérifie ta note » : la transcription attend la confirmation du propriétaire.
+        case review
         case filing
         case result
         case message(String)
@@ -28,6 +30,9 @@ final class RecordModel {
 
     private(set) var phase: Phase = .idle
     private(set) var items: [FiledItem] = []
+    /// Dictée en cours de vérification (phase `.review`).
+    var review: ReviewDraft?
+    private(set) var reviewAudioURL: URL?
     let recorder = VoiceRecorder()
 
     var isBusy: Bool { phase == .transcribing || phase == .filing }
@@ -44,6 +49,9 @@ final class RecordModel {
             phase = .message("Autorise le micro : Réglages › Engram › Micro.")
             return
         }
+        // Une nouvelle dictée pendant une vérification : la précédente reste « À vérifier » dans les Notes.
+        review = nil
+        reviewAudioURL = nil
         do {
             try recorder.start(in: app.storageDirectory)
             // L'écran ne se verrouille pas pendant une dictée (sinon l'enregistrement serait coupé).
@@ -68,10 +76,43 @@ final class RecordModel {
                 phase = .message("Pensée enregistrée. La transcription se fera dès que possible.")
                 return
             }
+            if let source = try? app.memories.source(id: memory.sourceID), source.needsReview {
+                review = ReviewDraft(sourceID: source.id, text: source.originalText ?? "")
+                reviewAudioURL = result.url
+                phase = .review
+                return
+            }
             await file(sourceID: memory.sourceID, app: app)
         } catch {
             phase = .message(AppModel.describe(error))
         }
+    }
+
+    /// « Classer » sur la carte de vérification.
+    func confirmReview(app: AppModel) async {
+        guard let review else { return }
+        do {
+            try app.memories.confirmReview(sourceID: review.sourceID, text: review.text, keepLocal: review.keepLocal)
+        } catch {
+            phase = .message(AppModel.describe(error))
+            return
+        }
+        self.review = nil
+        reviewAudioURL = nil
+        await file(sourceID: review.sourceID, app: app)
+    }
+
+    /// « Annuler » sur la carte de vérification : la note va à la corbeille, sans être analysée.
+    func discardReview(app: AppModel) {
+        guard let review else { return }
+        do {
+            try app.memories.discardReview(sourceID: review.sourceID)
+            phase = .message("Note annulée : elle est dans la corbeille si tu changes d'avis.")
+        } catch {
+            phase = .message(AppModel.describe(error))
+        }
+        self.review = nil
+        reviewAudioURL = nil
     }
 
     func submit(text: String, app: AppModel) async {

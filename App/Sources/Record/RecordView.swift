@@ -77,6 +77,7 @@ struct RecordView: View {
         switch model.phase {
         case .recording: "Toucher pour arrêter"
         case .transcribing: "Transcription…"
+        case .review: "Vérifie ta note"
         case .filing: "Classement…"
         default: "Toucher pour parler"
         }
@@ -96,6 +97,16 @@ struct RecordView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+        case .review:
+            if let draft = Binding($model.review) {
+                ScrollView {
+                    ReviewCard(draft: draft, audioURL: model.reviewAudioURL,
+                               onConfirm: { Task { await model.confirmReview(app: app) } },
+                               onDiscard: { model.discardReview(app: app) })
+                }
+                .frame(maxHeight: 380)
+                .scrollDismissesKeyboard(.interactively)
+            }
         case .transcribing, .filing:
             ProgressView()
         default:

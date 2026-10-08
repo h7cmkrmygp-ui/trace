@@ -13,6 +13,10 @@ public struct SettingStore: Sendable {
         case calendarTarget = "calendar.targetIdentifier"
         /// Moteur de transcription : « whisper » (défaut) ou « apple ».
         case transcriptionEngine = "transcription.engine"
+        /// Modèle Whisper choisi (identifiant WhisperKit) ; Turbo par défaut.
+        case whisperModel = "transcription.whisperModel"
+        /// « 1 » (défaut) : afficher « Vérifie ta note » avant de classer une dictée.
+        case reviewBeforeFiling = "transcription.reviewBeforeFiling"
     }
 
     public let database: AppDatabase

@@ -8,6 +8,8 @@ enum NotesRoute: Hashable {
     case list(title: String, statuses: Set<MemoryStatus>)
     case category(EngramCategory)
     case todo
+    case reviewQueue
+    case review(UUID)
     case settings
     case evaluation
 
@@ -16,6 +18,8 @@ enum NotesRoute: Hashable {
         case .list(let title, let statuses): MemoryListView(title: title, statuses: statuses)
         case .category(let category): CategoryMemoriesView(category: category)
         case .todo: TodoListView()
+        case .reviewQueue: ReviewQueueView()
+        case .review(let sourceID): ReviewScreen(sourceID: sourceID)
         case .settings: SettingsView()
         case .evaluation: EvaluationView()
         }
@@ -29,13 +33,14 @@ struct NotesView: View {
     @State private var path = NavigationPath()
     @State private var summary: CategoryStore.LibrarySummary?
     @State private var todo: [Memory] = []
+    @State private var reviewCount = 0
     @State private var query = ""
     @State private var results: [Memory] = []
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     private var roots: [CategoryStore.CategorySummary] { summary?.categories.filter { $0.depth == 0 } ?? [] }
     private var unsortedCount: Int { summary?.unsortedCount ?? 0 }
-    private var isEmpty: Bool { summary != nil && roots.isEmpty && todo.isEmpty && unsortedCount == 0 }
+    private var isEmpty: Bool { summary != nil && roots.isEmpty && todo.isEmpty && unsortedCount == 0 && reviewCount == 0 }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -61,6 +66,13 @@ struct NotesView: View {
                     for try await list in model.memories.memoriesStream(kinds: [.task, .appointment], statuses: [.active, .unsorted]) {
                         todo = list
                     }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await list in model.memories.sourcesAwaitingReviewStream() { reviewCount = list.count }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
                 }
@@ -103,6 +115,12 @@ struct NotesView: View {
     private var folders: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                if reviewCount > 0 {
+                    NavigationLink(value: NotesRoute.reviewQueue) {
+                        FolderCard(systemImage: "text.badge.checkmark", title: "À vérifier",
+                                   subtitle: Self.count(reviewCount, "dictée", "à vérifier"))
+                    }
+                }
                 if !todo.isEmpty {
                     NavigationLink(value: NotesRoute.todo) {
                         FolderCard(systemImage: "checklist", title: "À faire", subtitle: Self.count(todo.count, "chose", "à faire"))

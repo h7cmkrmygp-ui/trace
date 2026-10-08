@@ -93,12 +93,19 @@ extension MemoryStore {
 
     /// Notes vocales transcrites qui attendent la vérification du propriétaire (elles survivent à une fermeture de l'app).
     public func sourcesAwaitingReview() throws -> [Source] {
-        try database.writer.read { db in
-            try Source
-                .filter(Column("needs_review") == true && Column("processing_status") == ProcessingStatus.waiting)
-                .order(Column("captured_at"))
-                .fetchAll(db)
-        }
+        try database.writer.read { db in try Self.awaitingReview(db) }
+    }
+
+    /// La même liste, mise à jour à chaque changement (carte « À vérifier » des Notes).
+    public func sourcesAwaitingReviewStream() -> AsyncThrowingStream<[Source], any Error> {
+        database.stream { db in try Self.awaitingReview(db) }
+    }
+
+    static func awaitingReview(_ db: Database) throws -> [Source] {
+        try Source
+            .filter(Column("needs_review") == true && Column("processing_status") == ProcessingStatus.waiting)
+            .order(Column("captured_at"))
+            .fetchAll(db)
     }
 
     /// Le propriétaire confirme (et corrige peut-être) la transcription. L'original reste intact ; une correction

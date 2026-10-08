@@ -13,6 +13,7 @@ struct MemoryDetailView: View {
     @State private var isEditing = false
     @State private var isPickingCategories = false
     @State private var isConfirmingDeletion = false
+    @State private var isRetranscribing = false
 
     var body: some View {
         Group {
@@ -105,6 +106,19 @@ struct MemoryDetailView: View {
                     run { _ = try model.memories.setStatus(.trashed, for: memoryID, actor: .user) }
                 }
             case .active, .unsorted:
+                if let source, source.kind == .voice, source.audioPath != nil {
+                    Button("Retranscrire avec Whisper", systemImage: "waveform") {
+                        isRetranscribing = true
+                        Task {
+                            await model.retranscribe(sourceID: source.id)
+                            isRetranscribing = false
+                            reload()
+                            // La note a pu être remplacée par sa nouvelle version : revenir à la liste.
+                            if self.memory == nil { dismiss() }
+                        }
+                    }
+                    .disabled(isRetranscribing)
+                }
                 Button("Archiver", systemImage: "archivebox") {
                     run { _ = try model.memories.setStatus(.archived, for: memoryID, actor: .user) }
                 }

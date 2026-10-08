@@ -6,6 +6,7 @@ import EngramPipeline
 import EngramStore
 import Foundation
 import Observation
+import UIKit
 
 /// Services partagés par tous les écrans, et dernière erreur à afficher.
 @MainActor
@@ -19,9 +20,16 @@ final class AppModel {
     let processor: ThoughtProcessor
     let settings: SettingStore
     let calendarLinks: CalendarLinkStore
-    let transcriber = FileTranscriber()
+    /// Modèles Whisper téléchargés (hors du dossier Engram : jamais dans les exports ni dans la sauvegarde iCloud).
+    let whisperModels: WhisperModelStore
+    let appleTranscriber = FileTranscriber()
     let calendarService = CalendarService()
     var errorMessage: String?
+    /// Progression (0 à 1) des modèles Whisper en cours de téléchargement.
+    var modelDownloads: [WhisperModel: Double] = [:]
+    /// Dernier repli vers la reconnaissance d'Apple, expliqué dans les Réglages.
+    var transcriptionNotice: String?
+    private var whisperTranscribers: [WhisperModel: WhisperTranscriber] = [:]
     private var isResuming = false
     private var isSyncingCalendar = false
     /// Transcriptions en cours : une même note n'est jamais transcrite deux fois en parallèle.
@@ -34,8 +42,58 @@ final class AppModel {
         categories = CategoryStore(database: database)
         settings = SettingStore(database: database)
         calendarLinks = CalendarLinkStore(database: database)
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        whisperModels = WhisperModelStore(directory: support.appendingPathComponent("WhisperModels", isDirectory: true))
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: AppleThoughtAnalyzer())
+    }
+
+    // MARK: - Réglages de transcription
+
+    var transcriptionEngine: TranscriptionEngine {
+        TranscriptionEngine(rawValue: ((try? settings.string(.transcriptionEngine)) ?? nil) ?? "") ?? .default
+    }
+
+    var whisperModel: WhisperModel {
+        WhisperModel(rawValue: ((try? settings.string(.whisperModel)) ?? nil) ?? "") ?? .default
+    }
+
+    var reviewsBeforeFiling: Bool {
+        (try? settings.bool(.reviewBeforeFiling, default: true)) ?? true
+    }
+
+    func whisperTranscriber(for model: WhisperModel) -> WhisperTranscriber {
+        if let existing = whisperTranscribers[model] { return existing }
+        let created = WhisperTranscriber(model: model, store: whisperModels)
+        whisperTranscribers[model] = created
+        return created
+    }
+
+    /// Télécharge un modèle Whisper (en Wi-Fi de préférence ; l'écran reste allumé pendant le téléchargement).
+    func downloadWhisperModel(_ model: WhisperModel) async {
+        guard modelDownloads[model] == nil, !whisperModels.isDownloaded(model) else { return }
+        modelDownloads[model] = 0
+        UIApplication.shared.isIdleTimerDisabled = true
+        defer {
+            modelDownloads[model] = nil
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        do {
+            try await whisperModels.download(model) { [weak self] value in
+                guard let self else { return }
+                Task { @MainActor in
+                    guard self.modelDownloads[model] != nil else { return }
+                    self.modelDownloads[model] = value
+                }
+            }
+        } catch {
+            errorMessage = "Le téléchargement du modèle a échoué. Vérifie ta connexion (Wi-Fi conseillé) et réessaie."
+        }
+    }
+
+    func deleteWhisperModel(_ model: WhisperModel) async {
+        if let loaded = whisperTranscribers.removeValue(forKey: model) { await loaded.unload() }
+        perform { try whisperModels.delete(model) }
     }
 
     /// Ouvre la base sur l'appareil. Plus de catégories de départ : celles de P1 restées vides sont archivées.
@@ -63,13 +121,99 @@ final class AppModel {
             return true
         }
         do {
-            let transcript = try await transcriber.transcribe(url: url)
+            let (transcript, engine) = try await runTranscription(url: url)
             try memories.attachTranscript(sourceID: sourceID, transcript: transcript.text,
-                                          languages: [transcript.localeIdentifier], engine: FileTranscriber.engineName)
+                                          languages: Self.languages(of: transcript), engine: engine,
+                                          needsReview: reviewsBeforeFiling)
             return true
         } catch {
             return false
         }
+    }
+
+    /// Whisper si c'est le moteur choisi et que son modèle est sur l'iPhone, sinon la reconnaissance d'Apple.
+    private func runTranscription(url: URL) async throws -> (Transcript, String) {
+        if transcriptionEngine == .whisper {
+            let model = whisperModel
+            if whisperModels.isDownloaded(model) {
+                let whisper = whisperTranscriber(for: model)
+                do {
+                    let transcript = try await whisper.transcribe(url: url)
+                    transcriptionNotice = nil
+                    return (transcript, whisper.engineName)
+                } catch {
+                    transcriptionNotice = "Whisper n'a pas pu transcrire la dernière note : la reconnaissance d'Apple a pris le relais."
+                }
+            } else {
+                transcriptionNotice = "Le modèle Whisper n'est pas encore téléchargé : la reconnaissance d'Apple a pris le relais."
+            }
+        }
+        let transcript = try await appleTranscriber.transcribe(url: url)
+        return (transcript, appleTranscriber.engineName)
+    }
+
+    static func languages(of transcript: Transcript) -> [String] {
+        transcript.localeIdentifier.split(separator: "+").map(String.init).filter { !$0.isEmpty }
+    }
+
+    /// « Vérifie ta note » confirmé : la correction est enregistrée, puis la note est classée.
+    func confirmReview(sourceID: UUID, text: String, keepLocal: Bool) async -> ProcessingOutcome? {
+        do {
+            try memories.confirmReview(sourceID: sourceID, text: text, keepLocal: keepLocal)
+        } catch {
+            errorMessage = Self.describe(error)
+            return nil
+        }
+        let outcome = await processor.process(sourceID: sourceID)
+        if case .filed = outcome { await syncAppointments(askPermission: true) }
+        return outcome
+    }
+
+    /// Relit l'audio d'une note vocale avec Whisper, puis la reclasse. Les notes modifiées à la main sont gardées.
+    @discardableResult
+    func retranscribe(sourceID: UUID) async -> Bool {
+        guard let source = try? memories.source(id: sourceID), let path = source.audioPath else { return false }
+        let url = AudioFiles.url(forRelativePath: path, in: storageDirectory)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            errorMessage = "L'enregistrement de cette note n'existe plus."
+            return false
+        }
+        let model = whisperModel
+        guard whisperModels.isDownloaded(model) else {
+            errorMessage = "Télécharge d'abord le modèle Whisper dans Réglages › Transcription."
+            return false
+        }
+        guard !transcribing.contains(sourceID) else { return false }
+        transcribing.insert(sourceID)
+        defer { transcribing.remove(sourceID) }
+        do {
+            let whisper = whisperTranscriber(for: model)
+            let transcript = try await whisper.transcribe(url: url)
+            guard !transcript.text.isEmpty else {
+                errorMessage = "Whisper n'a reconnu aucune parole dans cet enregistrement."
+                return false
+            }
+            try memories.retranscribe(sourceID: sourceID, transcript: transcript.text,
+                                      languages: Self.languages(of: transcript), engine: whisper.engineName)
+            _ = await processor.process(sourceID: sourceID)
+            await syncAppointments(askPermission: false)
+            return true
+        } catch {
+            errorMessage = Self.describe(error)
+            return false
+        }
+    }
+
+    /// Retranscrit avec Whisper toutes les notes vocales qui ne l'ont pas encore été. Renvoie le nombre de notes refaites.
+    func retranscribeAll(progress: (Int, Int) -> Void) async -> Int {
+        let pending = ((try? memories.voiceSources()) ?? []).filter { !($0.transcriptionEngine ?? "").hasPrefix("whisperkit") }
+        var done = 0
+        for (index, source) in pending.enumerated() {
+            progress(index, pending.count)
+            if await retranscribe(sourceID: source.id) { done += 1 }
+        }
+        progress(pending.count, pending.count)
+        return done
     }
 
     func process(sourceID: UUID) async -> ProcessingOutcome {
@@ -158,6 +302,13 @@ final class AppModel {
             case .nameConflict: return "Une catégorie porte déjà ce nom à cet endroit."
             case .invalidName: return "Ce nom n'est pas valide (vide ou trop long)."
             case .invalidOperation(let reason): return "Opération impossible : \(reason)."
+            }
+        }
+        if let error = error as? TranscriptionError {
+            switch error {
+            case .unsupportedLanguage: return "La reconnaissance vocale ne prend pas en charge cette langue sur cet iPhone."
+            case .modelUnavailable(let reason): return reason
+            case .unreadableAudio: return "L'enregistrement ne peut pas être lu."
             }
         }
         if let error = error as? MemoryValidationError {
