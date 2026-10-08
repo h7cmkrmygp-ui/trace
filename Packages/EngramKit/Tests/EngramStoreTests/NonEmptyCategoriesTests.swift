@@ -56,6 +56,17 @@ struct NonEmptyCategoriesTests {
         #expect(snapshot.items.map(\.categoryID) == [tree.jardin.id])
     }
 
+    @Test func categorySectionsListTheCategoryThenItsFilledSubcategories() async throws {
+        let env = try StoreTestEnvironment()
+        let tree = try makeTree(env)
+        let direct = try env.saveNote("Repeindre la clôture")
+        _ = try env.categories.assign(memoryID: direct.id, categoryID: tree.maison.id, origin: .user)
+        var iterator = env.categories.sectionsStream(rootID: tree.maison.id).makeAsyncIterator()
+        let sections = try #require(try await iterator.next())
+        #expect(sections.map(\.category.name) == ["Maison", "Jardin"])
+        #expect(sections.map { $0.memories.map(\.id) } == [[direct.id], [tree.note.id]])
+    }
+
     @Test func emptyTrashDeletesOnlyTrashedNotesAndReturnsTheirAudio() throws {
         let env = try StoreTestEnvironment()
         let voice = try env.memories.saveVoiceNote(audioPath: "audio/a.caf", duration: 3, transcript: "Vieille idée",
