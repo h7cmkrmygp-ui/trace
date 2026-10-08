@@ -15,13 +15,33 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     public var processingStatus: ProcessingStatus
     public var createdAt: Date
     public var updatedAt: Date
+    /// La transcription attend la vérification du propriétaire : aucune analyse avant sa confirmation.
+    public var needsReview: Bool
+    /// « Garder sur l'iPhone » : la note n'est jamais envoyée à un service en ligne.
+    public var keepLocal: Bool
+    /// Niveau de confidentialité décidé sur l'iPhone (nil tant que la note n'a pas été évaluée).
+    public var privacyLevel: PrivacyLevel?
+    /// Qui a classé la note : « gemini », « groq » ou « apple ».
+    public var analysisProvider: String?
+    /// Pourquoi elle a été classée là (affiché au propriétaire).
+    public var routeReason: String?
+    /// Classée sur l'iPhone faute de service en ligne : à reclasser plus tard si personne n'y touche.
+    public var needsCloudRetry: Bool
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
         originalText: String? = nil, correctedText: String? = nil, languages: [String] = [],
         transcriptionEngine: String? = nil, contentHash: String, capturedAt: Date,
-        processingStatus: ProcessingStatus = .pending, createdAt: Date, updatedAt: Date
+        processingStatus: ProcessingStatus = .pending, createdAt: Date, updatedAt: Date,
+        needsReview: Bool = false, keepLocal: Bool = false, privacyLevel: PrivacyLevel? = nil,
+        analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false
     ) {
+        self.needsReview = needsReview
+        self.keepLocal = keepLocal
+        self.privacyLevel = privacyLevel
+        self.analysisProvider = analysisProvider
+        self.routeReason = routeReason
+        self.needsCloudRetry = needsCloudRetry
         self.id = id
         self.kind = kind
         self.audioPath = audioPath
@@ -52,6 +72,12 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case processingStatus = "processing_status"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case needsReview = "needs_review"
+        case keepLocal = "keep_local"
+        case privacyLevel = "privacy_level"
+        case analysisProvider = "analysis_provider"
+        case routeReason = "route_reason"
+        case needsCloudRetry = "needs_cloud_retry"
     }
 }
 

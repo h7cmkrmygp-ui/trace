@@ -32,3 +32,14 @@ public enum ChangeActor: String, Codable, Sendable { case user, ai, system }
 
 /// État d'une catégorie.
 public enum CategoryStatus: String, Codable, Sendable { case active, archived }
+
+/// Niveau de confidentialité d'une note, décidé **sur l'iPhone** avant tout envoi.
+/// neutre → Gemini ; personnel → Groq ; secret → iPhone seulement. Le doute va toujours vers le niveau le plus protégé.
+public enum PrivacyLevel: String, Codable, Sendable, CaseIterable, Comparable {
+    case neutral, personal, secret
+
+    public static func < (lhs: PrivacyLevel, rhs: PrivacyLevel) -> Bool {
+        let order: [PrivacyLevel] = [.neutral, .personal, .secret]
+        return order.firstIndex(of: lhs)! < order.firstIndex(of: rhs)!
+    }
+}

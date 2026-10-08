@@ -12,8 +12,23 @@ enum Schema {
         migrator.registerMigration("v2_due_dates_calendar") { db in
             try db.execute(sql: v2DueDatesAndCalendar)
         }
+        migrator.registerMigration("v3_review_privacy_routing") { db in
+            try db.execute(sql: v3ReviewPrivacyRouting)
+        }
         return migrator
     }
+
+    /// v3 (P4) : vérification avant classement, « Garder sur l'iPhone », niveau de confidentialité et routage.
+    static let v3ReviewPrivacyRouting = """
+        ALTER TABLE source ADD COLUMN needs_review INTEGER NOT NULL DEFAULT 0 CHECK (needs_review IN (0,1));
+        ALTER TABLE source ADD COLUMN keep_local INTEGER NOT NULL DEFAULT 0 CHECK (keep_local IN (0,1));
+        ALTER TABLE source ADD COLUMN privacy_level TEXT CHECK (privacy_level IN ('neutral','personal','secret'));
+        ALTER TABLE source ADD COLUMN analysis_provider TEXT;
+        ALTER TABLE source ADD COLUMN route_reason TEXT;
+        ALTER TABLE source ADD COLUMN needs_cloud_retry INTEGER NOT NULL DEFAULT 0 CHECK (needs_cloud_retry IN (0,1));
+        CREATE INDEX source_needs_review ON source(needs_review) WHERE needs_review = 1;
+        CREATE INDEX source_needs_cloud_retry ON source(needs_cloud_retry) WHERE needs_cloud_retry = 1;
+        """
 
     /// v2 (P3) : échéances des souvenirs, liens avec les événements du calendrier, index de la corbeille.
     static let v2DueDatesAndCalendar = """

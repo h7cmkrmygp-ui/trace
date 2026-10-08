@@ -30,16 +30,19 @@ extension MemoryStore {
 
     /// Étape 2 : la transcription est jointe à la source (qui passe en attente d'analyse) et au souvenir
     /// provisoire, sauf s'il a été modifié à la main.
+    /// - Parameter needsReview: la note attend « Vérifie ta note » : aucune analyse avant `confirmReview`.
     @discardableResult
-    public func attachTranscript(sourceID: UUID, transcript: String, languages: [String], engine: String?) throws -> Memory? {
+    public func attachTranscript(sourceID: UUID, transcript: String, languages: [String], engine: String?,
+                                 needsReview: Bool = false) throws -> Memory? {
         let now = dates.now()
         return try database.writer.write { db in
-            try attachTranscript(db, sourceID: sourceID, transcript: transcript, languages: languages, engine: engine, now: now)
+            try attachTranscript(db, sourceID: sourceID, transcript: transcript, languages: languages, engine: engine,
+                                 needsReview: needsReview, now: now)
         }
     }
 
     func attachTranscript(_ db: Database, sourceID: UUID, transcript: String, languages: [String],
-                          engine: String?, now: Date) throws -> Memory? {
+                          engine: String?, needsReview: Bool = false, now: Date) throws -> Memory? {
         guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
         // Une transcription tardive (traitement en double) ne rouvre jamais une source déjà transcrite ou classée.
         guard source.processingStatus == .pending else {
@@ -52,6 +55,8 @@ extension MemoryStore {
         source.languages = languages
         source.transcriptionEngine = engine
         source.processingStatus = .waiting
+        // Rien à vérifier quand aucune parole n'a été reconnue.
+        source.needsReview = needsReview && !text.isEmpty
         source.updatedAt = now
         try source.update(db)
 
@@ -81,6 +86,69 @@ extension MemoryStore {
             let recording = try saveVoiceRecording(db, audioPath: audioPath, duration: duration, now: now)
             return try attachTranscript(db, sourceID: recording.sourceID, transcript: transcript,
                                         languages: languages, engine: engine, now: now) ?? recording
+        }
+    }
+
+    // MARK: - « Vérifie ta note »
+
+    /// Notes vocales transcrites qui attendent la vérification du propriétaire (elles survivent à une fermeture de l'app).
+    public func sourcesAwaitingReview() throws -> [Source] {
+        try database.writer.read { db in
+            try Source
+                .filter(Column("needs_review") == true && Column("processing_status") == ProcessingStatus.waiting)
+                .order(Column("captured_at"))
+                .fetchAll(db)
+        }
+    }
+
+    /// Le propriétaire confirme (et corrige peut-être) la transcription. L'original reste intact ; une correction
+    /// est rangée à part et devient le texte à analyser. La note est ensuite libérée pour le classement.
+    @discardableResult
+    public func confirmReview(sourceID: UUID, text: String, keepLocal: Bool) throws -> Memory? {
+        let now = dates.now()
+        return try database.writer.write { db in
+            guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
+            let confirmed = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            guard !confirmed.isEmpty else { throw StoreError.emptyContent }
+            let original = (source.originalText ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            source.correctedText = confirmed == original ? nil : confirmed
+            source.keepLocal = keepLocal
+            source.needsReview = false
+            source.updatedAt = now
+            try source.update(db)
+
+            guard var interim = try Memory
+                .filter(Column("source_id") == sourceID && Column("analysis_version") == Self.interimAnalysisVersion)
+                .fetchOne(db)
+            else { return nil }
+            guard !interim.userEdited, confirmed != interim.content else { return interim }
+            interim.title = TitleMaker.fallbackTitle(from: confirmed)
+            interim.content = confirmed
+            interim.excerpt = confirmed
+            interim.spanStart = 0
+            interim.spanEnd = confirmed.utf16.count
+            interim.spanTextVersion = source.correctedText == nil ? .original : .corrected
+            interim.version += 1
+            interim.updatedAt = now
+            try interim.update(db)
+            try MemoryVersion(memory: interim, changedBy: .user, reason: "transcription vérifiée", at: now).insert(db)
+            return interim
+        }
+    }
+
+    /// « Annuler » sur la carte de vérification : la note part à la corbeille (restaurable) et n'est jamais analysée.
+    public func discardReview(sourceID: UUID) throws {
+        let now = dates.now()
+        try database.writer.write { db in
+            guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
+            source.needsReview = false
+            source.processingStatus = .done
+            source.updatedAt = now
+            try source.update(db)
+            for memory in try Memory.filter(Column("source_id") == sourceID).fetchAll(db)
+            where memory.status == .active || memory.status == .unsorted {
+                _ = try setStatus(db, .trashed, for: memory.id, actor: .user, now: now)
+            }
         }
     }
 
@@ -143,7 +211,9 @@ extension MemoryStore {
     /// Sources prêtes pour l'analyse par l'IA, de la plus ancienne à la plus récente.
     public func sourcesAwaitingAnalysis() throws -> [UUID] {
         try database.writer.read { db in
-            try UUID.fetchAll(db, sql: "SELECT id FROM source WHERE processing_status = 'waiting' ORDER BY captured_at")
+            try UUID.fetchAll(db, sql: """
+                SELECT id FROM source WHERE processing_status = 'waiting' AND needs_review = 0 ORDER BY captured_at
+                """)
         }
     }
 

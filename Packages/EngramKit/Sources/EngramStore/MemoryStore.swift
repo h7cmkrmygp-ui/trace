@@ -124,16 +124,20 @@ public struct MemoryStore: Sendable {
     public func setStatus(_ status: MemoryStatus, for id: UUID, actor: ChangeActor) throws -> Memory {
         let now = dates.now()
         return try database.writer.write { db in
-            guard var memory = try Memory.fetchOne(db, key: id) else { throw StoreError.notFound }
-            guard memory.status != status else { return memory }
-            memory.status = status
-            memory.trashedAt = status == .trashed ? now : nil
-            memory.version += 1
-            memory.updatedAt = now
-            try memory.update(db)
-            try MemoryVersion(memory: memory, changedBy: actor, reason: "statut : \(status.rawValue)", at: now).insert(db)
-            return memory
+            try setStatus(db, status, for: id, actor: actor, now: now)
         }
+    }
+
+    func setStatus(_ db: Database, _ status: MemoryStatus, for id: UUID, actor: ChangeActor, now: Date) throws -> Memory {
+        guard var memory = try Memory.fetchOne(db, key: id) else { throw StoreError.notFound }
+        guard memory.status != status else { return memory }
+        memory.status = status
+        memory.trashedAt = status == .trashed ? now : nil
+        memory.version += 1
+        memory.updatedAt = now
+        try memory.update(db)
+        try MemoryVersion(memory: memory, changedBy: actor, reason: "statut : \(status.rawValue)", at: now).insert(db)
+        return memory
     }
 
     /// Sort un souvenir de la corbeille ou des archives : actif s'il a une catégorie, sinon « À classer ».

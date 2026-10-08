@@ -43,6 +43,8 @@ public actor ThoughtProcessor {
     private func run(sourceID: UUID) async -> ProcessingOutcome {
         do {
             guard let source = try memories.source(id: sourceID) else { return .fallback }
+            // « Vérifie ta note » : rien n'est envoyé à une IA avant la confirmation du propriétaire.
+            guard !source.needsReview else { return .waiting("La note attend ta vérification.") }
             let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else {
                 try filer.markFallback(sourceID: sourceID)
