@@ -40,6 +40,26 @@ extension MemoryStore {
 }
 
 extension MemoryStore {
-    /// Chiffres d'une semaine pour son résumé.
-    public func weekStats(from start: Date, to end: Date) throws -> WeekStats { WeekStats(notes: 0, done: 0, open: 0) }
+    /// Chiffres d'une semaine pour son résumé : notes prises (sans la corbeille ni les dictées à vérifier), tâches et
+    /// rendez-vous marqués faits pendant la semaine, et ceux qui restent à faire.
+    public func weekStats(from start: Date, to end: Date) throws -> WeekStats {
+        try database.writer.read { db in
+            let notReview = "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)"
+            let todo = [MemoryKind.task, MemoryKind.appointment]
+            let notes = try Memory
+                .filter(Column("captured_at") >= start && Column("captured_at") < end)
+                .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                .filter(sql: notReview)
+                .fetchCount(db)
+            let done = try Memory
+                .filter(Column("status") == MemoryStatus.archived && todo.contains(Column("kind")))
+                .filter(Column("updated_at") >= start && Column("updated_at") < end)
+                .fetchCount(db)
+            let open = try Memory
+                .filter([MemoryStatus.active, MemoryStatus.unsorted].contains(Column("status")) && todo.contains(Column("kind")))
+                .filter(sql: notReview)
+                .fetchCount(db)
+            return WeekStats(notes: notes, done: done, open: open)
+        }
+    }
 }

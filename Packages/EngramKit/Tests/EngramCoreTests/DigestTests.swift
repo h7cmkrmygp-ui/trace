@@ -78,6 +78,18 @@ struct DigestTests {
     }
 }
 
+extension DigestTests {
+    /// Le widget reste juste les jours suivants, même si l'app n'a pas été ouverte : il recalcule « aujourd'hui ».
+    @Test func theWidgetStaysRightTheNextDays() {
+        let friday = item("Tailler la haie", due: Self.day(10, 9))
+        let thursday = item("Payer la facture", due: Self.day(10, 8, 15), hasTime: true)
+        let snapshot = WidgetSnapshot.make([friday, thursday], now: Self.now, calendar: Self.calendar)
+        let seenFriday = snapshot.day(at: Self.day(10, 9, 7), calendar: Self.calendar)
+        #expect(seenFriday.today.map(\.title) == ["Tailler la haie"])
+        #expect(seenFriday.lateCount == 1)
+    }
+}
+
 /// Partager vers Engram : l'extension dépose, l'app reprend une seule fois.
 struct SharedInboxTests {
     @Test func sharedItemsAreTakenOnceAndInOrder() throws {

@@ -99,6 +99,9 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
 
     public init() {}
 
+    /// La journée vue à une autre date (le widget, les jours suivants).
+    public func day(at date: Date, calendar: Calendar) -> (today: [Entry], lateCount: Int) { (today, lateCount) }
+
     public static func make(_ items: [ReminderPlanner.Item], now: Date, calendar: Calendar) -> WidgetSnapshot {
         let start = calendar.startOfDay(for: now)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return WidgetSnapshot() }

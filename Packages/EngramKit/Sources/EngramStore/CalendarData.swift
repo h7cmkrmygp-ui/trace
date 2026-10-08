@@ -22,6 +22,10 @@ public struct SettingStore: Sendable {
         case autoStopOnSilence = "recording.autoStopOnSilence"
         /// « 1 » (défaut) : notifications locales pour les tâches et rendez-vous datés.
         case remindersEnabled = "reminders.enabled"
+        /// « 1 » (défaut) : résumé du matin (8 h) des choses du jour et en retard.
+        case digestMorning = "reminders.digestMorning"
+        /// « 1 » (défaut) : résumé de la semaine, le dimanche à 18 h.
+        case digestWeekly = "reminders.digestWeekly"
         /// Stratégie de langue de Whisper : « bilingual » (défaut), « french » ou « automatic ».
         case whisperStrategy = "transcription.whisperStrategy"
         /// « 1 » : les notes de santé restent sur l'iPhone (jamais envoyées à Groq).
