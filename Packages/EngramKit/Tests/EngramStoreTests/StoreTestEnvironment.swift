@@ -9,12 +9,14 @@ struct StoreTestEnvironment {
     let dates: TestDateProvider
     let memories: MemoryStore
     let categories: CategoryStore
+    let filer: ThoughtFiler
 
     init() throws {
         database = try AppDatabase.inMemory()
         dates = TestDateProvider(Fixtures.date)
         memories = MemoryStore(database: database, dates: dates)
         categories = CategoryStore(database: database, dates: dates)
+        filer = ThoughtFiler(database: database, dates: dates)
     }
 
     @discardableResult

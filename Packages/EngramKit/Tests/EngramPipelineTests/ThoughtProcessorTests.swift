@@ -1,0 +1,113 @@
+import EngramCore
+import EngramStore
+import EngramTesting
+import Foundation
+import Testing
+@testable import EngramPipeline
+
+struct ThoughtProcessorTests {
+    struct Env {
+        let memories: MemoryStore
+        let categories: CategoryStore
+        let analyzer: FakeAnalyzer
+        let processor: ThoughtProcessor
+
+        init(_ responses: [Result<ThoughtAnalysis, AnalyzerError>]) throws {
+            let database = try AppDatabase.inMemory()
+            let dates = TestDateProvider(Date(timeIntervalSince1970: 1_800_000_000))
+            memories = MemoryStore(database: database, dates: dates)
+            categories = CategoryStore(database: database, dates: dates)
+            analyzer = FakeAnalyzer(responses)
+            processor = ThoughtProcessor(memories: memories, categories: categories,
+                                         filer: ThoughtFiler(database: database, dates: dates), analyzer: analyzer)
+        }
+
+        func saveNote(_ text: String) throws -> Memory {
+            guard case .saved(let memory) = try memories.saveTextNoteWithoutAnalysis(text) else {
+                throw CancellationError()
+            }
+            return memory
+        }
+    }
+
+    static let lexus = ThoughtAnalysis(thoughts: [
+        AnalyzedThought(title: "Acheter des low beams", summary: nil, excerpt: "acheter des low beams pour ma Lexus",
+                        kind: .task, tags: ["Achat"], mentionedDates: [], category: "Automobile", subcategory: "Lexus"),
+    ])
+    static let text = "Rappeler d'acheter des low beams pour ma Lexus"
+
+    @Test func filesTheThoughtAndSendsTheExistingCategories() async throws {
+        let env = try Env([.success(Self.lexus)])
+        _ = try env.categories.resolvePath(["Travail"], origin: .ai)
+        let interim = try env.saveNote(Self.text)
+        guard case .filed(let summary) = await env.processor.process(sourceID: interim.sourceID) else {
+            Issue.record("classement attendu")
+            return
+        }
+        #expect(summary.categoryPaths == ["Automobile › Lexus"])
+        #expect(env.analyzer.receivedCategories == [["Travail"]])
+        #expect(try env.memories.memory(id: interim.id) == nil)
+    }
+
+    @Test func unavailableModelLeavesTheNoteWaiting() async throws {
+        let env = try Env([.failure(.unavailable("Apple Intelligence désactivé"))])
+        let interim = try env.saveNote(Self.text)
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .waiting("Apple Intelligence désactivé"))
+        #expect(try env.memories.memory(id: interim.id)?.status == .unsorted)
+        #expect(try env.memories.sourcesAwaitingAnalysis() == [interim.sourceID])
+    }
+
+    @Test func invalidOutputTwiceFallsBack() async throws {
+        let env = try Env([.failure(.invalidOutput), .failure(.invalidOutput)])
+        let interim = try env.saveNote(Self.text)
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
+        #expect(env.analyzer.callCount == 2)
+        #expect(try env.memories.memory(id: interim.id)?.status == .unsorted)
+        #expect(try env.memories.sourcesAwaitingAnalysis().isEmpty)
+    }
+
+    @Test func invalidThenValidIsFiled() async throws {
+        let env = try Env([.failure(.invalidOutput), .success(Self.lexus)])
+        let interim = try env.saveNote(Self.text)
+        guard case .filed = await env.processor.process(sourceID: interim.sourceID) else {
+            Issue.record("classement attendu au second essai")
+            return
+        }
+        #expect(env.analyzer.callCount == 2)
+    }
+
+    @Test func anInventedExcerptFallsBackAfterOneRetry() async throws {
+        let invented = ThoughtAnalysis(thoughts: [
+            AnalyzedThought(title: "Pneus", summary: nil, excerpt: "changer les pneus d'hiver", kind: .task, tags: [],
+                            mentionedDates: [], category: "Automobile", subcategory: nil),
+        ])
+        let env = try Env([.success(invented), .success(invented)])
+        let interim = try env.saveNote(Self.text)
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
+        #expect(try env.memories.memory(id: interim.id) != nil)
+    }
+
+    @Test func aRefusalFallsBackWithoutRetrying() async throws {
+        let env = try Env([.failure(.refused)])
+        let interim = try env.saveNote(Self.text)
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
+        #expect(env.analyzer.callCount == 1)
+    }
+
+    @Test func anEmptyTranscriptFallsBackWithoutCallingTheModel() async throws {
+        let env = try Env([.success(Self.lexus)])
+        let memory = try env.memories.saveVoiceNote(audioPath: "audio/z.caf", duration: 2, transcript: "",
+                                                    languages: [], engine: "apple-speech")
+        #expect(await env.processor.process(sourceID: memory.sourceID) == .fallback)
+        #expect(env.analyzer.callCount == 0)
+    }
+
+    @Test func processPendingHandlesEveryWaitingSource() async throws {
+        let env = try Env([.success(Self.lexus)])
+        _ = try env.saveNote(Self.text)
+        _ = try env.saveNote("Rappeler d'acheter des low beams pour ma Lexus demain")
+        let outcomes = await env.processor.processPending()
+        #expect(outcomes.count == 2)
+        #expect(try env.memories.sourcesAwaitingAnalysis().isEmpty)
+    }
+}
