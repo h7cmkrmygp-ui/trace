@@ -134,7 +134,7 @@ struct RecallRankerTests {
     }
 
     @Test func meaningAloneCanFindANoteWithoutCommonWords() {
-        let gearbox = doc("La transmission grince en reculant", daysAgo: 20)
+        let gearbox = doc("La transmission grince en reculant", daysAgo: 6)
         let milk = doc("Acheter du lait", daysAgo: 1)
         let hits = RecallRanker.rank([gearbox, milk], for: parse("Le souci mécanique de l'autre jour"), now: Self.now,
                                      semanticScores: [gearbox.id: 0.82, milk.id: 0.12])
