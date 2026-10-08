@@ -6,6 +6,19 @@ import Testing
 @testable import EngramPipeline
 
 struct ThoughtProcessorTests {
+    /// Une note qui attend la vérification du propriétaire n'est jamais envoyée à l'IA.
+    @Test func aNoteAwaitingReviewIsNotAnalyzed() async throws {
+        let env = try Env([.success(Self.corolla)])
+        let recording = try env.memories.saveVoiceRecording(audioPath: "audio/v.caf", duration: 2)
+        _ = try env.memories.attachTranscript(sourceID: recording.sourceID, transcript: Self.text, languages: [],
+                                              engine: nil, needsReview: true)
+        guard case .waiting = await env.processor.process(sourceID: recording.sourceID) else {
+            Issue.record("la note à vérifier ne doit pas être classée")
+            return
+        }
+        #expect(env.analyzer.callCount == 0)
+    }
+
     struct Env {
         let memories: MemoryStore
         let categories: CategoryStore
