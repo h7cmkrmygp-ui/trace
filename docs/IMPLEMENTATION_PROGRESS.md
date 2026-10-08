@@ -30,4 +30,4 @@ Colonnes : **Dessiné** (l'écran existe) · **Simulé** (fonctionne avec de fau
 | F90 | Suppression contrôlée | ✅ | n/a | ✅ | ✅ | ⏳ | — | archive, corbeille, suppression définitive depuis la corbeille |
 | F94 | Recherche (partiel) | ✅ | n/a | ✅ | ✅ | ⏳ | — | P1 : par mots, insensible aux accents, avec filtres |
 
-Tests automatiques au dernier run : **71** (21 EngramCore + 50 EngramStore).
+Tests automatiques au dernier run : **75** (21 EngramCore + 54 EngramStore).
