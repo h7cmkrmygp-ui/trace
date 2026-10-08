@@ -61,7 +61,25 @@ public struct RecallQuery: Sendable, Equatable {
 
     /// Question de suite (« Et la semaine passée ? », « de ce sujet ») : reprend le sujet et le type de la précédente.
     public static func parse(_ question: String, now: Date, calendar: Calendar, after previous: RecallQuery?) -> RecallQuery {
-        parse(question, now: now, calendar: calendar)
+        var query = parse(question, now: now, calendar: calendar)
+        // Seulement une vraie question de suite, sans sujet à elle : une nouvelle question n'hérite de rien.
+        guard let previous, query.keywords.isEmpty, isFollowUp(question) else { return query }
+        query.keywords = previous.keywords
+        query.spokenKeywords = previous.spokenKeywords
+        if query.kinds.isEmpty { query.kinds = previous.kinds }
+        if query.period == nil {
+            query.period = previous.period
+            query.periodMeansDue = previous.periodMeansDue
+        }
+        if query.intent != .summarize { query.intent = query.keywords.isEmpty ? .list : .find }
+        return query
+    }
+
+    /// « Et la semaine passée ? », « de ce sujet », « et celles du mois dernier ».
+    static func isFollowUp(_ question: String) -> Bool {
+        let text = " " + RecallText.normalize(question) + " "
+        return RecallText.contains(#"^\s*(et|and|puis|pis|aussi)\b"#, in: text)
+            || RecallText.contains(#"\b(ce sujet|meme sujet|meme chose|ca|cela|celles|ceux|celle|celui|lesquelles|lesquels|that|those|it)\b"#, in: text)
     }
 
     /// Recherche « sur le même sujet » qu'un texte (notes liées) : ses mots utiles, sans période ni type.
@@ -355,7 +373,8 @@ enum RecallText {
         "retrouver", "retrouves", "trouve", "trouver", "cherche", "chercher", "montre", "montrer", "donne", "donner", "peux",
         "pouvais", "veux", "voulais", "vouloir", "voudrais", "vais", "allais", "va", "aller", "chose", "choses", "truc",
         "trucs", "affaire", "affaires", "quelque", "quelques", "resume", "resumer", "resumes", "recapitule", "recapituler",
-        "notes", "pensee", "pensees", "memoire", "memoires", "souvenirs",
+        "notes", "pensee", "pensees", "memoire", "memoires", "souvenirs", "celles", "ceux", "celle", "celui", "lesquelles",
+        "lesquels", "meme",
         // Types et projets dans le temps (compris à part)
         "tache", "taches", "idee", "idees", "rendez", "rdv", "decision", "decisions", "rappel", "rappels", "prevu", "prevue",
         "prevus", "prevues", "faire", "dois", "devais", "doit", "devrais", "faut", "fallait", "agenda",

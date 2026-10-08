@@ -186,6 +186,7 @@ struct NotesView: View {
 
 /// Carte-dossier, dans le style de la capture : icône, nom, une ligne de description, chevron.
 struct FolderCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let systemImage: String
     let title: String
     let subtitle: String
@@ -202,7 +203,8 @@ struct FolderCard: View {
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    // Très grand texte (réglages d'accessibilité) : la description s'étend au lieu d'être coupée.
+                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
             }
             Spacer(minLength: 8)
             Image(systemName: "chevron.right")

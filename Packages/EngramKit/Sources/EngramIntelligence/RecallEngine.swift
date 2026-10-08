@@ -51,8 +51,11 @@ public final class RecallEngine: @unchecked Sendable {
         self.neighbors = neighbors
     }
 
-    public func search(_ question: String, in documents: [RecallDocument], now: Date, calendar: Calendar) -> RecallResult {
-        let query = RecallQuery.parse(question, now: now, calendar: calendar)
+    /// - Parameter previous: la question d'avant dans la conversation (« Et la semaine passée ? » reprend son sujet).
+    public func search(_ question: String, in documents: [RecallDocument], now: Date, calendar: Calendar,
+                       after previous: RecallQuery? = nil) -> RecallResult {
+        let own = RecallQuery.parse(question, now: now, calendar: calendar)
+        let query = RecallQuery.parse(question, now: now, calendar: calendar, after: previous)
         guard !query.keywords.isEmpty else {
             return RecallResult(query: query, hits: RecallRanker.rank(documents, for: query, now: now))
         }
@@ -63,7 +66,9 @@ public final class RecallEngine: @unchecked Sendable {
                 if !found.isEmpty { expansions[keyword] = found }
             }
         }
-        let scores = similarities(of: question, to: documents)
+        // Une question de suite (« Et la semaine passée ? ») n'a pas de sens à elle : on compare le sujet repris.
+        let meaning = own.keywords.isEmpty ? query.spokenKeywords.joined(separator: " ") : question
+        let scores = similarities(of: meaning, to: documents)
         return RecallResult(query: query, hits: RecallRanker.rank(documents, for: query, now: now, semanticScores: scores,
                                                                   expansions: expansions))
     }

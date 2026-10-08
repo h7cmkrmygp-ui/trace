@@ -7,6 +7,8 @@ import SwiftUI
 struct RecallReply: Sendable {
     var answer: String?
     let hits: [RecallHit]
+    /// La question telle qu'elle a été comprise (la suivante peut l'affiner).
+    let query: RecallQuery
 }
 
 /// « Retrouver » : on demande à sa mémoire, par écrit ou à voix haute, comme dans une conversation.
@@ -38,12 +40,13 @@ final class RecallModel {
         guard !question.isEmpty, !isBusy else { return }
         draft = ""
         notice = nil
+        let previous = exchanges.last?.reply?.query
         exchanges.append(Exchange(question: question))
         let id = exchanges[exchanges.count - 1].id
         // Les notes d'abord (tout de suite), puis la phrase de réponse.
-        let result = await app.recallSearch(question)
+        let result = await app.recallSearch(question, after: previous)
         guard let index = exchanges.firstIndex(where: { $0.id == id }) else { return }
-        exchanges[index].reply = RecallReply(answer: nil, hits: result.hits)
+        exchanges[index].reply = RecallReply(answer: nil, hits: result.hits, query: result.query)
         let answer = await app.recallAnswer(question, result: result)
         if let index = exchanges.firstIndex(where: { $0.id == id }) { exchanges[index].reply?.answer = answer }
     }

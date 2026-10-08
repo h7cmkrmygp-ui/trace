@@ -365,14 +365,15 @@ final class AppModel {
     }
 
     /// Les notes qui répondent à une question. Rien ne quitte l'iPhone : ni la question ni les notes.
-    func recallSearch(_ question: String) async -> RecallResult {
+    /// - Parameter previous: la question d'avant, pour affiner (« Et la semaine passée ? »).
+    func recallSearch(_ question: String, after previous: RecallQuery? = nil) async -> RecallResult {
         guard let documents = try? memories.recallDocuments() else { return RecallResult(query: RecallQuery(), hits: []) }
         let engine = recall
         let now = Date()
         let calendar = Self.recallCalendar
         // Le calcul du sens peut prendre un moment avec beaucoup de notes : hors du fil de l'interface.
         return await Task.detached(priority: .userInitiated) {
-            engine.search(question, in: documents, now: now, calendar: calendar)
+            engine.search(question, in: documents, now: now, calendar: calendar, after: previous)
         }.value
     }
 
