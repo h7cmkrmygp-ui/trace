@@ -57,3 +57,19 @@ struct LocalClassificationTests {
     }
     #endif
 }
+
+#if canImport(FoundationModels)
+/// Descriptions des anciennes catégories, écrites sur l'iPhone.
+struct CategoryDescriberTests {
+    @Test func thePromptGivesTheNameAndExamples() {
+        let prompt = AppleCategoryDescriber.prompt(name: "Maison", titles: ["Tailler la haie", "Réparer la porte"])
+        #expect(prompt.contains("Maison"))
+        #expect(prompt.contains("Tailler la haie"))
+    }
+
+    @Test func descriptionsAreTrimmedAndShort() {
+        #expect(AppleCategoryDescriber.clean("  « Entretien de la maison »  ") == "Entretien de la maison")
+        #expect(AppleCategoryDescriber.clean(String(repeating: "a", count: 300)).count == AppleCategoryDescriber.maxLength)
+    }
+}
+#endif

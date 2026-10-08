@@ -236,6 +236,41 @@ public struct CategoryStore: Sendable {
         }
     }
 
+    /// Une grande catégorie sans description, avec quelques titres de ses notes.
+    public struct UndescribedCategory: Sendable, Equatable {
+        public let category: EngramCategory
+        public let titles: [String]
+    }
+
+    /// Grandes catégories actives, sans description, qui contiennent au moins une note (catégories créées avant
+    /// les descriptions). Les titres servent à écrire une description **sur l'iPhone**.
+    public func categoriesMissingDescription(limit: Int = 3, sampleTitles: Int = 5) throws -> [UndescribedCategory] {
+        try database.writer.read { db in
+            let roots = try EngramCategory
+                .filter(Column("status") == CategoryStatus.active && Column("parent_id") == nil)
+                .filter(sql: "description IS NULL OR trim(description) = ''")
+                .order(Column("name"))
+                .fetchAll(db)
+            var result: [UndescribedCategory] = []
+            for category in roots where result.count < limit {
+                let titles = try String.fetchAll(db, sql: """
+                    SELECT m.title FROM memory m
+                    JOIN memory_category mc ON mc.memory_id = m.id
+                    JOIN category c ON c.id = mc.category_id
+                    WHERE (c.id = ? OR c.parent_id = ?) AND mc.rejected = 0 AND m.status IN ('active','unsorted')
+                    ORDER BY m.captured_at DESC LIMIT ?
+                    """, arguments: [category.id, category.id, sampleTitles])
+                if !titles.isEmpty { result.append(UndescribedCategory(category: category, titles: titles)) }
+            }
+            return result
+        }
+    }
+
+    public func describeIfMissing(categoryID: UUID, description: String) throws {
+        let now = dates.now()
+        try database.writer.write { db in try describeIfMissing(db, categoryID: categoryID, description: description, now: now) }
+    }
+
     /// Pose la description proposée par l'IA sur une catégorie qui n'en a pas encore (jamais d'écrasement).
     func describeIfMissing(_ db: Database, categoryID: UUID, description: String, now: Date) throws {
         guard var category = try EngramCategory.fetchOne(db, key: categoryID),

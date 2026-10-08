@@ -356,6 +356,17 @@ final class AppModel {
         _ = await processor.processPending()
         await retryCloudClassifications()
         await syncAppointments(askPermission: false)
+        await describeCategoriesIfNeeded()
+    }
+
+    /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).
+    func describeCategoriesIfNeeded() async {
+        guard let missing = try? categories.categoriesMissingDescription(limit: 3, sampleTitles: 5), !missing.isEmpty else { return }
+        let describer = AppleCategoryDescriber()
+        for item in missing {
+            guard let text = try? await describer.describe(name: item.category.name, titles: item.titles), !text.isEmpty else { continue }
+            try? categories.describeIfMissing(categoryID: item.category.id, description: text)
+        }
     }
 
     /// Ajoute au calendrier de l'iPhone les rendez-vous datés pas encore ajoutés, si l'option est active.
