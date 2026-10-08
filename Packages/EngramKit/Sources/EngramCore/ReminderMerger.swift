@@ -48,8 +48,11 @@ public enum ReminderMerger {
         var result = previous
         // Un rappel demandé en fait une chose « À faire » (un rendez-vous reste un rendez-vous).
         if previous.kind != .appointment { result.kind = .task }
+        // La date du rappel donne l'échéance, sauf pour un rendez-vous : sa date à lui va dans le calendrier.
+        let ordered = previous.kind == .appointment ? previous.mentionedDates + reminder.mentionedDates
+                                                     : reminder.mentionedDates + previous.mentionedDates
         var dates: [String] = []
-        for date in reminder.mentionedDates + previous.mentionedDates where !dates.contains(date) { dates.append(date) }
+        for date in ordered where !dates.contains(date) { dates.append(date) }
         result.mentionedDates = dates
         let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
         if let first = text.range(of: previous.excerpt, options: options),

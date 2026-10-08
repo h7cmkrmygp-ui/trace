@@ -22,7 +22,7 @@ struct GeneratedThought {
     var kind: GeneratedKind
     @Guide(description: "Up to 3 short tags in French.", .maximumCount(3))
     var tags: [String]
-    @Guide(description: "Date or time expressions copied from the note, e.g. « demain », « 24 novembre ». Put the reminder date first.")
+    @Guide(description: "Date or time expressions copied from the note, e.g. « demain », « 24 novembre ». Put the reminder date first; for an appointment, put its own date and time first.")
     var mentionedDates: [String]
     @Guide(description: "Broad life domain in French, 1 to 3 words (Santé, Travail, Finance, Maison, Famille, Automobile, Achats, Alimentation, Loisirs, Sport, Voyages, Études, Projets…). Reuse an existing category name exactly when one fits.")
     var category: String
