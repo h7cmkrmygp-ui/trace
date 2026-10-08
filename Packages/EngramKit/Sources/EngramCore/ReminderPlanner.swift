@@ -36,11 +36,17 @@ public enum ReminderPlanner {
     /// Tâches à l'heure dite, rendez-vous 1 h avant ; sans heure, à 9 h le jour même. Seulement les notes encore à
     /// faire et dans le futur ; les plus proches d'abord (iOS garde au plus 64 notifications en attente).
     public static func plan(_ items: [Item], now: Date, calendar: Calendar, limit: Int = 60) -> [PlannedReminder] {
+        plan(items, snoozes: [:], now: now, calendar: calendar, limit: limit)
+    }
+
+    /// - Parameter snoozes: rappels reportés (« Dans 1 h », « Demain ») : le report remplace le moment prévu.
+    public static func plan(_ items: [Item], snoozes: [UUID: Date], now: Date, calendar: Calendar,
+                            limit: Int = 60) -> [PlannedReminder] {
         let planned = items.compactMap { item -> PlannedReminder? in
             guard item.status == .active || item.status == .unsorted, let due = item.dueAt,
                   item.kind == .task || item.kind == .appointment else { return nil }
             let isAppointment = item.kind == .appointment
-            let date: Date
+            var date: Date
             let body: String
             if item.dueHasTime {
                 date = isAppointment ? due.addingTimeInterval(-3_600) : due
@@ -49,6 +55,7 @@ public enum ReminderPlanner {
                 date = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: due) ?? due
                 body = isAppointment ? "Rendez-vous aujourd'hui" : "À faire aujourd'hui"
             }
+            if let snoozed = snoozes[item.id], snoozed > now { date = snoozed }
             guard date > now else { return nil }
             return PlannedReminder(identifier: identifierPrefix + item.id.uuidString, memoryID: item.id, date: date,
                                    title: item.isPrivate ? "Rappel Engram" : item.title,
