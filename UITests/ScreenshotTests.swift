@@ -11,6 +11,20 @@ final class ScreenshotTests: XCTestCase {
 
     @MainActor func testScreensInDarkMode() { captureAll(dark: true) }
 
+    /// Bug signalé : « Ton cerveau est vide » s'affichait par-dessus des points. Mémoire vide : seulement le message.
+    @MainActor func testEmptyMemory() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-engramUITestSeed", "-engramUITestEmpty", "-engramUITestDark",
+                               "-AppleLanguages", "(fr)", "-AppleLocale", "fr_CA"]
+        app.launch()
+        tapTab(app, "Cerveau")
+        XCTAssertTrue(app.staticTexts["Ton cerveau est vide"].waitForExistence(timeout: 5), "Cerveau vide : message absent")
+        snap(app, "17-cerveau-vide-sombre")
+        tapTab(app, "Notes")
+        XCTAssertTrue(app.staticTexts["Aucune note pour l'instant"].waitForExistence(timeout: 5), "Notes vides : message absent")
+        snap(app, "18-notes-vides-sombre")
+    }
+
     @MainActor
     private func captureAll(dark: Bool) {
         let app = XCUIApplication()

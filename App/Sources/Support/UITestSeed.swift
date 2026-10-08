@@ -8,9 +8,12 @@ import Foundation
 enum UITestSeed {
     static let argument = "-engramUITestSeed"
     static let darkArgument = "-engramUITestDark"
+    /// Base vide (écrans « rien pour l'instant », Cerveau vide).
+    static let emptyArgument = "-engramUITestEmpty"
 
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains(argument) }
     static var wantsDarkMode: Bool { ProcessInfo.processInfo.arguments.contains(darkArgument) }
+    static var wantsEmptyMemory: Bool { ProcessInfo.processInfo.arguments.contains(emptyArgument) }
 
     @MainActor
     static func makeModel() throws -> AppModel {
@@ -18,7 +21,7 @@ enum UITestSeed {
             .appendingPathComponent("engram-uitest-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let model = AppModel(database: try AppDatabase.inMemory(), storageDirectory: directory)
-        try seed(model)
+        if !wantsEmptyMemory { try seed(model) }
         return model
     }
 
