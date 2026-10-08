@@ -350,6 +350,7 @@ enum RecallText {
         "retrouver", "retrouves", "trouve", "trouver", "cherche", "chercher", "montre", "montrer", "donne", "donner", "peux",
         "pouvais", "veux", "voulais", "vouloir", "voudrais", "vais", "allais", "va", "aller", "chose", "choses", "truc",
         "trucs", "affaire", "affaires", "quelque", "quelques", "resume", "resumer", "resumes", "recapitule", "recapituler",
+        "notes", "pensee", "pensees", "memoire", "memoires", "souvenirs",
         // Types et projets dans le temps (compris à part)
         "tache", "taches", "idee", "idees", "rendez", "rdv", "decision", "decisions", "rappel", "rappels", "prevu", "prevue",
         "prevus", "prevues", "faire", "dois", "devais", "doit", "devrais", "faut", "fallait", "agenda",
@@ -448,7 +449,8 @@ enum RecallPeriods {
             (#"\b((le )?mois (passe|dernier)|last month)\b"#, { _ in monthInterval(shiftedBy: -1) }),
             (#"\b((le )?mois prochain|next month)\b"#, { _ in monthInterval(shiftedBy: 1) }),
             (#"\b(ce mois ci|ce mois|this month)\b"#, { _ in monthInterval(shiftedBy: 0) }),
-            (#"\b(recemment|dernierement|recently|lately)\b"#, { _ in last(14) }),
+            (#"\b(recemment|dernierement|recents?|recentes?|derniers|dernieres|recently|lately|latest|recent)\b"#,
+             { _ in last(14) }),
         ]
         for (pattern, make) in rules {
             guard let regex = try? Regex(pattern), let match = text.firstMatch(of: regex) else { continue }
