@@ -59,6 +59,11 @@ public struct RecallQuery: Sendable, Equatable {
         return query
     }
 
+    /// Question de suite (« Et la semaine passée ? », « de ce sujet ») : reprend le sujet et le type de la précédente.
+    public static func parse(_ question: String, now: Date, calendar: Calendar, after previous: RecallQuery?) -> RecallQuery {
+        parse(question, now: now, calendar: calendar)
+    }
+
     /// Recherche « sur le même sujet » qu'un texte (notes liées) : ses mots utiles, sans période ni type.
     public static func about(_ text: String) -> RecallQuery {
         var query = RecallQuery()

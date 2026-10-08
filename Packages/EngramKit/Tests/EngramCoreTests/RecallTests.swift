@@ -87,6 +87,28 @@ struct RecallQueryTests {
         #expect(week.kinds.isEmpty)
     }
 
+    /// Affiner : une question de suite reprend le sujet ou le type de la précédente.
+    @Test func aFollowUpQuestionKeepsTheSubject() {
+        let insurance = parse("C'était quoi l'affaire avec l'assurance ?")
+        let lastWeek = RecallQuery.parse("Et la semaine passée ?", now: Self.now, calendar: Self.calendar, after: insurance)
+        #expect(lastWeek.keywords == ["assurance"])
+        #expect(lastWeek.intent == .find)
+        #expect(lastWeek.period == DateInterval(start: Self.day(9, 28), end: Self.day(10, 5)))
+
+        let sameSubject = RecallQuery.parse("Est-ce que j'avais déjà parlé de ce sujet ?", now: Self.now, calendar: Self.calendar,
+                                            after: insurance)
+        #expect(sameSubject.keywords == ["assurance"])
+
+        let ideas = parse("Mes idées récentes")
+        let older = RecallQuery.parse("Et celles du mois passé ?", now: Self.now, calendar: Self.calendar, after: ideas)
+        #expect(older.kinds == [.idea])
+        #expect(older.period == DateInterval(start: Self.day(9, 1), end: Self.day(10, 1)))
+
+        // Une nouvelle question avec son propre sujet ne reprend rien.
+        let fresh = RecallQuery.parse("Le nom du restaurant ?", now: Self.now, calendar: Self.calendar, after: insurance)
+        #expect(fresh.keywords == ["restaurant"])
+    }
+
     @Test func englishQuestionsToo() {
         let query = parse("What did I have to do tomorrow?")
         #expect(query.intent == .list)
