@@ -138,3 +138,22 @@ Workflow « UI screenshots » : l'app tourne sur un iPhone simulé, avec une bas
 Ce n'est **pas** une vérification sur iPhone : la colonne « iPhone » reste ⏳.
 
 Tests automatiques : **273** (Core 68, Store 117, Pipeline 12, Intelligence 57 dont 2 mesures du modèle d'Apple lancées à la main, Capture 19).
+
+## P5 — « Je parle, c'est enregistré ; je demande, ça revient » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-08-engram-p5-retrouver-design.md`
+
+Retour du propriétaire sur l'iPhone (2026-10-08) : la note est bien enregistrée et classée, mais l'app se fermait en touchant le bouton de la carte « Vérifie ta note » ; le chat était introuvable (il n'existait pas dans le code).
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| BUG | Plus de fermeture à « Classer » | ✅ | n/a | ✅ | ✅ (parcours sur simulateur) | ⏳ | — | la carte avait un lien « forcé » vers la dictée : elle relisait une valeur déjà effacée ; feuille avec sa propre copie, boutons au-dessus du clavier |
+| F1 | Enregistrement sans confirmation | ✅ | n/a | ✅ | ✅ | ⏳ | — | « Vérifier avant de classer » désactivé par défaut (option gardée) ; « Enregistré » + retour haptique |
+| F1 | Arrêt automatique quand on se tait | n/a | ✅ | ✅ | ✅ (détecteur) | ⏳ | — | après 1 s de parole et 4 s de silence ; une pause pour réfléchir ne coupe pas ; réglage |
+| F94 | Retrouver (et chat) | ✅ | ✅ | ✅ | ✅ (moteur, parcours) | ⏳ | — | question écrite ou dictée ; période, type, mots, mots proches, sens ; réponse de l'IA d'Apple à partir des seules notes ; tout sur l'iPhone |
+| — | Notes liées | ✅ | ✅ | ✅ | ✅ | ⏳ | — | au plus 3, seulement au-dessus d'un seuil |
+| — | Rappels (notifications) | ✅ | ✅ | ✅ | ✅ (calcul) | ⏳ | — | à l'heure dite, 1 h avant un rendez-vous, 9 h sans heure ; note secrète : « Rappel Engram » seulement |
+| — | Siri, raccourcis, bouton Action | n/a | n/a | ✅ | compile | ⏳ | — | « Enregistrer une pensée », « Noter dans Engram », « Demander à Engram » (iPhone déverrouillé) |
+| — | Détail d'une note | ✅ | n/a | ✅ | compile | ⏳ | — | type et échéance affichés, « Marquer comme fait » |
+
+Tests automatiques : **301** (Core 85, Store 119, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).

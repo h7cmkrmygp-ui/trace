@@ -86,3 +86,31 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 33. **Onglet Cerveau** : les points des catégories et des notes s'affichent. Pince pour zoomer, touche pour ouvrir.
 34. **Recherche dans les Notes** : un mot d'une note la retrouve.
 35. **Réglages › « Exporter toute ma mémoire »** : un fichier ZIP est créé.
+
+## F. P5 — enregistrer sans y penser, retrouver en demandant
+
+36. **Le plantage** : Réglages › Transcription › active « Vérifier avant de classer », puis dicte « Acheter des piles ».
+    - La vérification s'ouvre dans une feuille. Touche le texte : « Classer » reste visible en haut, au-dessus du clavier.
+    - Corrige un mot, touche « Classer » : l'app **ne se ferme plus**, et « Enregistré » apparaît.
+    - « Plus tard » (ou glisser la feuille vers le bas) : la dictée attend dans Notes › À vérifier.
+    - Désactive ensuite l'option : c'est le réglage par défaut.
+37. **Sans confirmation** : touche le micro, dis « Faut que je pense à appeler l'assurance pour une réévaluation », puis tais-toi.
+    - Après environ 4 s de silence, l'enregistrement s'arrête tout seul (vibration).
+    - « Enregistré » et le dossier s'affichent, sans aucun bouton à toucher.
+38. **Une pause pour réfléchir** : dis une phrase, attends 2 s, dis-en une autre. L'enregistrement continue ; il s'arrête après le dernier silence.
+39. **Deux idées d'un coup** : « Demain, il faut que j'appelle mon garagiste, et j'ai aussi eu une idée pour améliorer la page d'accueil de mon app ». Deux notes, dans deux dossiers.
+40. **Retrouver** (loupe en bas à droite) :
+    - « Je me rappelle que j'avais quelque chose à faire cette semaine, mais je ne sais plus quoi » : la note de l'assurance apparaît.
+    - « C'était quoi l'affaire avec l'assurance ? » : même note, avec la date où tu l'as dite.
+    - Touche le micro et pose une question à voix haute : elle s'écrit, puis la réponse arrive.
+    - Une question sur un sujet jamais noté : « Je ne trouve rien là-dessus dans ta mémoire. »
+    - Touche une note trouvée : son détail s'ouvre, avec le texte d'origine.
+41. **Notes liées** : ouvre une note qui parle d'un sujet déjà noté (par exemple deux notes sur le garage) : « Notes liées » les relie.
+42. **Rappels** : dis « Rappelle-moi d'arroser les plantes dans 5 minutes »… ou plus simplement « Appeler la banque aujourd'hui à » + une heure dans 10 minutes.
+    - Engram demande la permission d'envoyer des notifications (une seule fois).
+    - À l'heure dite, la notification arrive ; la toucher ouvre la note.
+    - Marque une autre tâche datée « Fait » : son rappel ne vient pas.
+43. **Siri** : « Dis Siri, note dans Engram » puis « acheter du café » : Siri répond « C'est noté », la note apparaît classée.
+    - « Dis Siri, demande à Engram » puis « qu'est-ce que j'ai à faire aujourd'hui » : Siri répond (iPhone déverrouillé).
+44. **Bouton Action** : Réglages de l'iPhone › Bouton Action › Raccourci › Engram › « Enregistrer une pensée ». Un appui : Engram s'ouvre et enregistre déjà.
+45. **Détail d'une tâche** : le type et l'échéance s'affichent sous le texte ; « … › Marquer comme fait » la range dans les Archives.
