@@ -45,13 +45,14 @@ final class ScreenshotTests: XCTestCase {
             if tap(app.cells.firstMatch) {
                 snap(app, "05-verifie-ta-note-\(mode)")
                 // Confirmer la dictée : elle quitte « À vérifier » et va au classement (sur le simulateur, sans
-                // service en ligne, elle reste sur l'iPhone).
+                // service en ligne, elle reste sur l'iPhone). L'écran se ferme alors tout seul.
                 if tap(app.buttons["Classer"]) {
                     XCTAssertTrue(app.staticTexts["Rien à vérifier"].waitForExistence(timeout: 10),
                                   "La dictée confirmée devrait quitter « À vérifier »")
                     snap(app, "05b-apres-classer-\(mode)")
+                } else {
+                    goBack(app)
                 }
-                goBack(app)
             }
             goBack(app)
         }
@@ -160,9 +161,10 @@ final class ScreenshotTests: XCTestCase {
         if !tap(app.tabBars.buttons[name]) { tap(app.buttons[name]) }
     }
 
+    /// Retour à l'écran précédent, seulement par le vrai bouton « retour » (jamais un autre bouton de la barre).
     @MainActor
     private func goBack(_ app: XCUIApplication) {
-        let back = app.navigationBars.buttons.element(boundBy: 0)
+        let back = app.navigationBars.buttons["BackButton"]
         if back.waitForExistence(timeout: 2), back.isHittable { back.tap() }
     }
 
