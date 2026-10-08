@@ -6,6 +6,26 @@ import Testing
 @testable import EngramPipeline
 
 struct ThoughtProcessorTests {
+    /// Le choix « Garder sur l'iPhone » est transmis à l'analyseur, et l'endroit du classement est enregistré.
+    @Test func theOwnersChoiceReachesTheAnalyzerAndTheRouteIsRecorded() async throws {
+        var routed = Self.corolla
+        routed.route = AnalysisRoute(level: .secret, provider: "apple", reason: "Tu as choisi « Garder sur l'iPhone ».",
+                                     needsCloudRetry: false)
+        let env = try Env([.success(routed)])
+        let recording = try env.memories.saveVoiceRecording(audioPath: "audio/k.caf", duration: 2)
+        _ = try env.memories.attachTranscript(sourceID: recording.sourceID, transcript: Self.text, languages: [],
+                                              engine: nil, needsReview: true)
+        _ = try env.memories.confirmReview(sourceID: recording.sourceID, text: Self.text, keepLocal: true)
+        guard case .filed = await env.processor.process(sourceID: recording.sourceID) else {
+            Issue.record("la note devait être classée")
+            return
+        }
+        #expect(env.analyzer.receivedContexts.first?.keepLocal == true)
+        let source = try #require(try env.memories.source(id: recording.sourceID))
+        #expect(source.analysisProvider == "apple")
+        #expect(source.privacyLevel == .secret)
+    }
+
     /// Une note qui attend la vérification du propriétaire n'est jamais envoyée à l'IA.
     @Test func aNoteAwaitingReviewIsNotAnalyzed() async throws {
         let env = try Env([.success(Self.corolla)])
