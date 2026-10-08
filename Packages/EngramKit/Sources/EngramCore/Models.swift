@@ -27,6 +27,9 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     public var routeReason: String?
     /// Classée sur l'iPhone faute de service en ligne : à reclasser plus tard si personne n'y touche.
     public var needsCloudRetry: Bool
+    /// `correctedText` vient du propriétaire (« Vérifie ta note ») et non d'une retranscription :
+    /// c'est une référence fiable, et aucune retranscription ne l'écrase.
+    public var correctedByOwner: Bool
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
@@ -34,8 +37,10 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         transcriptionEngine: String? = nil, contentHash: String, capturedAt: Date,
         processingStatus: ProcessingStatus = .pending, createdAt: Date, updatedAt: Date,
         needsReview: Bool = false, keepLocal: Bool = false, privacyLevel: PrivacyLevel? = nil,
-        analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false
+        analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false,
+        correctedByOwner: Bool = false
     ) {
+        self.correctedByOwner = correctedByOwner
         self.needsReview = needsReview
         self.keepLocal = keepLocal
         self.privacyLevel = privacyLevel
@@ -78,6 +83,7 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case analysisProvider = "analysis_provider"
         case routeReason = "route_reason"
         case needsCloudRetry = "needs_cloud_retry"
+        case correctedByOwner = "corrected_by_owner"
     }
 }
 

@@ -146,6 +146,13 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         return TranscriptAssembler.assemble(pieces)
     }
 
+    /// Charge le modèle à l'avance. La première fois, iOS l'optimise pour cet iPhone (cela peut prendre
+    /// quelques minutes) et WhisperKit récupère son dictionnaire en ligne : mieux vaut le faire juste après le
+    /// téléchargement que pendant la première dictée.
+    public func prepare() async throws {
+        _ = try await loadedPipeline()
+    }
+
     /// Libère la mémoire du modèle (par exemple avant d'en charger un autre pour le banc d'essai).
     public func unload() async {
         let loaded = lock.withLock { () -> WhisperKit? in

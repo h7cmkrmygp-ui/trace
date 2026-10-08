@@ -27,6 +27,8 @@ final class AppModel {
     var errorMessage: String?
     /// Progression (0 à 1) des modèles Whisper en cours de téléchargement.
     var modelDownloads: [WhisperModel: Double] = [:]
+    /// Modèles en cours de préparation (premier chargement, juste après le téléchargement).
+    var preparingModels: Set<WhisperModel> = []
     /// Dernier repli vers la reconnaissance d'Apple, expliqué dans les Réglages.
     var transcriptionNotice: String?
     /// Quotas gratuits de Gemini et Groq (pauses après « quota atteint », analyses du jour).
@@ -176,6 +178,11 @@ final class AppModel {
                     self.modelDownloads[model] = value
                 }
             }
+            // Premier chargement tout de suite (optimisation pour l'iPhone, dictionnaire en ligne), pas pendant une dictée.
+            preparingModels.insert(model)
+            try? await whisperTranscriber(for: model).prepare()
+            preparingModels.remove(model)
+            if model != whisperModel { await whisperTranscriber(for: model).unload() }
         } catch {
             errorMessage = "Le téléchargement du modèle a échoué. Vérifie ta connexion (Wi-Fi conseillé) et réessaie."
         }
@@ -296,7 +303,9 @@ final class AppModel {
 
     /// Retranscrit avec Whisper toutes les notes vocales qui ne l'ont pas encore été. Renvoie le nombre de notes refaites.
     func retranscribeAll(progress: (Int, Int) -> Void) async -> Int {
-        let pending = ((try? memories.voiceSources()) ?? []).filter { !($0.transcriptionEngine ?? "").hasPrefix("whisperkit") }
+        // Les notes déjà passées par Whisper et celles que le propriétaire a corrigées à la main sont laissées telles quelles.
+        let pending = ((try? memories.voiceSources()) ?? [])
+            .filter { !($0.transcriptionEngine ?? "").hasPrefix("whisperkit") && !$0.correctedByOwner }
         var done = 0
         for (index, source) in pending.enumerated() {
             progress(index, pending.count)

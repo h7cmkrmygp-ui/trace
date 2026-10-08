@@ -78,7 +78,12 @@ struct TranscriptionSettingsSection: View {
                 Text("\(item.approximateSizeMB) Mo").font(.footnote).foregroundStyle(.secondary)
             }
             Spacer()
-            if let progress = model.modelDownloads[item] {
+            if model.preparingModels.contains(item) {
+                HStack(spacing: 6) {
+                    ProgressView()
+                    Text("Préparation…").font(.footnote).foregroundStyle(.secondary)
+                }
+            } else if let progress = model.modelDownloads[item] {
                 ProgressView(value: progress)
                     .frame(width: 90)
                     .accessibilityLabel("Téléchargement \(Int(progress * 100)) %")

@@ -119,6 +119,7 @@ extension MemoryStore {
             guard !confirmed.isEmpty else { throw StoreError.emptyContent }
             let original = (source.originalText ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
             source.correctedText = confirmed == original ? nil : confirmed
+            source.correctedByOwner = source.correctedText != nil
             source.keepLocal = keepLocal
             source.needsReview = false
             source.updatedAt = now
@@ -178,9 +179,12 @@ extension MemoryStore {
         return try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             guard source.kind == .voice else { throw StoreError.invalidOperation("seule une note vocale peut être retranscrite") }
+            // La transcription corrigée à la main est la vérité : elle n'est jamais remplacée.
+            guard !source.correctedByOwner else { throw StoreError.protectedByUser }
             let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { throw StoreError.emptyContent }
             source.correctedText = text
+            source.correctedByOwner = false
             source.languages = languages
             source.transcriptionEngine = engine
             source.processingStatus = .waiting

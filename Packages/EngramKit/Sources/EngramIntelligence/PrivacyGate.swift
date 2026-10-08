@@ -77,6 +77,18 @@ public enum PrivacyGate {
         names.filter { SensitiveDetectors.signals(in: $0, includeNames: false).isEmpty }
     }
 
+    /// Pour Gemini (palier gratuit) : seulement les grandes catégories (« Santé », « Maison »), jamais les
+    /// sous-catégories, qui peuvent porter un nom propre (« Famille › Julie »), ni un nom de personne.
+    public static func neutralCategoryNames(_ names: [String]) -> [String] {
+        var roots: [String] = []
+        for name in shareableCategoryNames(names) {
+            let root = name.components(separatedBy: "›").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !root.isEmpty, !roots.contains(root), !SensitiveDetectors.containsPersonName(root) else { continue }
+            roots.append(root)
+        }
+        return roots
+    }
+
     static func unique(_ reasons: [String]) -> [String] {
         var seen: Set<String> = []
         return reasons.filter { seen.insert($0).inserted }
@@ -175,6 +187,19 @@ public enum SensitiveDetectors {
             }
         }
         return signals
+    }
+
+    /// Vrai si un nom de personne apparaît (pour un nom court comme une catégorie, sans ignorer le premier mot).
+    static func containsPersonName(_ text: String) -> Bool {
+        let tagger = NLTagger(tagSchemes: [.nameType])
+        tagger.string = text
+        var found = false
+        tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .nameType,
+                             options: [.omitPunctuation, .omitWhitespace, .joinNames]) { tag, _ in
+            if tag == .personalName { found = true }
+            return !found
+        }
+        return found
     }
 
     /// Noms de personnes, de lieux et d'organisations. Le premier mot de chaque phrase est ignoré

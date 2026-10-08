@@ -140,8 +140,10 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                 notes.append("\(label) : quota gratuit atteint pour l'instant.")
                 continue
             }
+            // Gemini (palier gratuit) ne voit que les grandes catégories ; Groq peut voir les chemins complets.
+            let categories = provider.name == neutral?.name ? PrivacyGate.neutralCategoryNames(existingCategories) : shareable
             do {
-                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: shareable, context: cloudContext)
+                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: categories, context: cloudContext)
                 quota.recordUse(provider.name)
                 analysis.route = AnalysisRoute(level: decision.level, provider: provider.name,
                                                reason: decision.reasons.joined(separator: " "), needsCloudRetry: false)

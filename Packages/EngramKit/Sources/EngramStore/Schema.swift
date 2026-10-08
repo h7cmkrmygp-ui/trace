@@ -15,8 +15,16 @@ enum Schema {
         migrator.registerMigration("v3_review_privacy_routing") { db in
             try db.execute(sql: v3ReviewPrivacyRouting)
         }
+        migrator.registerMigration("v4_owner_corrections") { db in
+            try db.execute(sql: v4OwnerCorrections)
+        }
         return migrator
     }
+
+    /// v4 (P4) : distinguer une correction du propriétaire d'une retranscription automatique.
+    static let v4OwnerCorrections = """
+        ALTER TABLE source ADD COLUMN corrected_by_owner INTEGER NOT NULL DEFAULT 0 CHECK (corrected_by_owner IN (0,1));
+        """
 
     /// v3 (P4) : vérification avant classement, « Garder sur l'iPhone », niveau de confidentialité et routage.
     static let v3ReviewPrivacyRouting = """

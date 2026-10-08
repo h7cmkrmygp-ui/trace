@@ -8,12 +8,15 @@ struct RecordView: View {
     @State private var model = RecordModel()
     @State private var isTyping = false
     @State private var levels: [Float] = Array(repeating: 0, count: 24)
+    /// Whisper est choisi mais son modèle n'est pas encore sur l'iPhone.
+    @State private var needsWhisperDownload = false
 
     private var isRecording: Bool { model.recorder.state != .idle }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
+                if needsWhisperDownload && !isRecording { whisperBanner }
                 Spacer(minLength: 16)
                 status
                 RecordButton(isRecording: isRecording, level: reduceMotion ? 0 : model.recorder.level) {
@@ -51,7 +54,46 @@ struct RecordView: View {
             .onChange(of: model.recorder.state) { _, state in
                 if state == .finished { Task { await model.finish(app: app) } }
             }
+            .onAppear(perform: refreshWhisperStatus)
+            .onChange(of: app.preparingModels) { _, _ in refreshWhisperStatus() }
         }
+    }
+
+    /// Invitation à télécharger Whisper (en attendant, la reconnaissance d'Apple transcrit).
+    private var whisperBanner: some View {
+        let whisper = app.whisperModel
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Transcription bilingue").font(.subheadline.weight(.semibold))
+            Text("Télécharge Whisper (\(whisper.approximateSizeMB) Mo, une seule fois, Wi-Fi conseillé) pour qu'Engram comprenne ton français québécois et tes mots anglais.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if app.preparingModels.contains(whisper) {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Préparation du modèle… garde l'app ouverte.").font(.footnote)
+                }
+            } else if let progress = app.modelDownloads[whisper] {
+                ProgressView(value: progress) {
+                    Text("Téléchargement \(Int(progress * 100)) %").font(.footnote)
+                }
+            } else {
+                Button("Télécharger Whisper") {
+                    Task {
+                        await app.downloadWhisperModel(whisper)
+                        refreshWhisperStatus()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.top, 8)
+    }
+
+    private func refreshWhisperStatus() {
+        needsWhisperDownload = app.transcriptionEngine == .whisper && !app.whisperModels.isDownloaded(app.whisperModel)
     }
 
     @ViewBuilder private var status: some View {

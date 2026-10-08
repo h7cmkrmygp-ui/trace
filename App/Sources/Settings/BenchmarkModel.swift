@@ -77,8 +77,9 @@ final class BenchmarkModel {
         if let data = try? Data(contentsOf: resultsFile(app)), let decoded = try? JSONDecoder().decode(Saved.self, from: data) {
             saved = decoded
         }
+        // Seules les corrections faites à la main servent de référence (jamais une retranscription automatique).
         notes = ((try? app.memories.voiceSources()) ?? []).compactMap { source in
-            guard let corrected = source.correctedText, let path = source.audioPath,
+            guard source.correctedByOwner, let corrected = source.correctedText, let path = source.audioPath,
                   FileManager.default.fileExists(atPath: AudioFiles.url(forRelativePath: path, in: app.storageDirectory).path)
             else { return nil }
             return Recording(id: "note-\(source.id.uuidString)", sentenceID: nil, sourceID: source.id, relativePath: path,
