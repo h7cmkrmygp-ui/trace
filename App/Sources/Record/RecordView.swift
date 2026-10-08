@@ -76,6 +76,11 @@ struct RecordView: View {
                 #endif
             }
             .onChange(of: app.preparingModels) { _, _ in refreshWhisperStatus() }
+            // Siri ou le bouton Action : l'enregistrement commence dès que l'écran est là.
+            .task(id: app.recordingRequest) {
+                guard app.consumeRecordingRequest(), !isRecording, !model.isBusy else { return }
+                await model.start(app: app)
+            }
         }
     }
 

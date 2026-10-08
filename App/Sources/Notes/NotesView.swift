@@ -86,6 +86,13 @@ struct NotesView: View {
                     model.errorMessage = AppModel.describe(error)
                 }
             }
+            // Toucher sur un rappel : la note s'ouvre (même si l'onglet n'était pas encore affiché).
+            .task(id: model.openMemoryRequest) {
+                guard let id = model.openMemoryRequest else { return }
+                model.openMemoryRequest = nil
+                path = NavigationPath()
+                path.append(id)
+            }
             .task(id: query) {
                 try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled, isSearching else { return }

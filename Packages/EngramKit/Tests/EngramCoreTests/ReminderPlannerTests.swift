@@ -23,7 +23,7 @@ struct ReminderPlannerTests {
         #expect(plan.map(\.date) == [DateResolverTests.day(2026, 10, 9, 13, 0), DateResolverTests.day(2026, 10, 9, 15, 0),
                                      DateResolverTests.day(2026, 10, 10, 9, 0)])
         #expect(plan[0].title == "Dentiste")
-        #expect(plan[0].body == "Rendez-vous à 14:00")
+        #expect(plan[0].body == "Rendez-vous à 14 h")
         #expect(plan[1].body == "À faire maintenant")
         #expect(plan[2].body == "À faire aujourd'hui")
         #expect(plan.map(\.identifier) == [dentist, call, hedge].map { "engram.reminder.\($0.id.uuidString)" })

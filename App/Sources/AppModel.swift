@@ -8,10 +8,27 @@ import Foundation
 import Observation
 import UIKit
 
+/// Onglets de l'app.
+enum AppTab: Hashable {
+    case record, brain, calendar, notes, recall
+}
+
 /// Services partagés par tous les écrans, et dernière erreur à afficher.
 @MainActor
 @Observable
 final class AppModel {
+    /// La même mémoire pour l'app et pour les raccourcis Siri (qui peuvent tourner sans ouvrir l'écran).
+    static let shared: Result<AppModel, any Error> = AppModel.launch()
+
+    /// Onglet affiché.
+    var selectedTab: AppTab = .record
+    /// Augmente à chaque demande d'enregistrement venue de Siri ou du bouton Action.
+    private(set) var recordingRequest = 0
+    @ObservationIgnored private var servedRecordingRequest = 0
+    /// Note à ouvrir (toucher sur un rappel).
+    var openMemoryRequest: UUID?
+    /// Rappels de l'iPhone (notifications locales).
+    let reminders = ReminderScheduler()
     let database: AppDatabase
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
@@ -64,6 +81,79 @@ final class AppModel {
                                     quota: quota)
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: router)
+        reminders.onOpen = { [weak self] id in self?.openMemory(id) }
+    }
+
+    // MARK: - Navigation (Siri, rappels)
+
+    /// Siri ou le bouton Action : l'écran Enregistrer s'ouvre et l'enregistrement commence.
+    func requestRecording() {
+        selectedTab = .record
+        recordingRequest += 1
+    }
+
+    /// Vrai une seule fois par demande : l'écran Enregistrer ne relance jamais une vieille demande.
+    func consumeRecordingRequest() -> Bool {
+        guard recordingRequest > servedRecordingRequest else { return false }
+        servedRecordingRequest = recordingRequest
+        return true
+    }
+
+    func openMemory(_ id: UUID) {
+        selectedTab = .notes
+        openMemoryRequest = id
+    }
+
+    // MARK: - Rappels
+
+    var remindersEnabled: Bool {
+        (try? settings.bool(.remindersEnabled, default: true)) ?? true
+    }
+
+    /// Suit la base : à chaque changement (note datée, « Fait », corbeille, date modifiée), les rappels sont recalculés.
+    func watchReminders() async {
+        do {
+            for try await items in memories.reminderItemsStream() { await syncReminders(items) }
+        } catch {
+            // Les rappels ne doivent jamais bloquer l'app : ils seront recalculés au prochain lancement.
+        }
+    }
+
+    func syncReminders(_ items: [ReminderPlanner.Item]? = nil) async {
+        guard remindersEnabled else {
+            await reminders.removeAll()
+            return
+        }
+        guard await reminders.isAllowed() else { return }
+        let current = items ?? ((try? memories.reminderItems()) ?? [])
+        await reminders.apply(ReminderPlanner.plan(current, now: Date(), calendar: .current), calendar: .current)
+    }
+
+    /// Après une note datée : l'autorisation des rappels est demandée une seule fois, au moment où elle sert.
+    func askForRemindersIfNeeded() async {
+        guard remindersEnabled, await reminders.isUndecided(),
+              let items = try? memories.reminderItems(),
+              !ReminderPlanner.plan(items, now: Date(), calendar: .current).isEmpty else { return }
+        if await reminders.requestPermission() { await syncReminders(items) }
+    }
+
+    /// Pensée dite à Siri : enregistrée tout de suite (rien n'est perdu), classée ensuite. Renvoie la réponse de Siri.
+    func saveThought(_ text: String) -> String {
+        do {
+            switch try memories.saveTextNoteWithoutAnalysis(text) {
+            case .duplicate:
+                return "Cette pensée vient déjà d'être enregistrée."
+            case .saved(let memory):
+                Task {
+                    if case .filed = await processor.process(sourceID: memory.sourceID) {
+                        await syncAppointments(askPermission: false)
+                    }
+                }
+                return "C'est noté."
+            }
+        } catch {
+            return "Je n'ai pas pu l'enregistrer : \(Self.describe(error))"
+        }
     }
 
     // MARK: - Services en ligne
@@ -324,6 +414,7 @@ final class AppModel {
             case .saved(let memory):
                 if case .filed = await processor.process(sourceID: memory.sourceID) {
                     await syncAppointments(askPermission: true)
+                    await askForRemindersIfNeeded()
                 }
             }
         } catch {
@@ -340,7 +431,10 @@ final class AppModel {
             return nil
         }
         let outcome = await processor.process(sourceID: sourceID)
-        if case .filed = outcome { await syncAppointments(askPermission: true) }
+        if case .filed = outcome {
+            await syncAppointments(askPermission: true)
+            await askForRemindersIfNeeded()
+        }
         return outcome
     }
 

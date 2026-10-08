@@ -163,6 +163,7 @@ final class RecordModel {
             items = summary.memories.map { FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id]) }
             phase = .result
             await app.syncAppointments(askPermission: true)
+            await app.askForRemindersIfNeeded()
             for index in items.indices {
                 items[index].addedToCalendar = ((try? app.calendarLinks.link(for: items[index].id)) ?? nil) != nil
             }

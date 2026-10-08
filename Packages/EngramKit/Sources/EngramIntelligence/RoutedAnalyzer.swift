@@ -129,10 +129,10 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         let (neutral, personal) = providers()
         let decision: PrivacyDecision
         if keepEverythingLocal() {
-            decision = PrivacyDecision(level: .secret, reasons: ["Réglage « Tout garder sur l'iPhone » activé."])
+            decision = PrivacyDecision(level: .secret, reasons: [RouteReasons.keepEverythingLocal])
         } else if neutral == nil && personal == nil {
             // Aucun service en ligne : la note reste sur l'iPhone, inutile de faire juger sa confidentialité.
-            decision = PrivacyDecision(level: .secret, reasons: ["Aucun service en ligne configuré."])
+            decision = PrivacyDecision(level: .secret, reasons: [RouteReasons.noCloudService])
         } else {
             decision = await PrivacyGate.evaluate(text, keepLocal: context.keepLocal, healthStaysLocal: healthStaysLocal(),
                                                   judge: judge)

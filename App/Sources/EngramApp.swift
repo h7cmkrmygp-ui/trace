@@ -3,7 +3,8 @@ import SwiftUI
 @main
 @MainActor
 struct EngramApp: App {
-    @State private var launch = AppModel.launch()
+    /// La même mémoire que les raccourcis Siri.
+    private let launch = AppModel.shared
 
     var body: some Scene {
         WindowGroup {

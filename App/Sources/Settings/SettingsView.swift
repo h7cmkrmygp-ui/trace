@@ -2,6 +2,7 @@ import EngramCalendar
 import EngramIntelligence
 import EngramStore
 import SwiftUI
+import UIKit
 
 /// Réglages (ouverts depuis Notes) : calendrier, transcription, intelligence, export.
 struct SettingsView: View {
@@ -12,6 +13,8 @@ struct SettingsView: View {
     @State private var targetCalendar: String?
     @State private var calendars: [CalendarInfo] = []
     @State private var calendarAccess: CalendarAccess = .notDetermined
+    @State private var remindersOn = true
+    @State private var remindersAllowed = true
 
     var body: some View {
         Form {
@@ -41,6 +44,27 @@ struct SettingsView: View {
                 Text("Calendrier")
             } footer: {
                 Text("Les rendez-vous datés que tu dictes y sont ajoutés (1 h si l'heure est connue, durée estimée). Un compte Google ajouté dans Réglages › Calendrier › Comptes apparaît dans la liste.")
+            }
+            Section {
+                Toggle("Me rappeler mes tâches", isOn: $remindersOn)
+                    .tint(.green)
+                    .onChange(of: remindersOn) { _, value in
+                        model.perform { try model.settings.set(value, for: .remindersEnabled) }
+                        Task {
+                            if value, await model.reminders.isUndecided() { _ = await model.reminders.requestPermission() }
+                            await model.syncReminders()
+                            remindersAllowed = await model.reminders.isAllowed()
+                        }
+                    }
+                if remindersOn && !remindersAllowed, let settings = URL(string: UIApplication.openSettingsURLString) {
+                    Link(destination: settings) {
+                        Label("Autoriser les notifications", systemImage: "bell.badge")
+                    }
+                }
+            } header: {
+                Text("Rappels")
+            } footer: {
+                Text("Une notification à l'heure dite (1 h avant un rendez-vous), ou à 9 h le jour même sans heure. Une note gardée sur l'iPhone n'affiche que « Rappel Engram ». « Fait » ou corbeille : le rappel disparaît.")
             }
             TranscriptionSettingsSection()
             IntelligenceSettingsSection()
@@ -73,6 +97,12 @@ struct SettingsView: View {
         }
         .navigationTitle("Réglages")
         .onAppear(perform: loadCalendarSettings)
+        .task {
+            remindersOn = model.remindersEnabled
+            let allowed = await model.reminders.isAllowed()
+            let undecided = await model.reminders.isUndecided()
+            remindersAllowed = allowed || undecided
+        }
     }
 
     private func loadCalendarSettings() {
