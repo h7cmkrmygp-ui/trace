@@ -22,11 +22,11 @@ struct GeneratedThought {
     var kind: GeneratedKind
     @Guide(description: "Up to 3 short tags in French.", .maximumCount(3))
     var tags: [String]
-    @Guide(description: "Date or time expressions copied from the text, e.g. « vendredi », « 29 octobre ».")
+    @Guide(description: "Date or time expressions copied from the text, e.g. « vendredi », « 24 novembre ».")
     var mentionedDates: [String]
     @Guide(description: "Broad life domain in French, 1 to 3 words (Automobile, Finance, Travail, Santé, Maison, Famille, Achats, Voyages, Études, Projets…). Reuse an existing category name exactly when one fits.")
     var category: String
-    @Guide(description: "Optional narrower subcategory in French for a specific named thing (brand, model, project, person, recurring topic), e.g. Lexus. Empty when not useful. Reuse an existing subcategory exactly when one fits.")
+    @Guide(description: "Optional narrower subcategory in French for a specific named thing (brand, model, project, person, recurring topic), e.g. Corolla. Empty when not useful. Reuse an existing subcategory exactly when one fits.")
     var subcategory: String
 }
 

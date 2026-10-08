@@ -31,8 +31,8 @@ struct ReviewFixesCoreTests {
     }
 
     @Test func numericDatesStillWorkWithAContextWord() throws {
-        let resolved = try #require(resolve("le 29/10"))
-        #expect(resolved.date == DateResolverTests.day(2026, 10, 29))
+        let resolved = try #require(resolve("le 24/11"))
+        #expect(resolved.date == DateResolverTests.day(2026, 11, 24))
     }
 
     @Test func dayAndTimeFromSeparateExpressionsAreCombined() {
@@ -45,32 +45,32 @@ struct ReviewFixesCoreTests {
 
     @Test func mentionedDatesMustAppearInTheText() throws {
         let analysis = ThoughtAnalysis(thoughts: [
-            AnalyzedThought(title: "Congé", summary: nil, excerpt: "Demander congé dans deux semaines", kind: .task,
+            AnalyzedThought(title: "Rapport", summary: nil, excerpt: "Remettre le rapport dans deux semaines", kind: .task,
                             tags: [], mentionedDates: ["dans deux semaines", "22/10"], category: "Travail", subcategory: nil),
         ])
-        let valid = try AnalysisValidator.validate(analysis, against: "Demander congé dans deux semaines")
+        let valid = try AnalysisValidator.validate(analysis, against: "Remettre le rapport dans deux semaines")
         #expect(valid[0].mentionedDates == ["dans deux semaines"])
     }
 
     // Important 6 — une catégorie proposée sous forme de chemin est découpée.
 
     @Test(arguments: [
-        ("Automobile › Lexus", nil as String?, ["Automobile", "Lexus"]),
-        ("Automobile > Lexus", nil as String?, ["Automobile", "Lexus"]),
-        ("Automobile", "Automobile › Lexus" as String?, ["Automobile", "Lexus"]),
-        ("Automobile/Lexus", nil as String?, ["Automobile", "Lexus"]),
+        ("Automobile › Corolla", nil as String?, ["Automobile", "Corolla"]),
+        ("Automobile > Corolla", nil as String?, ["Automobile", "Corolla"]),
+        ("Automobile", "Automobile › Corolla" as String?, ["Automobile", "Corolla"]),
+        ("Automobile/Corolla", nil as String?, ["Automobile", "Corolla"]),
     ])
     func categoryPathsAreSplit(category: String, subcategory: String?, expected: [String]) throws {
         let analysis = ThoughtAnalysis(thoughts: [
-            AnalyzedThought(title: "Low beams", summary: nil, excerpt: "low beams", kind: .task, tags: [],
+            AnalyzedThought(title: "Wipers", summary: nil, excerpt: "wipers", kind: .task, tags: [],
                             mentionedDates: [], category: category, subcategory: subcategory),
         ])
-        #expect(try AnalysisValidator.validate(analysis, against: "Acheter des low beams")[0].categoryPath == expected)
+        #expect(try AnalysisValidator.validate(analysis, against: "Acheter des wipers")[0].categoryPath == expected)
     }
 
     @Test func coverageMeasuresTheShareOfWordsTheExcerptsKeep() {
-        let text = "Acheter des low beams pour la Lexus. Penser à rappeler le notaire au sujet de la maison."
-        #expect(AnalysisValidator.coverage(of: ["Acheter des low beams pour la Lexus"], in: text) < 0.6)
+        let text = "Acheter des wipers pour la Corolla. Penser à rappeler le notaire au sujet de la maison."
+        #expect(AnalysisValidator.coverage(of: ["Acheter des wipers pour la Corolla"], in: text) < 0.6)
         #expect(AnalysisValidator.coverage(of: [text], in: text) == 1)
     }
 }

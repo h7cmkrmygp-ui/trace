@@ -1,7 +1,7 @@
 import EngramCore
 import Foundation
 
-/// Chemins de catégories (« Automobile › Lexus »).
+/// Chemins de catégories (« Automobile › Corolla »).
 public enum CategoryPaths {
     public static let separator = " › "
 

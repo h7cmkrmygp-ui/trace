@@ -53,7 +53,7 @@ struct CalendarDataTests {
         let memories = try file(env, [
             valid("Dentiste demain à 14h", kind: .appointment, dates: ["demain à 14h"]),
             valid("Idée de jardin", kind: .idea, path: ["Maison"]),
-            valid("Congé vendredi", kind: .task, dates: ["vendredi"], path: ["Travail"]),
+            valid("Rapport vendredi", kind: .task, dates: ["vendredi"], path: ["Travail"]),
         ])
         #expect(memories[0].dueAt == Self.toronto(2027, 1, 16, 14, 0))
         #expect(memories[0].dueHasTime)
@@ -66,7 +66,7 @@ struct CalendarDataTests {
         let env = try StoreTestEnvironment()
         _ = try file(env, [
             valid("Dentiste demain", kind: .appointment, dates: ["demain"]),
-            valid("Congé le 29 janvier", kind: .task, dates: ["29 janvier"], path: ["Travail"]),
+            valid("Rapport le 29 janvier", kind: .task, dates: ["29 janvier"], path: ["Travail"]),
         ])
         var iterator = env.memories.memoriesStream(dueFrom: Self.toronto(2027, 1, 16), to: Self.toronto(2027, 1, 17)).makeAsyncIterator()
         let due = try #require(try await iterator.next())
@@ -106,17 +106,17 @@ struct CalendarDataTests {
     @Test func brainSnapshotUsesTheMostPreciseCategory() async throws {
         let env = try StoreTestEnvironment()
         let memories = try file(env, [
-            valid("Low beams", kind: .task, path: ["Automobile", "Lexus"]),
+            valid("Wipers", kind: .task, path: ["Automobile", "Corolla"]),
             valid("Pensée floue", kind: .idea, path: []),
         ])
         let trashed = try env.saveNote("À jeter")
         _ = try env.memories.setStatus(.trashed, for: trashed.id, actor: .user)
         var iterator = env.categories.brainSnapshotStream().makeAsyncIterator()
         let snapshot = try #require(try await iterator.next())
-        #expect(Set(snapshot.categories.map(\.name)) == ["Automobile", "Lexus"])
-        let lexus = try #require(snapshot.categories.first { $0.name == "Lexus" })
+        #expect(Set(snapshot.categories.map(\.name)) == ["Automobile", "Corolla"])
+        let corolla = try #require(snapshot.categories.first { $0.name == "Corolla" })
         let byID = Dictionary(uniqueKeysWithValues: snapshot.items.map { ($0.id, $0) })
-        #expect(byID[memories[0].id]?.categoryID == lexus.id)
+        #expect(byID[memories[0].id]?.categoryID == corolla.id)
         #expect(byID[memories[1].id]?.categoryID == nil)
         #expect(byID[trashed.id] == nil)
     }

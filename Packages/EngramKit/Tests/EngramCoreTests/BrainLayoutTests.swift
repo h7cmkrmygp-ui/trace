@@ -5,8 +5,8 @@ import Testing
 struct BrainLayoutTests {
     let automobile = BrainLayout.CategoryInput(id: UUID(), name: "Automobile", parentID: nil)
     let finance = BrainLayout.CategoryInput(id: UUID(), name: "Finance", parentID: nil)
-    var lexus: BrainLayout.CategoryInput { BrainLayout.CategoryInput(id: lexusID, name: "Lexus", parentID: automobile.id) }
-    let lexusID = UUID()
+    var corolla: BrainLayout.CategoryInput { BrainLayout.CategoryInput(id: corollaID, name: "Corolla", parentID: automobile.id) }
+    let corollaID = UUID()
 
     func items(_ count: Int, in categoryID: UUID?) -> [BrainLayout.ItemInput] {
         (0..<count).map { BrainLayout.ItemInput(id: UUID(), title: "Pensée \($0)", categoryID: categoryID) }
@@ -22,8 +22,8 @@ struct BrainLayoutTests {
     }
 
     @Test func placesEveryCategoryAndThoughtDeterministically() {
-        let categories = [automobile, finance, lexus]
-        let thoughts = items(12, in: lexusID) + items(5, in: finance.id) + items(3, in: nil)
+        let categories = [automobile, finance, corolla]
+        let thoughts = items(12, in: corollaID) + items(5, in: finance.id) + items(3, in: nil)
         let first = BrainLayout.layout(categories: categories, items: thoughts, size: 800)
         let second = BrainLayout.layout(categories: categories, items: thoughts, size: 800)
         #expect(first == second)

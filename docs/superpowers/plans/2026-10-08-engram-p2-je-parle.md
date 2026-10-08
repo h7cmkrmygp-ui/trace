@@ -133,7 +133,7 @@
 - Récupérer le `.ipa` et donner au propriétaire la liste de contrôle :
   - parler une pensée ;
   - parler plusieurs pensées ;
-  - les exemples Lexus, portefeuille et congé ;
+  - les exemples Corolla, placements et rapport ;
   - correction d'une catégorie ;
   - mode avion ;
   - interruption ;

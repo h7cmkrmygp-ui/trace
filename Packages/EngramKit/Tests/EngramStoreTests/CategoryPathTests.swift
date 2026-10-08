@@ -6,11 +6,11 @@ import Testing
 struct CategoryPathTests {
     @Test func createsBothLevels() throws {
         let env = try StoreTestEnvironment()
-        let lexus = try env.categories.resolvePath(["Automobile", "Lexus"], origin: .ai)
-        #expect(lexus.name == "Lexus")
+        let corolla = try env.categories.resolvePath(["Automobile", "Corolla"], origin: .ai)
+        #expect(corolla.name == "Corolla")
         let parent = try #require(try env.categories.activeCategories().first { $0.name == "Automobile" })
-        #expect(lexus.parentID == parent.id)
-        #expect(lexus.origin == .ai)
+        #expect(corolla.parentID == parent.id)
+        #expect(corolla.origin == .ai)
     }
 
     @Test(arguments: ["automobile", "Automobiles", "AUTOMOBILE", "  Automobile "])
@@ -36,9 +36,9 @@ struct CategoryPathTests {
     @Test func listsSortedFormattedPaths() throws {
         let env = try StoreTestEnvironment()
         _ = try env.categories.resolvePath(["Travail"], origin: .ai)
-        _ = try env.categories.resolvePath(["Automobile", "Lexus"], origin: .ai)
+        _ = try env.categories.resolvePath(["Automobile", "Corolla"], origin: .ai)
         _ = try env.categories.resolvePath(["Finance"], origin: .ai)
-        #expect(try env.categories.categoryPaths() == ["Automobile", "Automobile › Lexus", "Finance", "Travail"])
+        #expect(try env.categories.categoryPaths() == ["Automobile", "Automobile › Corolla", "Finance", "Travail"])
     }
 
     @Test func archivesOnlyUnusedSeeds() throws {

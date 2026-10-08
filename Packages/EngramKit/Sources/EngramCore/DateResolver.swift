@@ -83,7 +83,7 @@ public enum DateResolver {
         months.first { $0.name == name }?.number
     }
 
-    /// « 29 octobre », « 1er mars 2027 », « 29 oct. », « October 29 », « oct 29, 2027 ».
+    /// « 24 novembre », « 1er mars 2027 », « 24 nov. », « November 24 », « nov 24, 2027 ».
     static func explicitDayMonth(_ text: String, today: Date, calendar: Calendar) -> Date? {
         if let groups = match(#"\b(\d{1,2})(?:er)?\s+("# + monthAlternation + #")\.?(?:\s+(\d{4}))?\b"#, in: text),
            let day = groups[1].flatMap(Int.init), let month = groups[2].flatMap(monthNumber) {
@@ -96,7 +96,7 @@ public enum DateResolver {
         return nil
     }
 
-    /// « le 29/10 », « avant le 29/10 », « 29/10/2027 » (jour/mois). Sans mot de contexte ni année, « 24/7 » ou
+    /// « le 24/11 », « avant le 24/11 », « 24/11/2027 » (jour/mois). Sans mot de contexte ni année, « 24/7 » ou
     /// « 1/2 litre » ne sont pas des dates.
     static func numericDate(_ text: String, today: Date, calendar: Calendar) -> Date? {
         let groups = match(#"\b(?:le|du|au|pour|avant|apres|on|by|before|until)\s+(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b"#, in: text)
@@ -107,7 +107,7 @@ public enum DateResolver {
         return makeDate(year: year, month: month, day: day, today: today, calendar: calendar)
     }
 
-    /// « le 29 » : ce mois-ci si le jour n'est pas passé, sinon le mois suivant.
+    /// « le 24 » : ce mois-ci si le jour n'est pas passé, sinon le mois suivant.
     static func dayOfMonth(_ text: String, today: Date, calendar: Calendar) -> Date? {
         guard let groups = match(#"\ble\s+(\d{1,2})(?:er)?\b(?!\s*(?:h\b|h\d|:|heure))"#, in: text),
               let day = groups[1].flatMap(Int.init), (1...31).contains(day) else { return nil }

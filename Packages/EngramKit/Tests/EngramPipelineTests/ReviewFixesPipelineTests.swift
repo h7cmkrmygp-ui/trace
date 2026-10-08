@@ -7,10 +7,10 @@ import Testing
 
 /// Corrections issues de la relecture finale P2 + P3 (orchestration).
 struct ReviewFixesPipelineTests {
-    static let text = "Rappeler d'acheter des low beams pour ma Lexus"
+    static let text = "Rappeler d'acheter des wipers pour ma Corolla"
     static let analysis = ThoughtAnalysis(thoughts: [
-        AnalyzedThought(title: "Low beams", summary: nil, excerpt: "acheter des low beams pour ma Lexus", kind: .task,
-                        tags: [], mentionedDates: [], category: "Automobile", subcategory: "Lexus"),
+        AnalyzedThought(title: "Wipers", summary: nil, excerpt: "acheter des wipers pour ma Corolla", kind: .task,
+                        tags: [], mentionedDates: [], category: "Automobile", subcategory: "Corolla"),
     ])
 
     func make(_ responses: [Result<ThoughtAnalysis, AnalyzerError>]) throws -> (MemoryStore, FakeAnalyzer, ThoughtProcessor) {

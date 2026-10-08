@@ -11,18 +11,18 @@ struct ThoughtFilerTests {
 
     @Test func replacesTheInterimMemoryWithAnalysedThoughts() throws {
         let env = try StoreTestEnvironment()
-        let interim = try env.saveNote("Low beams pour la Lexus. Appeler mon gestionnaire de portefeuille.")
+        let interim = try env.saveNote("Wipers pour la Corolla. Appeler mon gestionnaire de placements.")
         let summary = try env.filer.file([
-            valid("Acheter des low beams", excerpt: "Low beams pour la Lexus", path: ["Automobile", "Lexus"], tags: ["Achat"]),
-            valid("Appeler le gestionnaire", excerpt: "Appeler mon gestionnaire de portefeuille", path: ["Finance"]),
+            valid("Acheter des wipers", excerpt: "Wipers pour la Corolla", path: ["Automobile", "Corolla"], tags: ["Achat"]),
+            valid("Appeler le gestionnaire", excerpt: "Appeler mon gestionnaire de placements", path: ["Finance"]),
         ], sourceID: interim.sourceID)
         #expect(summary.memories.count == 2)
-        #expect(summary.categoryPaths == ["Automobile › Lexus", "Finance"])
+        #expect(summary.categoryPaths == ["Automobile › Corolla", "Finance"])
         #expect(try env.memories.memory(id: interim.id) == nil)
         let first = summary.memories[0]
         #expect(first.status == .active)
         #expect(first.analysisVersion == ThoughtFiler.analysisVersion)
-        #expect(try env.categories.categories(for: first.id).map(\.name) == ["Lexus"])
+        #expect(try env.categories.categories(for: first.id).map(\.name) == ["Corolla"])
         #expect(try env.categories.tags(for: first.id).map(\.name) == ["Achat"])
         #expect(try env.memories.source(id: interim.sourceID)?.processingStatus == .done)
     }

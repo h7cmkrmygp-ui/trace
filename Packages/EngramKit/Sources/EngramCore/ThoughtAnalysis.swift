@@ -11,7 +11,7 @@ public struct AnalyzedThought: Sendable, Hashable {
     public var mentionedDates: [String]
     /// Domaine large, en français (« Automobile »).
     public var category: String
-    /// Sous-catégorie facultative (« Lexus »).
+    /// Sous-catégorie facultative (« Corolla »).
     public var subcategory: String?
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],

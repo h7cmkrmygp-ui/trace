@@ -30,21 +30,21 @@ struct ThoughtProcessorTests {
         }
     }
 
-    static let lexus = ThoughtAnalysis(thoughts: [
-        AnalyzedThought(title: "Acheter des low beams", summary: nil, excerpt: "acheter des low beams pour ma Lexus",
-                        kind: .task, tags: ["Achat"], mentionedDates: [], category: "Automobile", subcategory: "Lexus"),
+    static let corolla = ThoughtAnalysis(thoughts: [
+        AnalyzedThought(title: "Acheter des wipers", summary: nil, excerpt: "acheter des wipers pour ma Corolla",
+                        kind: .task, tags: ["Achat"], mentionedDates: [], category: "Automobile", subcategory: "Corolla"),
     ])
-    static let text = "Rappeler d'acheter des low beams pour ma Lexus"
+    static let text = "Rappeler d'acheter des wipers pour ma Corolla"
 
     @Test func filesTheThoughtAndSendsTheExistingCategories() async throws {
-        let env = try Env([.success(Self.lexus)])
+        let env = try Env([.success(Self.corolla)])
         _ = try env.categories.resolvePath(["Travail"], origin: .ai)
         let interim = try env.saveNote(Self.text)
         guard case .filed(let summary) = await env.processor.process(sourceID: interim.sourceID) else {
             Issue.record("classement attendu")
             return
         }
-        #expect(summary.categoryPaths == ["Automobile › Lexus"])
+        #expect(summary.categoryPaths == ["Automobile › Corolla"])
         #expect(env.analyzer.receivedCategories == [["Travail"]])
         #expect(try env.memories.memory(id: interim.id) == nil)
     }
@@ -67,7 +67,7 @@ struct ThoughtProcessorTests {
     }
 
     @Test func invalidThenValidIsFiled() async throws {
-        let env = try Env([.failure(.invalidOutput), .success(Self.lexus)])
+        let env = try Env([.failure(.invalidOutput), .success(Self.corolla)])
         let interim = try env.saveNote(Self.text)
         guard case .filed = await env.processor.process(sourceID: interim.sourceID) else {
             Issue.record("classement attendu au second essai")
@@ -95,7 +95,7 @@ struct ThoughtProcessorTests {
     }
 
     @Test func anEmptyTranscriptFallsBackWithoutCallingTheModel() async throws {
-        let env = try Env([.success(Self.lexus)])
+        let env = try Env([.success(Self.corolla)])
         let memory = try env.memories.saveVoiceNote(audioPath: "audio/z.caf", duration: 2, transcript: "",
                                                     languages: [], engine: "apple-speech")
         #expect(await env.processor.process(sourceID: memory.sourceID) == .fallback)
@@ -103,9 +103,9 @@ struct ThoughtProcessorTests {
     }
 
     @Test func processPendingHandlesEveryWaitingSource() async throws {
-        let env = try Env([.success(Self.lexus)])
+        let env = try Env([.success(Self.corolla)])
         _ = try env.saveNote(Self.text)
-        _ = try env.saveNote("Rappeler d'acheter des low beams pour ma Lexus demain")
+        _ = try env.saveNote("Rappeler d'acheter des wipers pour ma Corolla demain")
         let outcomes = await env.processor.processPending()
         #expect(outcomes.count == 2)
         #expect(try env.memories.sourcesAwaitingAnalysis().isEmpty)

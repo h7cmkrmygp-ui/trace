@@ -224,7 +224,7 @@ public struct CategoryStore: Sendable {
 
     // MARK: - Chemins de catégories (créés par l'IA)
 
-    /// Trouve ou crée chaque niveau du chemin (« Automobile », « Lexus ») et renvoie le plus précis.
+    /// Trouve ou crée chaque niveau du chemin (« Automobile », « Corolla ») et renvoie le plus précis.
     /// Chaque niveau est comparé aux catégories actives de même parent, accents, casse et pluriel ignorés.
     public func resolvePath(_ names: [String], origin: Origin) throws -> EngramCategory {
         let now = dates.now()
@@ -248,7 +248,7 @@ public struct CategoryStore: Sendable {
         return chain
     }
 
-    /// Tous les chemins actifs, triés : « Automobile », « Automobile › Lexus », « Finance »…
+    /// Tous les chemins actifs, triés : « Automobile », « Automobile › Corolla », « Finance »…
     public func categoryPaths() throws -> [String] {
         try database.writer.read { db in try Self.categoryPaths(db) }
     }

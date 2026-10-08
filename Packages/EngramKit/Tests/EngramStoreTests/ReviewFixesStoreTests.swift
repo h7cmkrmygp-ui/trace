@@ -69,9 +69,9 @@ struct ReviewFixesStoreTests {
 
     @Test func aPartialAnalysisKeepsTheFullTextInUnsorted() throws {
         let env = try StoreTestEnvironment()
-        let text = "Acheter des low beams pour la Lexus. Penser à rappeler le notaire au sujet de la maison."
+        let text = "Acheter des wipers pour la Corolla. Penser à rappeler le notaire au sujet de la maison."
         let interim = try env.saveNote(text)
-        _ = try env.filer.file([valid("Low beams", excerpt: "Acheter des low beams pour la Lexus")],
+        _ = try env.filer.file([valid("Wipers", excerpt: "Acheter des wipers pour la Corolla")],
                                sourceID: interim.sourceID, keepInterimIfUncovered: true)
         let kept = try #require(try env.memories.memory(id: interim.id))
         #expect(kept.status == .unsorted)
@@ -81,8 +81,8 @@ struct ReviewFixesStoreTests {
 
     @Test func aCompleteAnalysisStillReplacesTheInterim() throws {
         let env = try StoreTestEnvironment()
-        let interim = try env.saveNote("Acheter des low beams pour la Lexus")
-        _ = try env.filer.file([valid("Low beams", excerpt: "Acheter des low beams pour la Lexus")],
+        let interim = try env.saveNote("Acheter des wipers pour la Corolla")
+        _ = try env.filer.file([valid("Wipers", excerpt: "Acheter des wipers pour la Corolla")],
                                sourceID: interim.sourceID, keepInterimIfUncovered: true)
         #expect(try env.memories.memory(id: interim.id) == nil)
     }

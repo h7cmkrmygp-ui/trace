@@ -9,10 +9,10 @@
 ### 1.1 Ce que le propriétaire a demandé
 - Une app **ultra minimaliste**, dans l'esprit des captures de l'app de référence : fond clair, noir et gris, un grand bouton central « toucher pour parler », un écran Cerveau, Aujourd'hui et Calendrier plus tard. On reprend la mise en page et le minimalisme, avec **nos propres visuels** : pas de logo ni d'écran copié.
 - **Aucune catégorie de départ.** L'IA crée les catégories **dès la première pensée** sur un sujet, et en crée beaucoup au fil du temps.
-  - « Rappeler d'acheter des low beams pour ma Lexus » → *Automobile*
-  - « Appeler mon gestionnaire de portefeuille » → *Finance*
-  - « Demander congé le 29 octobre » → *Travail*
-- **Catégories et sous-catégories** créées seules quand c'est utile (choix B), par exemple *Automobile › Lexus* ou *Travail › Congés*.
+  - « Rappeler d'acheter des wipers pour ma Corolla » → *Automobile*
+  - « Appeler mon gestionnaire de placements » → *Finance*
+  - « Envoyer le rapport trimestriel le 24 novembre » → *Travail*
+- **Catégories et sous-catégories** créées seules quand c'est utile (choix B), par exemple *Automobile › Corolla* ou *Travail › Réunions*.
 - **Plus tard :** un calendrier pour les dates, relié à Google Agenda. Prévu en P3, par le Calendrier de l'iPhone (EventKit). Un compte Google ajouté dans les Réglages d'iOS suffit, sans API Google.
 
 ### 1.2 Contraintes confirmées
@@ -114,7 +114,7 @@ Nouveaux modules du paquet `EngramKit` :
 ## 8. Résolution des catégories
 - Chaque niveau est cherché parmi les catégories **actives** de même parent, par `normalized_name`. Si rien ne correspond, il est créé (origine `ai`). Le nom affiché est celui de la première création.
 - Le lien est posé sur la catégorie la plus précise (sous-catégorie si elle existe), avec `origin = ai`. Un lien que le propriétaire a rejeté n'est jamais recréé.
-- La liste envoyée à l'IA contient tous les chemins actifs, triés : « Automobile », « Automobile › Lexus », « Travail »…
+- La liste envoyée à l'IA contient tous les chemins actifs, triés : « Automobile », « Automobile › Corolla », « Travail »…
 
 ## 9. Interface
 - **Style.** Fond système, texte primaire et secondaire, SF Symbols en graisse légère. Couleur d'accent `.primary` (noir ou blanc selon le mode) ; seul le rouge signale l'enregistrement en cours.

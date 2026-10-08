@@ -29,11 +29,11 @@ struct DateResolverTests {
         ("jeudi", day(2026, 10, 15)),
         ("lundi", day(2026, 10, 12)),
         ("Monday", day(2026, 10, 12)),
-        ("29 octobre", day(2026, 10, 29)),
-        ("le 29", day(2026, 10, 29)),
+        ("24 novembre", day(2026, 11, 24)),
+        ("le 24", day(2026, 10, 24)),
         ("le 3", day(2026, 11, 3)),
-        ("29 oct.", day(2026, 10, 29)),
-        ("October 29", day(2026, 10, 29)),
+        ("24 nov.", day(2026, 11, 24)),
+        ("November 24", day(2026, 11, 24)),
         ("3 janvier", day(2027, 1, 3)),
         ("1er mars", day(2027, 3, 1)),
         ("15 mars 2027", day(2027, 3, 15)),
@@ -56,7 +56,7 @@ struct DateResolverTests {
         ("2 pm", day(2026, 10, 8, 14, 0)),
         ("midi", day(2026, 10, 8, 12, 0)),
         ("demain midi", day(2026, 10, 9, 12, 0)),
-        ("29 octobre à 14 h", day(2026, 10, 29, 14, 0)),
+        ("24 novembre à 14 h", day(2026, 11, 24, 14, 0)),
         ("tomorrow at 9:15 am", day(2026, 10, 9, 9, 15)),
     ])
     func resolvesTimes(expression: String, expected: Date) throws {
@@ -65,7 +65,7 @@ struct DateResolverTests {
         #expect(resolved.hasTime)
     }
 
-    @Test(arguments: ["bientôt", "la semaine prochaine", "un jour", "", "Lexus 2020", "32 octobre", "25h"])
+    @Test(arguments: ["bientôt", "la semaine prochaine", "un jour", "", "Corolla 2020", "32 octobre", "25h"])
     func vagueOrInvalidExpressionsGiveNoDate(expression: String) {
         #expect(resolve(expression) == nil)
     }

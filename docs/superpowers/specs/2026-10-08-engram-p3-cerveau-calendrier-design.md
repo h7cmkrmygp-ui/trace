@@ -6,7 +6,7 @@
 
 ## 1. Intention
 - **Cerveau.** Un écran qui montre la mémoire comme un nuage de points : les catégories, et autour d'elles leurs pensées. Toucher un point l'ouvre. Une recherche met en évidence les points correspondants.
-- **Calendrier.** Quand une pensée contient une date (« dentiste vendredi à 14 h », « congé le 29 octobre »), elle reçoit une **échéance** et apparaît dans le Calendrier d'Engram.
+- **Calendrier.** Quand une pensée contient une date (« dentiste vendredi à 14 h », « rapport le 24 novembre »), elle reçoit une **échéance** et apparaît dans le Calendrier d'Engram.
   - Les **rendez-vous** datés sont **ajoutés automatiquement** au calendrier de l'iPhone choisi par le propriétaire. Un compte Google ajouté dans iOS est un calendrier comme les autres.
   - L'option se désactive dans les Réglages.
 - **Aujourd'hui.** Le Calendrier s'ouvre sur le jour courant : les échéances d'Engram et les événements du calendrier de l'iPhone.
@@ -16,7 +16,7 @@
 - **Formes reconnues** (français et anglais) :
   - aujourd'hui / today, demain / tomorrow, après-demain ;
   - jours de la semaine : prochaine occurrence, 1 à 7 jours après la capture ;
-  - « le 29 », « 29 octobre », « 29 oct. », « October 29 », « 29/10 », avec année facultative (une date déjà passée cette année va à l'année suivante) ;
+  - « le 24 », « 24 novembre », « 24 nov. », « November 24 », « 24/11 », avec année facultative (une date déjà passée cette année va à l'année suivante) ;
   - « dans 3 jours » / « in 3 days », « dans 2 semaines » ;
   - heures : « 14 h », « 14h30 », « 14:30 », « à 9 h », « 2 pm », « midi », « minuit ».
 

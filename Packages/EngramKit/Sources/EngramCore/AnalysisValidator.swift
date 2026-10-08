@@ -50,7 +50,7 @@ public enum AnalysisValidator {
                 .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) })
     }
 
-    /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Lexus » dans un seul champ :
+    /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Corolla » dans un seul champ :
     /// on découpe sur « › », « > » et « / », et on retire un parent répété dans la sous-catégorie.
     static func categoryPath(category: String, subcategory: String?) -> [String] {
         func parts(_ raw: String?) -> [String] {

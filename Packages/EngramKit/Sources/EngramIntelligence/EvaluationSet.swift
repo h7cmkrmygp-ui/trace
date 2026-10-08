@@ -32,9 +32,9 @@ public enum EvaluationSet {
     static let projects = ["Projets", "Idées", "Technologie", "Développement", "Application"]
 
     public static let cases: [EvaluationCase] = [
-        EvaluationCase(sentence: "Rappeler d'acheter des low beams pour la Lexus", acceptedRoots: auto),
-        EvaluationCase(sentence: "Appeler mon gestionnaire de portefeuille", acceptedRoots: finance),
-        EvaluationCase(sentence: "Demander congé le 29 octobre", acceptedRoots: work + ["Congés"]),
+        EvaluationCase(sentence: "Rappeler d'acheter des wipers pour la Corolla", acceptedRoots: auto),
+        EvaluationCase(sentence: "Appeler mon gestionnaire de placements", acceptedRoots: finance),
+        EvaluationCase(sentence: "Envoyer le rapport trimestriel le 24 novembre", acceptedRoots: work),
         EvaluationCase(sentence: "Prendre rendez-vous chez le dentiste", acceptedRoots: health),
         EvaluationCase(sentence: "Faire le changement d'huile de la Civic la semaine prochaine", acceptedRoots: auto),
         EvaluationCase(sentence: "Payer la facture d'électricité avant le 15", acceptedRoots: finance + home + ["Factures"]),
@@ -63,7 +63,7 @@ public enum EvaluationSet {
         EvaluationCase(sentence: "Inscrire les enfants au camp de jour", acceptedRoots: family + ["Enfants"]),
         EvaluationCase(sentence: "Faire ma déclaration d'impôts avant avril", acceptedRoots: finance + ["Impôts", "Administratif", "Administration"]),
         EvaluationCase(sentence: "Apprendre les bases de SwiftUI ce mois-ci", acceptedRoots: studies + projects + ["Programmation"]),
-        EvaluationCase(sentence: "Prendre rendez-vous pour l'inspection de la Lexus", acceptedRoots: auto),
+        EvaluationCase(sentence: "Prendre rendez-vous pour l'inspection de la Corolla", acceptedRoots: auto),
         EvaluationCase(sentence: "Order new running shoes", acceptedRoots: shopping + health),
         EvaluationCase(sentence: "Rembourser 50 $ à Marc pour le souper", acceptedRoots: finance + ["Amis", "Dettes"]),
         EvaluationCase(sentence: "Mettre à jour mon CV", acceptedRoots: work),

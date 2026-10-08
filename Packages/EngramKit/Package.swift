@@ -14,6 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.0"),
     ],
     targets: [
         .target(name: "EngramCore"),
@@ -23,7 +24,10 @@ let package = Package(
         ),
         .target(name: "EngramPipeline", dependencies: ["EngramCore", "EngramStore"]),
         .target(name: "EngramIntelligence", dependencies: ["EngramCore"]),
-        .target(name: "EngramCapture", dependencies: ["EngramCore"]),
+        .target(
+            name: "EngramCapture",
+            dependencies: ["EngramCore", .product(name: "WhisperKit", package: "WhisperKit")]
+        ),
         .target(name: "EngramCalendar"),
         .target(name: "EngramTesting", dependencies: ["EngramCore"]),
         .testTarget(name: "EngramCoreTests", dependencies: ["EngramCore", "EngramTesting"]),
