@@ -13,6 +13,11 @@ struct FiledResultCard: View {
                 Label(item.path ?? "À classer", systemImage: item.path == nil ? "tray" : "folder")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                if item.addedToCalendar {
+                    Label("Ajouté au calendrier", systemImage: "calendar.badge.checkmark")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)

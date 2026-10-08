@@ -111,6 +111,13 @@ public struct CalendarLinkStore: Sendable {
         try database.writer.read { db in try CalendarLink.fetchOne(db, key: memoryID) }
     }
 
+    /// Événements du calendrier de l'iPhone créés par Engram (le Calendrier d'Engram ne les affiche pas deux fois).
+    public func linkedEventIdentifiers() throws -> Set<String> {
+        try database.writer.read { db in
+            Set(try String.fetchAll(db, sql: "SELECT event_identifier FROM calendar_link"))
+        }
+    }
+
     /// Rendez-vous datés, à venir (depuis 12 h, et toute la journée en cours), actifs ou « À classer », sans événement créé.
     /// Un rendez-vous d'aujourd'hui sans heure (échéance à minuit) est donc ajouté même dicté l'après-midi.
     public func unlinkedAppointments() throws -> [Memory] {

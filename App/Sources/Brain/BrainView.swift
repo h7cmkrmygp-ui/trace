@@ -52,8 +52,15 @@ struct BrainView: View {
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
             .navigationDestination(for: NotesRoute.self) { $0.destination }
-            .accessibilityElement(children: .ignore)
+            // VoiceOver : le nuage n'est pas lisible, on propose la liste des catégories à ouvrir.
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("Cerveau : \(categoryNames.count) catégories, \(itemCount) pensées")
+            .accessibilityChildren {
+                ForEach(categoryNodes, id: \.id) { node in
+                    let count = itemCount(in: node.id)
+                    Button("\(node.label), \(count) pensée\(count > 1 ? "s" : "")") { openCategory(node.id) }
+                }
+            }
             .task {
                 do {
                     for try await snapshot in model.categories.brainSnapshotStream() {
@@ -148,11 +155,22 @@ struct BrainView: View {
         case .item:
             path.append(node.id)
         case .category:
-            if let category = try? model.categories.activeCategories().first(where: { $0.id == node.id }) {
-                path.append(NotesRoute.category(category))
-            }
+            openCategory(node.id)
         case .center:
             break
+        }
+    }
+
+    private var categoryNodes: [BrainLayout.Node] { nodes.filter { $0.kind == .category } }
+
+    /// Pensées rattachées directement à une catégorie.
+    private func itemCount(in categoryID: UUID) -> Int {
+        nodes.filter { $0.kind == .item && $0.anchorID == categoryID }.count
+    }
+
+    private func openCategory(_ id: UUID) {
+        if let category = try? model.categories.activeCategories().first(where: { $0.id == id }) {
+            path.append(NotesRoute.category(category))
         }
     }
 }

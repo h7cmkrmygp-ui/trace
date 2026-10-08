@@ -29,6 +29,8 @@ final class AppModel {
     var modelDownloads: [WhisperModel: Double] = [:]
     /// Modèles en cours de préparation (premier chargement, juste après le téléchargement).
     var preparingModels: Set<WhisperModel> = []
+    /// Augmente à chaque ajout au calendrier de l'iPhone : le Calendrier d'Engram relit alors ses événements.
+    var calendarRevision = 0
     /// Dernier repli vers la reconnaissance d'Apple, expliqué dans les Réglages.
     var transcriptionNotice: String?
     /// Quotas gratuits de Gemini et Groq (pauses après « quota atteint », analyses du jour).
@@ -357,6 +359,7 @@ final class AppModel {
                                                                   hasTime: memory.dueHasTime, notes: memory.summary,
                                                                   calendarIdentifier: target) else { continue }
             try? calendarLinks.link(memoryID: memory.id, eventIdentifier: added.eventID, calendarIdentifier: added.calendarID)
+            calendarRevision += 1
         }
     }
 

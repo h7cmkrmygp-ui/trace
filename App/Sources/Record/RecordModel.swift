@@ -26,7 +26,12 @@ final class RecordModel {
         let id: UUID
         let title: String
         let path: String?
+        /// Un événement a été ajouté au calendrier de l'iPhone pour cette pensée.
+        var addedToCalendar = false
     }
+
+    /// Arrêt en cours : l'arrêt automatique à 5 min et un toucher simultané ne doivent pas terminer deux fois.
+    private var isFinishing = false
 
     private(set) var phase: Phase = .idle
     private(set) var items: [FiledItem] = []
@@ -64,9 +69,12 @@ final class RecordModel {
     }
 
     func finish(app: AppModel) async {
+        guard !isFinishing else { return }
+        isFinishing = true
+        defer { isFinishing = false }
         UIApplication.shared.isIdleTimerDisabled = false
         guard let result = recorder.stop() else {
-            phase = .idle
+            if phase == .recording { phase = .idle }
             return
         }
         do {
@@ -141,6 +149,9 @@ final class RecordModel {
             items = summary.memories.map { FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id]) }
             phase = .result
             await app.syncAppointments(askPermission: true)
+            for index in items.indices {
+                items[index].addedToCalendar = ((try? app.calendarLinks.link(for: items[index].id)) ?? nil) != nil
+            }
         case .waiting(let reason):
             phase = .message("Pensée gardée dans « À classer ». \(reason)")
         case .fallback:

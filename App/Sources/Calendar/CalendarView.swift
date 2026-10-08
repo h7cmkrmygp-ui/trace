@@ -1,6 +1,7 @@
 import EngramCalendar
 import EngramCore
 import SwiftUI
+import UIKit
 
 /// Calendrier : la grille du mois, puis le jour choisi (aujourd'hui par défaut) avec les échéances d'Engram
 /// et les événements du calendrier de l'iPhone.
@@ -26,16 +27,33 @@ struct CalendarView: View {
     }
 
     private var markedDays: Set<Date> {
-        Set(dueItems.compactMap { $0.dueAt.map { calendar.startOfDay(for: $0) } }
-            + events.map { calendar.startOfDay(for: $0.start) })
+        Set(dueItems.compactMap { $0.dueAt.map { calendar.startOfDay(for: $0) } } + events.flatMap(days(of:)))
     }
 
     private var dayItems: [Memory] {
         dueItems.filter { $0.dueAt.map { calendar.isDate($0, inSameDayAs: selectedDay) } ?? false }
     }
 
+    /// Événements qui touchent le jour choisi (un événement de plusieurs jours apparaît chaque jour).
     private var dayEvents: [CalendarEventInfo] {
-        events.filter { calendar.isDate($0.start, inSameDayAs: selectedDay) }.sorted { $0.start < $1.start }
+        let start = calendar.startOfDay(for: selectedDay)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        return events.filter { $0.start < end && max($0.end, $0.start.addingTimeInterval(1)) > start }
+            .sorted { $0.start < $1.start }
+    }
+
+    /// Jours couverts par un événement (31 au plus).
+    private func days(of event: CalendarEventInfo) -> [Date] {
+        var days: [Date] = []
+        var day = calendar.startOfDay(for: event.start)
+        // La fin d'un événement est exclusive : un événement qui finit à minuit ne touche pas le jour suivant.
+        let last = calendar.startOfDay(for: max(event.start, event.end.addingTimeInterval(-1)))
+        while day <= last && days.count < 31 {
+            days.append(day)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return days
     }
 
     var body: some View {
@@ -64,11 +82,20 @@ struct CalendarView: View {
                 }
                 if access != .granted {
                     Section {
-                        Button("Autoriser l'accès au calendrier", systemImage: "calendar.badge.plus") {
-                            Task { await requestAccess() }
+                        if access == .notDetermined {
+                            Button("Autoriser l'accès au calendrier", systemImage: "calendar.badge.plus") {
+                                Task { await requestAccess() }
+                            }
+                        } else if let settings = URL(string: UIApplication.openSettingsURLString) {
+                            // Refusé (ou écriture seulement) : iOS ne redemande pas, seul l'écran Réglages le permet.
+                            Link(destination: settings) {
+                                Label("Ouvrir les Réglages de l'iPhone", systemImage: "gear")
+                            }
                         }
                     } footer: {
-                        Text("Pour voir tes événements ici et y ajouter tes rendez-vous dictés. Un compte Google ajouté au Calendrier de l'iPhone fonctionne aussi.")
+                        Text(access == .notDetermined
+                             ? "Pour voir tes événements ici et y ajouter tes rendez-vous dictés. Un compte Google ajouté au Calendrier de l'iPhone fonctionne aussi."
+                             : "L'accès complet au calendrier n'est pas autorisé. Dans Réglages › Engram › Calendriers, choisis « Accès complet » pour voir tes événements ici.")
                     }
                 }
             }
@@ -86,6 +113,12 @@ struct CalendarView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
+            // Rendez-vous ajoutés depuis un autre onglet, ou accès changé dans les Réglages : on relit.
+            .onChange(of: model.calendarRevision) { _, _ in loadEvents() }
+            .onAppear {
+                access = model.calendarService.access
+                loadEvents()
+            }
             .task(id: month) {
                 access = model.calendarService.access
                 loadEvents()
@@ -106,8 +139,10 @@ struct CalendarView: View {
         selectedDay = next
     }
 
+    /// Événements du mois, sans ceux qu'Engram a créés (ils sont déjà affichés comme échéances).
     private func loadEvents() {
-        events = model.calendarService.events(from: monthRange.start, to: monthRange.end)
+        let own = (try? model.calendarLinks.linkedEventIdentifiers()) ?? []
+        events = model.calendarService.events(from: monthRange.start, to: monthRange.end).filter { !own.contains($0.id) }
     }
 
     private func requestAccess() async {
