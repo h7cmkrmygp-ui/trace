@@ -48,6 +48,15 @@ struct RecordView: View {
             .sheet(isPresented: $isTyping) {
                 TextCaptureSheet { text, keepLocal in Task { await model.submit(text: text, keepLocal: keepLocal, app: app) } }
             }
+            // « Vérifie ta note » (si l'option est active) : une feuille au-dessus du clavier, avec sa propre copie du
+            // texte. Fermée d'un geste, la dictée reste dans « À vérifier ».
+            .sheet(item: Binding(get: { model.review }, set: { if $0 == nil { model.postponeReview() } })) { draft in
+                ReviewSheet(draft: draft, audioURL: model.reviewAudioURL,
+                            onConfirm: { edited in Task { await model.confirmReview(edited, app: app) } },
+                            onLater: { model.postponeReview() },
+                            onDiscard: { model.discardReview(app: app) })
+            }
+            .sensoryFeedback(.success, trigger: model.phase) { _, phase in phase == .result }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
             .onChange(of: model.recorder.level) { _, level in
                 levels.removeFirst()
@@ -120,10 +129,17 @@ struct RecordView: View {
     }
 
     private var hint: some View {
-        Text(hintText.uppercased())
-            .font(.caption)
-            .tracking(2)
-            .foregroundStyle(.secondary)
+        VStack(spacing: 6) {
+            Text(hintText.uppercased())
+                .font(.caption)
+                .tracking(2)
+                .foregroundStyle(.secondary)
+            if model.phase == .recording && app.stopsOnSilence {
+                Text("Je m'arrête tout seul quand tu te tais.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     private var hintText: String {
@@ -139,27 +155,23 @@ struct RecordView: View {
     @ViewBuilder private var outcome: some View {
         switch model.phase {
         case .result:
-            ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(model.items) { FiledResultCard(item: $0) }
+            VStack(spacing: 10) {
+                Label(model.items.count > 1 ? "Enregistré · \(model.items.count) notes" : "Enregistré",
+                      systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.green)
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(model.items) { FiledResultCard(item: $0) }
+                    }
                 }
+                .frame(maxHeight: 240)
             }
-            .frame(maxHeight: 260)
         case .message(let text):
             Text(text)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-        case .review:
-            if let draft = Binding($model.review) {
-                ScrollView {
-                    ReviewCard(draft: draft, audioURL: model.reviewAudioURL,
-                               onConfirm: { Task { await model.confirmReview(app: app) } },
-                               onDiscard: { model.discardReview(app: app) })
-                }
-                .frame(maxHeight: 380)
-                .scrollDismissesKeyboard(.interactively)
-            }
         case .transcribing, .filing:
             ProgressView()
         default:

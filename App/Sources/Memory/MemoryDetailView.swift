@@ -14,6 +14,8 @@ struct MemoryDetailView: View {
     @State private var isPickingCategories = false
     @State private var isConfirmingDeletion = false
     @State private var isRetranscribing = false
+    /// Notes sur le même sujet (au plus 3, seulement si elles ressemblent vraiment).
+    @State private var related: [RecallHit] = []
 
     var body: some View {
         Group {
@@ -23,7 +25,10 @@ struct MemoryDetailView: View {
                 ContentUnavailableView("Souvenir introuvable", systemImage: "questionmark.folder")
             }
         }
-        .task { reload() }
+        .task {
+            reload()
+            related = await model.relatedNotes(to: memoryID)
+        }
     }
 
     private func content(_ memory: Memory) -> some View {
@@ -33,6 +38,8 @@ struct MemoryDetailView: View {
                     .textSelection(.enabled)
             } header: {
                 Text(memory.capturedAt, format: .dateTime.day().month(.wide).year().hour().minute())
+            } footer: {
+                if let details = Self.details(memory) { Text(details) }
             }
             Section("Catégories") {
                 if assigned.isEmpty {
@@ -40,6 +47,15 @@ struct MemoryDetailView: View {
                 }
                 ForEach(assigned) { Label($0.name, systemImage: "folder") }
                 Button("Choisir les catégories…", systemImage: "folder.badge.plus") { isPickingCategories = true }
+            }
+            if !related.isEmpty {
+                Section("Notes liées") {
+                    ForEach(related, id: \.document.id) { hit in
+                        NavigationLink(value: hit.document.id) {
+                            Label(hit.document.title, systemImage: RecallHitRow.symbol(for: hit.document.kind))
+                        }
+                    }
+                }
             }
             if let source, let provider = source.analysisProvider {
                 Section("Classement") {
@@ -130,13 +146,44 @@ struct MemoryDetailView: View {
                     }
                     .disabled(isRetranscribing)
                 }
-                Button("Archiver", systemImage: "archivebox") {
-                    run { _ = try model.memories.setStatus(.archived, for: memoryID, actor: .user) }
+                // Une tâche ou un rendez-vous terminés sont « faits » (rangés dans les Archives, comme le geste « Fait »).
+                if memory.kind == .task || memory.kind == .appointment {
+                    Button("Marquer comme fait", systemImage: "checkmark.circle") {
+                        run { _ = try model.memories.setStatus(.archived, for: memoryID, actor: .user) }
+                    }
+                } else {
+                    Button("Archiver", systemImage: "archivebox") {
+                        run { _ = try model.memories.setStatus(.archived, for: memoryID, actor: .user) }
+                    }
                 }
                 Button("Mettre à la corbeille", systemImage: "trash", role: .destructive) {
                     run { _ = try model.memories.setStatus(.trashed, for: memoryID, actor: .user) }
                 }
             }
+        }
+    }
+
+    /// « Tâche · pour samedi 10 octobre à 14 h », « Idée », « Rendez-vous · fait ».
+    static func details(_ memory: Memory) -> String? {
+        var parts: [String] = []
+        if let kind = memory.kind, kind != .other { parts.append(kindLabel(kind)) }
+        if let due = memory.dueAt {
+            let date = due.formatted(.dateTime.weekday(.wide).day().month(.wide))
+            parts.append(memory.dueHasTime ? "pour \(date) à \(due.formatted(.dateTime.hour().minute()))" : "pour \(date)")
+        }
+        if memory.status == .archived, memory.kind == .task || memory.kind == .appointment { parts.append("fait") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    static func kindLabel(_ kind: MemoryKind) -> String {
+        switch kind {
+        case .task: "Tâche"
+        case .appointment: "Rendez-vous"
+        case .idea: "Idée"
+        case .decision: "Décision"
+        case .preference: "Préférence"
+        case .info: "Info"
+        case .other: "Note"
         }
     }
 

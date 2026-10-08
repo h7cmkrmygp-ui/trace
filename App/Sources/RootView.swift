@@ -11,6 +11,8 @@ struct RootView: View {
             Tab("Cerveau", systemImage: "circle.hexagongrid") { BrainView() }
             Tab("Calendrier", systemImage: "calendar") { CalendarView() }
             Tab("Notes", systemImage: "square.stack") { NotesView() }
+            // Retrouver : le bouton loupe à part de la barre d'onglets (rôle « recherche » d'iOS).
+            Tab("Retrouver", systemImage: "magnifyingglass", role: .search) { RecallView() }
         }
         .errorAlert($model.errorMessage)
         .task { await model.resumePendingWork() }

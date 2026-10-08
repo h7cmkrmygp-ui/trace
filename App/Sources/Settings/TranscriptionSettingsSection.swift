@@ -8,7 +8,8 @@ struct TranscriptionSettingsSection: View {
     @State private var engine: TranscriptionEngine = .default
     @State private var whisperModel: WhisperModel = .default
     @State private var strategy: TranscriptionStrategy = .default
-    @State private var review = true
+    @State private var review = false
+    @State private var autoStop = true
     @State private var downloaded: Set<WhisperModel> = []
     @State private var retranscription: (done: Int, total: Int)?
     @State private var retranscriptionResult: String?
@@ -36,6 +37,9 @@ struct TranscriptionSettingsSection: View {
                     Label("Banc d'essai : Turbo ou Large V3", systemImage: "gauge.with.dots.needle.50percent")
                 }
             }
+            Toggle("Arrêt automatique quand je me tais", isOn: $autoStop)
+                .tint(.green)
+                .onChange(of: autoStop) { _, value in model.perform { try model.settings.set(value, for: .autoStopOnSilence) } }
             Toggle("Vérifier avant de classer", isOn: $review)
                 .tint(.green)
                 .onChange(of: review) { _, value in model.perform { try model.settings.set(value, for: .reviewBeforeFiling) } }
@@ -64,7 +68,7 @@ struct TranscriptionSettingsSection: View {
         } header: {
             Text("Transcription")
         } footer: {
-            Text("Whisper fonctionne sur ton iPhone, gratuitement et sans rien envoyer. Il comprend le français québécois et l'anglais mélangés et ne traduit jamais. Le modèle se télécharge une seule fois (Wi-Fi conseillé, garde l'app ouverte pendant le téléchargement).")
+            Text("Tu parles, tu te tais : la note s'enregistre et se classe toute seule (une pause de quelques secondes pour réfléchir ne coupe pas). « Vérifier avant de classer » te montre la transcription d'abord. Whisper fonctionne sur ton iPhone, gratuitement et sans rien envoyer ; il comprend le français québécois et l'anglais mélangés et ne traduit jamais. Le modèle se télécharge une seule fois (Wi-Fi conseillé).")
         }
         .onAppear(perform: load)
         .task { supportedModels = await WhisperModelStore.supportedModelsOnThisDevice() }
@@ -123,6 +127,7 @@ struct TranscriptionSettingsSection: View {
         whisperModel = model.whisperModel
         strategy = model.whisperStrategy
         review = model.reviewsBeforeFiling
+        autoStop = model.stopsOnSilence
         refreshDownloaded()
     }
 

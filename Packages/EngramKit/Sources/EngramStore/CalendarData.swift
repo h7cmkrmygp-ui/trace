@@ -15,8 +15,13 @@ public struct SettingStore: Sendable {
         case transcriptionEngine = "transcription.engine"
         /// Modèle Whisper choisi (identifiant WhisperKit) ; Turbo par défaut.
         case whisperModel = "transcription.whisperModel"
-        /// « 1 » (défaut) : afficher « Vérifie ta note » avant de classer une dictée.
+        /// « 1 » : afficher « Vérifie ta note » avant de classer une dictée (désactivé par défaut depuis P5 :
+        /// « je parle, je termine, c'est enregistré »).
         case reviewBeforeFiling = "transcription.reviewBeforeFiling"
+        /// « 1 » (défaut) : l'enregistrement s'arrête tout seul quand on se tait.
+        case autoStopOnSilence = "recording.autoStopOnSilence"
+        /// « 1 » (défaut) : notifications locales pour les tâches et rendez-vous datés.
+        case remindersEnabled = "reminders.enabled"
         /// Stratégie de langue de Whisper : « bilingual » (défaut), « french » ou « automatic ».
         case whisperStrategy = "transcription.whisperStrategy"
         /// « 1 » : les notes de santé restent sur l'iPhone (jamais envoyées à Groq).

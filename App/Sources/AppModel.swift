@@ -35,6 +35,9 @@ final class AppModel {
     var transcriptionNotice: String?
     /// Quotas gratuits de Gemini et Groq (pauses après « quota atteint », analyses du jour).
     let quota: CloudQuota
+    /// « Retrouver » : recherche par mots, mots proches et sens, entièrement sur l'iPhone.
+    let recall = RecallEngine(embedder: AppleSentenceEmbedder(), neighbors: AppleWordNeighbors())
+    let recallAnswerer = RecallAnswerer()
     private var whisperTranscribers: [WhisperModel: WhisperTranscriber] = [:]
     private var isResuming = false
     private var isSyncingCalendar = false
@@ -142,8 +145,14 @@ final class AppModel {
         WhisperModel(rawValue: ((try? settings.string(.whisperModel)) ?? nil) ?? "") ?? .default
     }
 
+    /// « Vérifie ta note » avant de classer : désactivé par défaut (je parle, je termine, c'est enregistré).
     var reviewsBeforeFiling: Bool {
-        (try? settings.bool(.reviewBeforeFiling, default: true)) ?? true
+        (try? settings.bool(.reviewBeforeFiling, default: false)) ?? false
+    }
+
+    /// L'enregistrement s'arrête tout seul quand on se tait (activé par défaut).
+    var stopsOnSilence: Bool {
+        (try? settings.bool(.autoStopOnSilence, default: true)) ?? true
     }
 
     var whisperStrategy: TranscriptionStrategy {
@@ -254,6 +263,52 @@ final class AppModel {
         }
         let transcript = try await appleTranscriber.transcribe(url: url)
         return (transcript, appleTranscriber.engineName)
+    }
+
+    // MARK: - Retrouver
+
+    /// Semaine du lundi au dimanche, comme le Calendrier d'Engram.
+    static var recallCalendar: Calendar {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    /// Les notes qui répondent à une question. Rien ne quitte l'iPhone : ni la question ni les notes.
+    func recallSearch(_ question: String) async -> RecallResult {
+        guard let documents = try? memories.recallDocuments() else { return RecallResult(query: RecallQuery(), hits: []) }
+        let engine = recall
+        let now = Date()
+        let calendar = Self.recallCalendar
+        // Le calcul du sens peut prendre un moment avec beaucoup de notes : hors du fil de l'interface.
+        return await Task.detached(priority: .userInitiated) {
+            engine.search(question, in: documents, now: now, calendar: calendar)
+        }.value
+    }
+
+    /// La phrase de réponse, rédigée sur l'iPhone à partir des seules notes trouvées.
+    func recallAnswer(_ question: String, result: RecallResult) async -> String {
+        await recallAnswerer.answer(question: question, result: result, now: Date(), calendar: Self.recallCalendar)
+    }
+
+    /// Question et réponse en une fois (Siri).
+    func recall(_ question: String) async -> (answer: String, hits: [RecallHit]) {
+        let result = await recallSearch(question)
+        return (await recallAnswer(question, result: result), result.hits)
+    }
+
+    /// Notes sur le même sujet qu'une note (au plus 3, jamais devinées).
+    func relatedNotes(to memoryID: UUID) async -> [RecallHit] {
+        guard let documents = try? memories.recallDocuments(),
+              let document = documents.first(where: { $0.id == memoryID }) else { return [] }
+        let engine = recall
+        let now = Date()
+        return await Task.detached(priority: .utility) { engine.related(to: document, in: documents, now: now) }.value
+    }
+
+    /// Transcrit une question dictée (même moteur que les notes : Whisper s'il est là, sinon Apple).
+    func transcribeQuestion(url: URL) async throws -> String {
+        try await runTranscription(url: url).0.text
     }
 
     static func languages(of transcript: Transcript) -> [String] {

@@ -151,6 +151,24 @@ final class ScreenshotTests: XCTestCase {
 
         tapTab(app, "Calendrier")
         snap(app, "16-calendrier-\(mode)")
+
+        // Retrouver : une question floue retrouve la vraie note, qu'on ouvre d'un toucher.
+        tapTab(app, "Retrouver")
+        snap(app, "20-retrouver-\(mode)")
+        let field = app.textFields.firstMatch
+        if field.waitForExistence(timeout: 4) {
+            field.tap()
+            field.typeText("C'était quoi déjà le rendez-vous chez le dentiste ?\n")
+            let hit = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Dentiste vendredi")).firstMatch
+            XCTAssertTrue(hit.waitForExistence(timeout: 20), "Retrouver n'a pas trouvé la note du dentiste")
+            snap(app, "21-retrouver-reponse-\(mode)")
+            if tap(hit) {
+                snap(app, "22-retrouver-note-\(mode)")
+                goBack(app)
+            }
+        } else {
+            XCTFail("Champ de question de Retrouver introuvable")
+        }
     }
 
     // MARK: - Outils

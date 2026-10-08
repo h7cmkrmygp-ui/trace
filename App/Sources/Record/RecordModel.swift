@@ -35,8 +35,8 @@ final class RecordModel {
 
     private(set) var phase: Phase = .idle
     private(set) var items: [FiledItem] = []
-    /// Dictée en cours de vérification (phase `.review`).
-    var review: ReviewDraft?
+    /// Dictée en cours de vérification (phase `.review`), montrée dans une feuille qui garde sa propre copie du texte.
+    private(set) var review: ReviewDraft?
     private(set) var reviewAudioURL: URL?
     let recorder = VoiceRecorder()
 
@@ -58,7 +58,7 @@ final class RecordModel {
         review = nil
         reviewAudioURL = nil
         do {
-            try recorder.start(in: app.storageDirectory)
+            try recorder.start(in: app.storageDirectory, stopsOnSilence: app.stopsOnSilence)
             // L'écran ne se verrouille pas pendant une dictée (sinon l'enregistrement serait coupé).
             UIApplication.shared.isIdleTimerDisabled = true
             items = []
@@ -101,21 +101,30 @@ final class RecordModel {
         phase = .review
     }
 
-    /// « Classer » sur la carte de vérification.
-    func confirmReview(app: AppModel) async {
-        guard let review else { return }
+    /// « Classer » sur la feuille de vérification, avec le texte tel que le propriétaire l'a laissé.
+    func confirmReview(_ draft: ReviewDraft, app: AppModel) async {
+        guard review?.sourceID == draft.sourceID else { return }
+        // La feuille se ferme d'abord : rien ne relit la dictée pendant le classement.
+        review = nil
+        reviewAudioURL = nil
         do {
-            try app.memories.confirmReview(sourceID: review.sourceID, text: review.text, keepLocal: review.keepLocal)
+            try app.memories.confirmReview(sourceID: draft.sourceID, text: draft.text, keepLocal: draft.keepLocal)
         } catch {
             phase = .message(AppModel.describe(error))
             return
         }
-        self.review = nil
-        reviewAudioURL = nil
-        await file(sourceID: review.sourceID, app: app)
+        await file(sourceID: draft.sourceID, app: app)
     }
 
-    /// « Annuler » sur la carte de vérification : la note va à la corbeille, sans être analysée.
+    /// « Plus tard », ou la feuille fermée d'un geste : la dictée reste dans Notes › À vérifier.
+    func postponeReview() {
+        guard review != nil else { return }
+        review = nil
+        reviewAudioURL = nil
+        phase = .message("Ta dictée t'attend dans Notes › À vérifier.")
+    }
+
+    /// « Jeter la dictée » sur la feuille de vérification : la note va à la corbeille, sans être analysée.
     func discardReview(app: AppModel) {
         guard let review else { return }
         do {

@@ -32,10 +32,14 @@ public final class VoiceRecorder {
     /// Niveau du micro, de 0 à 1.
     public private(set) var level: Float = 0
 
+    /// Vrai si le dernier enregistrement s'est arrêté tout seul parce qu'on s'est tu.
+    public private(set) var stoppedOnSilence = false
+
     private var recorder: AVAudioRecorder?
     private var recording: AudioFiles.Recording?
     private var meterTask: Task<Void, Never>?
     private var interruptionObserver: (any NSObjectProtocol)?
+    private var silenceDetector: SilenceDetector?
 
     public init() {}
 
@@ -43,7 +47,10 @@ public final class VoiceRecorder {
         await AVAudioApplication.requestRecordPermission()
     }
 
-    public func start(in base: URL) throws {
+    /// - Parameters:
+    ///   - stopsOnSilence: arrêt automatique quand on se tait (après au moins un peu de parole).
+    ///   - silenceDuration: silence continu qui termine l'enregistrement (4 s pour une pensée, moins pour une question).
+    public func start(in base: URL, stopsOnSilence: Bool = false, silenceDuration: TimeInterval = 4) throws {
         guard state == .idle else { return }
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
@@ -62,6 +69,14 @@ public final class VoiceRecorder {
         guard recorder.record(forDuration: Self.maxDuration) else { throw RecorderError.couldNotStart }
         self.recorder = recorder
         self.recording = recording
+        if stopsOnSilence {
+            var detector = SilenceDetector()
+            detector.silenceDuration = silenceDuration
+            silenceDetector = detector
+        } else {
+            silenceDetector = nil
+        }
+        stoppedOnSilence = false
         elapsed = 0
         state = .recording
         startMetering()
@@ -89,6 +104,7 @@ public final class VoiceRecorder {
         meterTask = nil
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil
+        silenceDetector = nil
         recorder = nil
         recording = nil
         level = 0
@@ -106,6 +122,14 @@ public final class VoiceRecorder {
                     let decibels = recorder.averagePower(forChannel: 0)
                     self.level = max(0, min(1, (decibels + 50) / 50))
                     self.elapsed = recorder.currentTime
+                    // On s'est tu : même chemin qu'une interruption (l'audio est gardé, `stop()` le rend).
+                    if self.silenceDetector?.add(level: self.level, at: recorder.currentTime, interval: 0.05) == true {
+                        recorder.pause()
+                        self.silenceDetector = nil
+                        self.stoppedOnSilence = true
+                        self.state = .finished
+                        self.level = 0
+                    }
                 } else if self.state == .recording {
                     self.state = .finished
                     self.level = 0
