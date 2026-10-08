@@ -75,6 +75,24 @@ struct RoutingStoreTests {
         #expect(try env.memories.routeCounts(since: Fixtures.date.addingTimeInterval(86_400)).isEmpty)
     }
 
+    /// Catégories créées avant les descriptions : listées avec quelques titres, pour qu'une description soit écrite sur l'iPhone.
+    @Test func categoriesWithoutDescriptionAreListedWithSampleTitles() throws {
+        let env = try StoreTestEnvironment()
+        let first = try env.saveNote("Tailler la haie")
+        _ = try env.filer.file([valid("Tailler la haie", path: ["Maison"])], sourceID: first.sourceID)
+        let second = try env.saveNote("Je pèse 75 kg")
+        _ = try env.filer.file([valid("Je pèse 75 kg", path: ["Santé"], description: "Suivi de la santé")], sourceID: second.sourceID)
+        _ = try env.categories.createCategory(name: "Vide", parentID: nil, origin: .ai)
+
+        let missing = try env.categories.categoriesMissingDescription(limit: 5, sampleTitles: 3)
+        #expect(missing.map(\.category.name) == ["Maison"])
+        #expect(missing.first?.titles == ["Tailler la haie"])
+
+        try env.categories.describeIfMissing(categoryID: try #require(missing.first).category.id,
+                                             description: "Entretien et projets de la maison")
+        #expect(try env.categories.categoriesMissingDescription(limit: 5, sampleTitles: 3).isEmpty)
+    }
+
     @Test func aNewCategoryGetsTheDescriptionProposedByTheAI() throws {
         let env = try StoreTestEnvironment()
         let first = try env.saveNote("Tailler la haie")
