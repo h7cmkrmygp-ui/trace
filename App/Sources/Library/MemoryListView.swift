@@ -13,15 +13,18 @@ struct MemoryListView: View {
 
     private var isTrash: Bool { statuses == [.trashed] }
 
-    private func requestDeletion(_ memory: Memory) {
-        pendingDeletion = memory
+    /// Dans la corbeille seulement : demander la suppression définitive d'une note.
+    private var deletionHandler: ((Memory) -> Void)? {
+        guard isTrash else { return nil }
+        let pending = $pendingDeletion
+        return { memory in pending.wrappedValue = memory }
     }
 
     var body: some View {
         List(memories) { memory in
             NavigationLink(value: memory.id) { MemoryRow(memory: memory) }
                 .swipeActions {
-                    MemorySwipeActions(memory: memory, onDeletePermanently: isTrash ? requestDeletion : nil)
+                    MemorySwipeActions(memory: memory, onDeletePermanently: deletionHandler)
                 }
         }
         .overlay {
