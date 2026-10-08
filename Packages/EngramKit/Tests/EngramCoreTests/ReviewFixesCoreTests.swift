@@ -25,7 +25,8 @@ struct ReviewFixesCoreTests {
         #expect(resolved.hasTime)
     }
 
-    @Test(arguments: ["dans 2 heures", "pendant 3 h", "2 heures de route", "for 2 h", "1/2 litre de lait", "ouvert 24/7"])
+    // « dans 2 heures » n'est plus ici : c'est un moment (maintenant + 2 h), voir DateResolverTests.
+    @Test(arguments: ["pendant 3 h", "2 heures de route", "for 2 h", "1/2 litre de lait", "ouvert 24/7"])
     func durationsAndFractionsAreNotDates(expression: String) {
         #expect(resolve(expression) == nil)
     }

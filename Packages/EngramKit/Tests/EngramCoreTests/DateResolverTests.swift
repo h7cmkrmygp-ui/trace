@@ -99,6 +99,17 @@ struct DateResolverTests {
         #expect(evening == ResolvedDate(date: Self.day(2026, 10, 8, 20, 0), hasTime: true))
     }
 
+    /// « Rappelle-moi dans 10 minutes » : un moment compté à partir de maintenant (jamais « 2 h du matin »).
+    @Test func inSomeMinutesOrHoursIsAMomentFromNow() {
+        #expect(resolve("dans 10 minutes") == ResolvedDate(date: Self.now.addingTimeInterval(600), hasTime: true))
+        #expect(resolve("dans 2 heures") == ResolvedDate(date: Self.now.addingTimeInterval(7_200), hasTime: true))
+        #expect(resolve("dans une heure") == ResolvedDate(date: Self.now.addingTimeInterval(3_600), hasTime: true))
+        #expect(resolve("in 30 minutes") == ResolvedDate(date: Self.now.addingTimeInterval(1_800), hasTime: true))
+        let plants = DateResolver.firstDate(in: [], excerpt: "Rappelle-moi d'arroser les plantes dans 5 minutes",
+                                            relativeTo: Self.now, calendar: Self.calendar)
+        #expect(plants == ResolvedDate(date: Self.now.addingTimeInterval(300), hasTime: true))
+    }
+
     @Test func firstDateUsesTheFirstUnderstoodExpression() {
         let resolved = DateResolver.firstDate(in: ["bientôt", "demain"], excerpt: "",
                                               relativeTo: Self.now, calendar: Self.calendar)
