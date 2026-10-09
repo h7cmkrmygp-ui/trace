@@ -87,7 +87,7 @@ public enum AnalysisValidator {
             .filter { $0.count >= 3 && !functionWords.contains($0) })
     }
 
-    /// Le passage du texte (une proposition, ou deux qui se suivent) qui contient au moins les trois quarts des mots
+    /// Le passage du texte (une proposition, deux qui se suivent, ou toute la note) qui contient au moins les trois quarts des mots
     /// porteurs de sens de l'extrait, sans être beaucoup plus long. nil si aucun ne correspond : l'extrait est inventé.
     static func closestPassage(to excerpt: String, in text: String) -> String? {
         let wanted = contentWords(excerpt)
@@ -114,6 +114,10 @@ public enum AnalysisValidator {
                 candidates.append(NSRange(location: pieces[index].location,
                                           length: NSMaxRange(pieces[index + 1]) - pieces[index].location))
             }
+        }
+        // Toute la note (un seul sujet en plusieurs morceaux).
+        if pieces.count > 2, let first = pieces.first, let last = pieces.last {
+            candidates.append(NSRange(location: first.location, length: NSMaxRange(last) - first.location))
         }
         var best: (passage: String, score: Double)?
         for range in candidates {
