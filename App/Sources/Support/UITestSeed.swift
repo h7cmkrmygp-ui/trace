@@ -77,6 +77,9 @@ enum UITestSeed {
         if let haie = try memories.recallDocuments().first(where: { $0.title.hasPrefix("Tailler la haie") }) {
             try memories.setPinned(true, for: haie.id)
         }
+        // P15 : une liste d'épicerie inventée, complétée par une deuxième dictée.
+        try file("Ajoute du lait et des œufs à ma liste d'épicerie", kind: .task, path: ["Achats"])
+        try file("Mets du pain sur la liste d'épicerie", kind: .task, path: ["Achats"])
         // P14 : un rappel de lieu, et une adresse inventée (un point quelconque du centre-ville de Montréal).
         if let piles = try file("Acheter des piles quand j'arrive chez Costco", kind: .task, path: ["Achats"],
                                 places: ["Costco"]),

@@ -1,4 +1,5 @@
 import EngramCore
+import EngramTesting
 import Foundation
 import GRDB
 import Testing
@@ -18,6 +19,15 @@ struct ListStoreTests {
     }
 
     func lists(_ env: StoreTestEnvironment) -> ListStore { ListStore(database: env.database, dates: env.dates) }
+
+    /// Comme une nouvelle transcription ou le retour du service en ligne : la dictée est à classer de nouveau.
+    func reopen(_ env: StoreTestEnvironment, _ sourceID: UUID) throws {
+        try env.database.writer.write { db in
+            var source = try #require(try Source.fetchOne(db, key: sourceID))
+            source.processingStatus = .waiting
+            try source.update(db)
+        }
+    }
 
     @Test func theMigrationCreatesTheTables() throws {
         let env = try StoreTestEnvironment()
@@ -66,9 +76,11 @@ struct ListStoreTests {
         let second = try dictate(env, "Ajoute du café à ma liste d'épicerie")
         _ = try env.memories.updateMemory(list.id, with: MemoryEdit(summary: "☐ Lait\n☑ Café"), actor: .user)
         // Reclassée (service en ligne revenu, nouvelle transcription) : le café coché le reste.
+        try reopen(env, second.sourceID)
         _ = try env.filer.file([thought("Ajoute du café à ma liste d'épicerie")], sourceID: second.sourceID)
         #expect(try env.memories.memory(id: list.id)?.summary == "☐ Lait\n☑ Café")
         // La liste elle-même n'est jamais remplacée quand sa première dictée est reclassée.
+        try reopen(env, first.sourceID)
         _ = try env.filer.file([thought("Ajoute du lait à ma liste d'épicerie")], sourceID: first.sourceID)
         #expect(try env.memories.memory(id: list.id)?.status == .active)
         #expect(try lists(env).lists().count == 1)
@@ -88,6 +100,16 @@ struct ListStoreTests {
         let env = try StoreTestEnvironment()
         let filed = try dictate(env, "Ajoute du lait à ma liste d'épicerie", "Appeler le garage").filed
         #expect(Set(filed.map(\.title)) == ["Liste d'épicerie", "Appeler le garage"])
+    }
+
+    @Test func theExportContainsTheLists() throws {
+        let env = try StoreTestEnvironment()
+        _ = try dictate(env, "Ajoute du lait à ma liste d'épicerie")
+        let directory = try TemporaryDirectory()
+        let result = try Exporter(database: env.database, dates: env.dates).export(into: directory.url)
+        let json = try String(contentsOf: result.folderURL.appendingPathComponent("engram.json"), encoding: .utf8)
+        #expect(json.contains("\"lists\""))
+        #expect(json.contains("\"list_additions\""))
     }
 
     @Test func listsAreNamedAndCounted() throws {

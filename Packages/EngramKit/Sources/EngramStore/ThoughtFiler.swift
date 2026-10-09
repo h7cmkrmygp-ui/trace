@@ -41,6 +41,7 @@ public struct ThoughtFiler: Sendable {
         let memoryStore = MemoryStore(database: database, dates: dates)
         let categoryStore = CategoryStore(database: database, dates: dates)
         let entityStore = EntityStore(database: database, dates: dates)
+        let listStore = ListStore(database: database, dates: dates)
         let measurementStore = MeasurementStore(database: database, dates: dates, calendar: calendar)
         return try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
@@ -96,6 +97,14 @@ public struct ThoughtFiler: Sendable {
             if kept.isEmpty {
                 if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
                 for thought in thoughts {
+                    // « ajoute du lait à ma liste d'épicerie » : la liste est complétée, sans nouvelle note (P15).
+                    if let command = ListCommandParser.parse(thought.excerpt) {
+                        let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
+                                                     memoryStore: memoryStore, now: now)
+                        if list.created { try classify(list.memory.id, with: thought) }
+                        if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
+                        continue
+                    }
                     let due = DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
                                                      relativeTo: source.capturedAt, calendar: calendar)
                     // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots

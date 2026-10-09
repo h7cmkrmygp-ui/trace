@@ -272,3 +272,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p14-rappels-de-lieu-design.md`
 | — | Adresse d'un lieu (migration v8) | ✅ | n/a | ✅ | ✅ (personne refusée, fusion, export, effacée avec la note) | ⏳ | — | ma position actuelle ou recherche Plans d'Apple ; rayon 100, 200 ou 500 m ; petite carte |
 | — | Notification en arrivant (ou en partant) | n/a | n/a | ✅ | ✅ (20 lieux au plus, notes privées discrètes) | ⏳ | — | `UNLocationNotificationTrigger` : iOS surveille seul ; « Fait » depuis la notification ; revient à chaque arrivée tant que ce n'est pas fait |
 | — | Pastille « En arrivant · Costco » | ✅ | n/a | ✅ | compile + capture | ⏳ | — | menu : voir le lieu ou ajouter l'adresse, « en partant plutôt », retirer ; poser à la main depuis … |
+
+## P15 — Listes (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p15-listes-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Ajoute … à ma liste d'épicerie » reconnu | n/a | ✅ | ✅ | ✅ (6 façons de le dire, anglais, pièges « ajoute une réunion à mon calendrier », « ma liste est longue ») | ⏳ | — | sur l'iPhone, sans IA |
+| — | Une note par liste (migration v9) | ✅ | n/a | ✅ | ✅ (sans doublon, case cochée qui revient, jamais ajoutée deux fois, corbeille, dictée mêlée, export) | ⏳ | — | la dictée qui complète ne laisse pas de note |
+| — | Notes › Listes, « Retirer les cases cochées » | ✅ | n/a | ✅ | compile + captures | ⏳ | — | carte en haut des Notes |

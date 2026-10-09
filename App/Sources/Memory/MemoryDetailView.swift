@@ -374,6 +374,16 @@ struct MemoryDetailView: View {
                 Button(placeTrigger == nil ? "Rappel en arrivant à un lieu…" : "Changer le rappel de lieu…", systemImage: "location") {
                     isSettingPlace = true
                 }
+                // Une liste (P15) ou toute note à cocher : on fait le ménage des cases faites.
+                if blocks.contains(where: { $0.kind == .check(done: true) }) {
+                    Button("Retirer les cases cochées", systemImage: "checklist.checked") {
+                        run {
+                            let current = try model.memories.memory(id: memoryID)?.summary ?? ""
+                            _ = try model.memories.updateMemory(
+                                memoryID, with: MemoryEdit(summary: ListMerge.removingChecked(from: current)), actor: .user)
+                        }
+                    }
+                }
                 if let source, source.kind == .voice, source.audioPath != nil, !source.correctedByOwner {
                     Button("Retranscrire avec Whisper", systemImage: "waveform") {
                         isRetranscribing = true

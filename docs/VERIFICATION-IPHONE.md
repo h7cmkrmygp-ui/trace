@@ -198,3 +198,11 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 96. **En arrivant** : rendu chez Costco, une notification « Costco » / « Acheter du lait » arrive, même si Engram est fermé. « Fait » la coche ; sinon elle reviendra à la prochaine visite.
 97. **En partant** : « Quand je pars du bureau, appeler Marc » prévient en quittant le bureau (une fois son adresse ajoutée).
 98. **À la main** : dans une note, … › « Rappel en arrivant à un lieu… » ; choisis un lieu ou écris-en un nouveau. Toucher la pastille : « En partant plutôt » ou « Retirer le rappel ».
+
+## P. P15 — Listes
+
+99. **Dicté** : « Ajoute du lait et des œufs à ma liste d'épicerie ». Une note « Liste d'épicerie » apparaît avec deux cases : Lait, Œufs.
+100. **Encore** : « Mets du pain sur la liste ». Pas de nouvelle note : « Pain » s'ajoute à la même liste. Notes › Listes la montre avec « 3 choses ».
+101. **Coché puis redemandé** : coche « Lait », puis redis « ajoute du lait à ma liste d'épicerie » : la case redevient à faire.
+102. **Ménage** : dans la liste, … › « Retirer les cases cochées ».
+103. **Autres listes** : « Sur ma liste de cadeaux, ajoute un livre pour Julie » crée « Liste de cadeaux ».

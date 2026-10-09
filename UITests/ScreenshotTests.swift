@@ -89,6 +89,18 @@ final class ScreenshotTests: XCTestCase {
             goBack(app)
         }
 
+        // P15 — une liste d'épicerie inventée, complétée par deux dictées ; sa carte est en haut des Notes.
+        if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Listes")).firstMatch) {
+            snap(app, "30-listes-\(mode)")
+            if tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Liste d'épicerie")).firstMatch) {
+                snap(app, "31-liste-epicerie-\(mode)")
+                goBack(app)
+            }
+            goBack(app)
+        } else {
+            XCTFail("Dossier « Listes » introuvable dans les Notes")
+        }
+
         // P9 — personnes et lieux (inventés) : leurs dossiers sont en bas des Notes.
         app.swipeUp()
         if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Personnes")).firstMatch) {

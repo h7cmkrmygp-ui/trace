@@ -57,6 +57,8 @@ final class AppModel {
     let entities: EntityStore
     /// Les suivis : mesures dites dans les notes (P10).
     let measurements: MeasurementStore
+    /// Les listes (P15) : épicerie, cadeaux…
+    let lists: ListStore
     let categories: CategoryStore
     let processor: ThoughtProcessor
     let settings: SettingStore
@@ -91,6 +93,7 @@ final class AppModel {
         memories = MemoryStore(database: database)
         entities = EntityStore(database: database)
         measurements = MeasurementStore(database: database)
+        lists = ListStore(database: database)
         categories = CategoryStore(database: database)
         settings = SettingStore(database: database)
         calendarLinks = CalendarLinkStore(database: database)

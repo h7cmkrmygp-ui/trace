@@ -31,8 +31,27 @@ enum Schema {
         migrator.registerMigration("v8_place_reminders") { db in
             try db.execute(sql: v8PlaceReminders)
         }
+        migrator.registerMigration("v9_lists") { db in
+            try db.execute(sql: v9Lists)
+        }
         return migrator
     }
+
+    /// v9 (P15) : une note par liste (épicerie, cadeaux…), et les dictées déjà ajoutées à chacune.
+    static let v9Lists = """
+        CREATE TABLE memory_list (
+          normalized_name TEXT PRIMARY KEY NOT NULL CHECK (length(normalized_name) > 0),
+          name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+          memory_id BLOB NOT NULL UNIQUE REFERENCES memory(id) ON DELETE CASCADE,
+          created_at DATETIME NOT NULL
+        );
+        CREATE TABLE memory_list_addition (
+          source_id BLOB NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+          normalized_name TEXT NOT NULL,
+          added_at DATETIME NOT NULL,
+          PRIMARY KEY (source_id, normalized_name)
+        );
+        """
 
     /// v8 (P14) : l'adresse des lieux et les notes qui attendent un lieu (une par note).
     static let v8PlaceReminders = """

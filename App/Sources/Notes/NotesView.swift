@@ -22,6 +22,8 @@ enum NotesRoute: Hashable {
     case metric(Metric)
     /// P11 : le journal, jour par jour.
     case journal
+    /// P15 : les listes (épicerie, cadeaux…).
+    case lists
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -39,6 +41,7 @@ enum NotesRoute: Hashable {
         case .trackers: TrackersView()
         case .metric(let metric): MetricDetailView(metric: metric)
         case .journal: JournalView()
+        case .lists: ListsView()
         }
     }
 }
@@ -55,6 +58,8 @@ struct NotesView: View {
     @State private var results: [Memory] = []
     @State private var people: [EntityStore.Summary] = []
     @State private var places: [EntityStore.Summary] = []
+    /// P15 : les listes.
+    @State private var lists: [ListStore.Summary] = []
     /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
     @State private var trackersSummary = ""
     /// P11 : les notes épinglées.
@@ -118,6 +123,13 @@ struct NotesView: View {
             .task {
                 do {
                     for try await list in model.entities.summariesStream(kind: .place) { places = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await value in model.lists.listsStream() { lists = value }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
                 }
@@ -217,6 +229,12 @@ struct NotesView: View {
                 if unsortedCount > 0 {
                     NavigationLink(value: NotesRoute.list(title: "À classer", statuses: [.unsorted])) {
                         FolderCard(systemImage: "tray", title: "À classer", subtitle: Self.count(unsortedCount, "note", "à classer"))
+                    }
+                }
+                // Les listes (P15) : « ajoute du lait à ma liste d'épicerie ».
+                if !lists.isEmpty {
+                    NavigationLink(value: NotesRoute.lists) {
+                        FolderCard(systemImage: "checklist", title: "Listes", subtitle: ListsView.summary(lists))
                     }
                 }
                 ForEach(roots) { item in

@@ -28,6 +28,9 @@ public struct ExportDocument: Codable, Sendable {
     /// Adresses des lieux et notes qui attendent un lieu (P14).
     public var placeLocations: [PlaceLocation]
     public var placeTriggers: [PlaceTrigger]
+    /// Les listes (P15) et les dictées ajoutées à chacune.
+    public var lists: [ListRecord]
+    public var listAdditions: [ListAddition]
 
     enum CodingKeys: String, CodingKey {
         case app, sources, memories, categories, tags, entities, measurements
@@ -35,6 +38,8 @@ public struct ExportDocument: Codable, Sendable {
         case pinnedMemories = "pinned_memories"
         case placeLocations = "place_locations"
         case placeTriggers = "place_triggers"
+        case lists
+        case listAdditions = "list_additions"
         case entityAliases = "entity_aliases"
         case entityAssignments = "entity_assignments"
         case formatVersion = "format_version"
@@ -87,7 +92,9 @@ public struct Exporter: Sendable {
                 trackerGoals: try TrackerGoal.fetchAll(db),
                 pinnedMemories: try PinnedMemory.fetchAll(db),
                 placeLocations: try PlaceLocation.fetchAll(db),
-                placeTriggers: try PlaceTrigger.order(Column("created_at")).fetchAll(db))
+                placeTriggers: try PlaceTrigger.order(Column("created_at")).fetchAll(db),
+                lists: try ListRecord.order(Column("created_at")).fetchAll(db),
+                listAdditions: try ListAddition.order(Column("added_at")).fetchAll(db))
         }
         let fileManager = FileManager.default
         let folder = parentDirectory.appendingPathComponent("Engram-Export-\(Self.stamp(exportedAt))", isDirectory: true)
