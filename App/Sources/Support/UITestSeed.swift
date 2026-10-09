@@ -83,6 +83,8 @@ enum UITestSeed {
         // P17 : une habitude inventée, deux jours d'affilée.
         try file("Hier j'ai médité 15 minutes", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
         try file("J'ai médité 10 minutes ce matin", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        // P21 : un objectif d'habitude inventé.
+        try file("Mon objectif : méditer 5 fois par semaine", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
         // P16 : une tâche qui revient (inventée).
         try file("Sortir les poubelles tous les lundis", kind: .task, path: ["Maison"])
         // P15 : une liste d'épicerie inventée, complétée par une deuxième dictée.

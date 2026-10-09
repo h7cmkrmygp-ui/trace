@@ -119,6 +119,7 @@ final class AppModel {
         reminders.onOpenTodo = { [weak self] in self?.openTodo() }
         reminders.onOpenWeekly = { [weak self] in self?.openWeeklySummary() }
         reminders.onOpenEntity = { [weak self] id in self?.openEntity(id) }
+        reminders.onOpenTrackers = { [weak self] in self?.openTrackers() }
     }
 
     func openTodo() {
@@ -131,6 +132,23 @@ final class AppModel {
         guard openTodoRequest > servedTodoRequest else { return false }
         servedTodoRequest = openTodoRequest
         return true
+    }
+
+    /// « Garde ta série » touché : les Suivis s'ouvrent (P21).
+    func openTrackers() {
+        selectedTab = .notes
+        var path = NavigationPath()
+        path.append(NotesRoute.trackers)
+        notesPath = path
+    }
+
+    /// Une habitude dite (ou un objectif) : « Garde ta série » est recalculé, pour ne jamais rappeler ce qui est fait (P21).
+    func watchHabits() async {
+        do {
+            for try await _ in measurements.habitSummariesStream(today: Date()) { await syncReminders() }
+        } catch {
+            // Recalculé au prochain lancement.
+        }
     }
 
     /// Une fête touchée : la page de la personne s'ouvre dans les Notes (P20).
@@ -239,6 +257,9 @@ final class AppModel {
     /// « Te souviens-tu ? » (P13) : une vieille idée chaque soir à 19 h.
     var resurfacingEnabled: Bool { (try? settings.bool(.resurfacing, default: true)) ?? true }
 
+    /// « Garde ta série » (P21) : à 20 h, les séries d'habitudes pas encore faites aujourd'hui.
+    var habitNudgesEnabled: Bool { (try? settings.bool(.habitNudges, default: true)) ?? true }
+
     /// Les idées qui peuvent revenir le soir : notes vivantes (la règle des 30 jours et des notes privées est dans
     /// `Resurfacing`).
     func resurfacingCandidates() -> [Resurfacing.Candidate] {
@@ -310,6 +331,12 @@ final class AppModel {
                                          hideNames: lock.isEnabled)
             .filter { $0.date < now.addingTimeInterval(60 * 86_400) }
             .map { (reminder: $0, kind: .birthday) }
+        // « Garde ta série » (P21) : sans nom d'habitude si Engram est verrouillé.
+        if habitNudgesEnabled, let summaries = try? measurements.habitSummaries(today: now),
+           let nudge = HabitNudgePlanner.plan(summaries.map { HabitNudgePlanner.Item(habit: $0.habit, days: $0.days) },
+                                              now: now, calendar: calendar, hideNames: lock.isEnabled, title: { $0.title }) {
+            requests.append((reminder: nudge, kind: .habit))
+        }
         // « Te souviens-tu ? » : sans titre si Engram est verrouillé.
         if resurfacingEnabled,
            let evening = Resurfacing.reminder(from: resurfacingCandidates(), now: now, calendar: calendar,

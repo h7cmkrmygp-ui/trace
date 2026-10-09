@@ -83,6 +83,8 @@ struct TrackersView: View {
     @State private var goals: [Metric: TrackerGoal] = [:]
     /// P17 : les habitudes.
     @State private var habits: [HabitSummary] = []
+    /// P21 : les objectifs par semaine.
+    @State private var habitGoals: [Habit: Int] = [:]
 
     var body: some View {
         ScrollView {
@@ -101,7 +103,9 @@ struct TrackersView: View {
                 sectionTitle("Habitudes")
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
                     ForEach(habits) { summary in
-                        NavigationLink(value: NotesRoute.habit(summary.habit)) { HabitCard(summary: summary) }
+                        NavigationLink(value: NotesRoute.habit(summary.habit)) {
+                            HabitCard(summary: summary, goal: habitGoals[summary.habit])
+                        }
                             .buttonStyle(.plain)
                     }
                 }
@@ -116,6 +120,13 @@ struct TrackersView: View {
         .task {
             do {
                 for try await list in model.measurements.habitSummariesStream(today: Date()) { habits = list }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
+            }
+        }
+        .task {
+            do {
+                for try await goals in model.measurements.habitGoalsStream() { habitGoals = goals }
             } catch {
                 model.errorMessage = AppModel.describe(error)
             }

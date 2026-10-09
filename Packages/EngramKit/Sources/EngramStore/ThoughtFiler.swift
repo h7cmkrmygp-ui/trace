@@ -135,6 +135,9 @@ public struct ThoughtFiler: Sendable {
                     // « j'ai médité 10 minutes » : l'habitude du jour (P17).
                     try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
                                                       capturedAt: source.capturedAt, now: now)
+                    // « mon objectif : méditer 5 fois par semaine » (P21).
+                    try measurementStore.recordHabitGoals(db, memoryID: memory.id, text: thought.excerpt,
+                                                          capturedAt: source.capturedAt)
                     // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
                     try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
                                                      capturedAt: source.capturedAt)

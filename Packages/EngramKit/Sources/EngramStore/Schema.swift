@@ -43,8 +43,21 @@ enum Schema {
         migrator.registerMigration("v12_birthdays") { db in
             try db.execute(sql: v12Birthdays)
         }
+        migrator.registerMigration("v13_habit_goals") { db in
+            try db.execute(sql: v13HabitGoals)
+        }
         return migrator
     }
+
+    /// v13 (P21) : l'objectif de chaque habitude, en fois par semaine.
+    static let v13HabitGoals = """
+        CREATE TABLE habit_goal (
+          habit TEXT PRIMARY KEY NOT NULL CHECK (length(habit) > 0),
+          per_week INTEGER NOT NULL CHECK (per_week BETWEEN 1 AND 7),
+          set_at DATETIME NOT NULL,
+          memory_id BLOB REFERENCES memory(id) ON DELETE SET NULL
+        );
+        """
 
     /// v12 (P20) : la fête des personnes (une par personne), dite dans une note ou posée à la main.
     static let v12Birthdays = """

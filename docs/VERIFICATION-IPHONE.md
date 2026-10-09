@@ -241,3 +241,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 121. **À la main** : sur la page d'une personne, « Ajouter sa fête » : mois, jour, et l'année si tu la connais (Engram dira son âge).
 122. **Fêtes à venir** : Notes › Personnes montre en haut les fêtes du prochain mois.
 123. **Rappels** : la veille à 19 h « Demain : la fête de Julie », le jour même à 9 h ; toucher ouvre la page de Julie.
+
+## V. P21 — Garde ta série
+
+124. **Objectif** : « Mon objectif : méditer 5 fois par semaine ». Notes › Suivis : la carte Méditation dit « 1/5 cette semaine » avec une barre.
+125. **À la main** : page Méditation › « Objectif » : change le nombre de fois, ou « Retirer l'objectif ».
+126. **Le soir** : après deux jours de méditation d'affilée, si tu n'as pas encore médité aujourd'hui, une notification « Garde ta série » arrive à 20 h. Dis « j'ai médité » avant : elle ne viendra pas.
+127. **Réglage** : Réglages › Rappels › « Garde ta série (habitudes, 20 h) ».

@@ -334,3 +334,12 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p20-fetes-design.md`
 | — | Fête dictée reconnue | n/a | ✅ | ✅ | ✅ (6 façons de le dire, l'année, « ma mère », anglais ; Noël, mariage, 31 février) | ⏳ | — | sur l'iPhone, sans IA ; la personne est créée au besoin |
 | — | Fête d'une personne (migration v12) | ✅ | n/a | ✅ | ✅ (posée, changée, retirée, lieu refusé, fusion, personne masquée, export) | ⏳ | — | section « Fête » et « Fêtes à venir » |
 | — | Rappels la veille et le jour même | n/a | ✅ | ✅ | ✅ (âge, 29 février, sans nom si verrouillé, veille passée) | ⏳ | — | 60 prochains jours |
+
+## P21 — Garde ta série (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p21-garde-ta-serie-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Objectif d'habitude par semaine (migration v13) | ✅ | ✅ | ✅ | ✅ (dit de 5 façons, pièges, le plus récent l'emporte, fixé ou retiré à la main, export) | ⏳ | — | « 3/5 cette semaine » sur la carte |
+| — | « Garde ta série » à 20 h | n/a | ✅ | ✅ | ✅ (série vivante pas faite, déjà faite, trop tard, une journée, plusieurs habitudes) | ⏳ | — | réglage dans Rappels ; sans nom si verrouillé |

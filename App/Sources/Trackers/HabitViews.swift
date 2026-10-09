@@ -61,6 +61,8 @@ extension Habit {
 /// Une carte d'habitude : la série en cours et les 7 derniers jours.
 struct HabitCard: View {
     let summary: HabitSummary
+    /// Objectif par semaine (P21).
+    var goal: Int?
 
     private var lastWeek: [Bool] {
         let calendar = Calendar.current
@@ -94,9 +96,17 @@ struct HabitCard: View {
                 }
             }
             .accessibilityHidden(true)
-            Text(summary.thisWeek == 1 ? "1 fois cette semaine" : "\(summary.thisWeek) fois cette semaine")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if let goal {
+                ProgressView(value: Double(min(summary.thisWeek, goal)), total: Double(goal))
+                    .tint(summary.habit.tint)
+                Text(summary.thisWeek >= goal ? "Objectif de la semaine atteint" : "\(summary.thisWeek)/\(goal) cette semaine")
+                    .font(.caption)
+                    .foregroundStyle(summary.thisWeek >= goal ? Color.green : Color.secondary)
+            } else {
+                Text(summary.thisWeek == 1 ? "1 fois cette semaine" : "\(summary.thisWeek) fois cette semaine")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,6 +123,8 @@ struct HabitDetailView: View {
     let habit: Habit
     @State private var summary: HabitSummary?
     @State private var entries: [HabitEntry] = []
+    /// P21 : l'objectif par semaine.
+    @State private var goal: Int?
 
     static let weeks = 16
 
@@ -127,6 +139,26 @@ struct HabitDetailView: View {
                         stat("\(summary.total)", "jours en tout")
                     }
                     .padding(.vertical, 4)
+                }
+                Section {
+                    if let goal {
+                        Stepper(goal == 7 ? "Tous les jours" : "\(goal) fois par semaine", value: Binding(
+                            get: { goal },
+                            set: { value in model.perform { try model.measurements.setHabitGoal(habit, perWeek: value) } }
+                        ), in: 1...7)
+                        Button("Retirer l'objectif", systemImage: "trash", role: .destructive) {
+                            model.perform { try model.measurements.removeHabitGoal(habit) }
+                        }
+                    } else {
+                        Button("Fixer un objectif", systemImage: "target") {
+                            model.perform { try model.measurements.setHabitGoal(habit, perWeek: 3) }
+                        }
+                    }
+                } header: {
+                    Text("Objectif")
+                } footer: {
+                    Text(goal == nil ? "Ou dis-le : « mon objectif : méditer 5 fois par semaine »."
+                         : "\(summary.thisWeek) cette semaine. À 20 h, « Garde ta série » te rappelle une série pas encore faite.")
                 }
                 Section {
                     HabitGrid(days: summary.days, tint: habit.tint, weeks: Self.weeks)
@@ -149,6 +181,13 @@ struct HabitDetailView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle(habit.title)
+        .task {
+            do {
+                for try await goals in model.measurements.habitGoalsStream() { goal = goals[habit] }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
+            }
+        }
         .task {
             do {
                 for try await list in model.measurements.habitEntriesStream(for: habit) {

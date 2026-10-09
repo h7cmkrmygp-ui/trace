@@ -16,6 +16,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         case place
         /// Une fête (P20) : la veille et le jour même ; toucher ouvre la page de la personne.
         case birthday
+        /// « Garde ta série » (P21) : toucher ouvre les Suivis.
+        case habit
 
         var category: String { "engram.\(rawValue)" }
     }
@@ -35,6 +37,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
     var onOpenWeekly: (() -> Void)?
     /// Toucher une fête : la page de la personne.
     var onOpenEntity: ((UUID) -> Void)?
+    /// Toucher « Garde ta série » : les Suivis.
+    var onOpenTrackers: (() -> Void)?
 
     override init() {
         super.init()
@@ -52,6 +56,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationCategory(identifier: Kind.resurface.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.place.category, actions: [done], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.birthday.category, actions: [], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Kind.habit.category, actions: [], intentIdentifiers: []),
         ])
     }
 
@@ -87,7 +92,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
 
     func removeAll() async {
         let prefixes = [ReminderPlanner.identifierPrefix, DigestPlanner.morningPrefix, DigestPlanner.weeklyIdentifier,
-                        Resurfacing.identifier, BirthdayPlanner.identifierPrefix]
+                        Resurfacing.identifier, BirthdayPlanner.identifierPrefix,
+                        HabitNudgePlanner.identifier]
         let ours = await center.pendingNotificationRequests().map(\.identifier)
             .filter { identifier in prefixes.contains { identifier.hasPrefix($0) } }
         center.removePendingNotificationRequests(withIdentifiers: ours)
@@ -161,6 +167,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
             if let memoryID, action != UNNotificationDismissActionIdentifier { onOpen?(memoryID) }
         case .birthday:
             if let memoryID, action != UNNotificationDismissActionIdentifier { onOpenEntity?(memoryID) }
+        case .habit:
+            if action != UNNotificationDismissActionIdentifier { onOpenTrackers?() }
         case .reminder, .place:
             guard let memoryID else { return }
             if action == UNNotificationDefaultActionIdentifier {
