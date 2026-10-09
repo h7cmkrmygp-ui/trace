@@ -21,8 +21,9 @@ public struct EvaluationCase: Sendable, Hashable {
     }
 }
 
-/// 43 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées, dont trois qui reprennent
-/// les erreurs constatées sur l'iPhone : un rappel coupé en deux notes, un poids classé en Finance, deux sujets fusionnés.
+/// 46 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées, dont six qui reprennent
+/// les erreurs constatées sur l'iPhone : un rappel coupé en deux notes, un poids classé en Finance, deux sujets fusionnés,
+/// deux sujets dans une même phrase en franglais, une hésitation, un poids daté « aujourd'hui ».
 public enum EvaluationSet {
     static let auto = ["Automobile", "Auto", "Voiture", "Véhicule", "Véhicules"]
     static let finance = ["Finance", "Finances", "Argent", "Placements", "Investissements", "Budget"]
@@ -81,5 +82,10 @@ public enum EvaluationSet {
         EvaluationCase(sentence: "Je pèse 75 kg ce matin", acceptedRoots: health, expectedNotes: 1),
         EvaluationCase(sentence: "Appeler le garage pour les pneus, pis acheter du lait en revenant",
                        acceptedRoots: auto + shopping + ["Alimentation"], expectedNotes: 2),
+        EvaluationCase(sentence: "Faut que je call mon manager demain pour changer mon shift, pis après je vais au gym.",
+                       acceptedRoots: work + health, expectedNotes: 2),
+        EvaluationCase(sentence: "Rappelle-moi de euh appeler l'assurance demain ok",
+                       acceptedRoots: finance + auto + home + ["Assurances", "Assurance", "Administratif"], expectedNotes: 1),
+        EvaluationCase(sentence: "Je pèse 162,5 livres aujourd'hui", acceptedRoots: health, expectedNotes: 1),
     ]
 }

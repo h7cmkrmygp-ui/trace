@@ -1,3 +1,4 @@
+import EngramCore
 import Foundation
 
 /// Résultat d'une transcription.
@@ -6,8 +7,9 @@ public struct Transcript: Sendable, Equatable {
     /// Langue détectée ou utilisée (« fr-CA », « fr », « en », « fr+en »…).
     public let localeIdentifier: String
 
+    /// Les hésitations (« euh », « hum ») sont retirées : la note garde l'essentiel (l'audio, lui, reste entier).
     public init(text: String, localeIdentifier: String) {
-        self.text = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        self.text = SpeechCleanup.removingHesitations(text)
         self.localeIdentifier = localeIdentifier
     }
 }

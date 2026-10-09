@@ -14,8 +14,12 @@ public enum AnalysisValidator {
     }
 
     static func validate(_ thought: AnalyzedThought, against text: String) -> ValidThought? {
-        let excerpt = thought.excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard TextNormalizer.containsPhrase(excerpt, in: text) else { return nil }
+        var excerpt = thought.excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !TextNormalizer.containsPhrase(excerpt, in: text) {
+            // L'IA a pu écrire « puis » pour « pis » ou corriger une faute : on reprend les vrais mots du passage.
+            guard let passage = closestPassage(to: excerpt, in: text) else { return nil }
+            excerpt = passage
+        }
 
         let proposedTitle = thought.title.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         let title = TitleMaker.fallbackTitle(from: proposedTitle.isEmpty ? excerpt : proposedTitle)
@@ -70,6 +74,59 @@ public enum AnalysisValidator {
             path.append(part)
         }
         return Array(path.prefix(2))
+    }
+
+    /// Mots-outils ignorés pour comparer un extrait à un passage.
+    static let functionWords: Set<String> = [
+        "les", "des", "une", "pour", "que", "qui", "dans", "sur", "avec", "pas", "mon", "mes", "ton", "tes", "son", "ses",
+        "nos", "vos", "leur", "est", "the", "and", "for", "with",
+    ]
+
+    static func contentWords(_ text: String) -> Set<String> {
+        Set(TextNormalizer.matchingForm(text).split(separator: " ").map(String.init)
+            .filter { $0.count >= 3 && !functionWords.contains($0) })
+    }
+
+    /// Le passage du texte (une proposition, ou deux qui se suivent) qui contient au moins les trois quarts des mots
+    /// porteurs de sens de l'extrait, sans être beaucoup plus long. nil si aucun ne correspond : l'extrait est inventé.
+    static func closestPassage(to excerpt: String, in text: String) -> String? {
+        let wanted = contentWords(excerpt)
+        guard wanted.count >= 2 else { return nil }
+        let source = text as NSString
+        var pieces: [NSRange] = []
+        var start = 0
+        let separators = CharacterSet(charactersIn: ".!?;,\n")
+        for index in 0...source.length {
+            let atEnd = index == source.length
+            if atEnd || separators.contains(UnicodeScalar(source.character(at: index)) ?? " ") {
+                let raw = source.substring(with: NSRange(location: start, length: index - start))
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    let offset = (raw as NSString).range(of: trimmed).location
+                    pieces.append(NSRange(location: start + offset, length: (trimmed as NSString).length))
+                }
+                start = index + 1
+            }
+        }
+        var candidates = pieces
+        if pieces.count > 1 {
+            for index in 0..<(pieces.count - 1) {
+                candidates.append(NSRange(location: pieces[index].location,
+                                          length: NSMaxRange(pieces[index + 1]) - pieces[index].location))
+            }
+        }
+        var best: (passage: String, score: Double)?
+        for range in candidates {
+            let passage = source.substring(with: range)
+            let words = contentWords(passage)
+            guard !words.isEmpty else { continue }
+            let shared = Double(wanted.intersection(words).count)
+            let recall = shared / Double(wanted.count)
+            let precision = shared / Double(words.count)
+            guard recall >= 0.75, precision >= 0.5 else { continue }
+            if recall + precision > best?.score ?? 0 { best = (passage, recall + precision) }
+        }
+        return best?.passage
     }
 
     /// Part des mots du texte (0 à 1) que l'on retrouve dans les extraits.

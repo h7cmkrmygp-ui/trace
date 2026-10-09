@@ -107,9 +107,10 @@ public struct Hypothesis: Equatable, Sendable {
 }
 
 /// Amorce donnée à Whisper : du français québécois parlé, des mots anglais gardés tels quels, une ponctuation soignée.
-/// Elle oriente le style sans jamais être ajoutée au texte.
+/// Elle oriente le style sans jamais être ajoutée au texte. Elle ne doit ressembler à rien que le propriétaire dirait
+/// vraiment : une dictée identique à l'amorce est prise pour un écho et jetée (c'était arrivé avec sa phrase d'exemple).
 public enum WhisperPrompt {
-    public static let bilingual = "Faut que je call mon manager demain pour changer mon shift, pis après je vais au gym. OK, I'll book the meeting for Friday."
+    public static let bilingual = "Bon ben, faque j'ai checké mes courriels pis j'ai booké le meeting avec l'équipe pour jeudi. OK, sounds good, see you then."
 
     /// Vrai si Whisper a recopié l'amorce (cela arrive sur un silence) au lieu de transcrire la parole.
     static func isEcho(_ text: String) -> Bool {

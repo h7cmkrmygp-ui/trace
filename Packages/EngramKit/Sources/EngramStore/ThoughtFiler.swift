@@ -94,10 +94,17 @@ public struct ThoughtFiler: Sendable {
                 for thought in thoughts {
                     let due = DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
                                                      relativeTo: source.capturedAt, calendar: calendar)
+                    // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots
+                    // exacts de la dictée (contenu, extrait) restent tels quels.
+                    let title = TitleMaker.fallbackTitle(
+                        from: RelativeDateWording.anchored(thought.title, on: source.capturedAt, calendar: calendar))
+                    let summary = thought.summary.map {
+                        RelativeDateWording.anchored($0, on: source.capturedAt, calendar: calendar)
+                    }
                     let draft = MemoryDraft(
                         sourceID: sourceID, excerpt: thought.excerpt, spanStart: thought.spanStart, spanEnd: thought.spanEnd,
                         spanTextVersion: source.correctedText == nil ? .original : .corrected,
-                        title: thought.title, summary: thought.summary, content: thought.excerpt, kind: thought.kind,
+                        title: title, summary: summary, content: thought.excerpt, kind: thought.kind,
                         status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion,
                         dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
