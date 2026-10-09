@@ -34,8 +34,23 @@ enum Schema {
         migrator.registerMigration("v9_lists") { db in
             try db.execute(sql: v9Lists)
         }
+        migrator.registerMigration("v10_recurrence") { db in
+            try db.execute(sql: v10Recurrence)
+        }
         return migrator
     }
+
+    /// v10 (P16) : le rythme des tâches qui reviennent (une règle par note, en JSON).
+    static let v10Recurrence = """
+        CREATE TABLE memory_recurrence (
+          memory_id BLOB PRIMARY KEY NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          rule TEXT NOT NULL CHECK (length(rule) > 0),
+          anchor_at DATETIME NOT NULL,
+          done_count INTEGER NOT NULL DEFAULT 0 CHECK (done_count >= 0),
+          last_done_at DATETIME,
+          created_at DATETIME NOT NULL
+        );
+        """
 
     /// v9 (P15) : une note par liste (épicerie, cadeaux…), et les dictées déjà ajoutées à chacune.
     static let v9Lists = """

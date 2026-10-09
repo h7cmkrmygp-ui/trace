@@ -130,6 +130,9 @@ public struct ThoughtFiler: Sendable {
                                                      capturedAt: source.capturedAt)
                     // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
                     try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
+                    // « tous les lundis » : la tâche revient (P16).
+                    try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
+                                                     capturedAt: source.capturedAt, now: now)
                     filedIDs.append(memory.id)
                 }
             } else {

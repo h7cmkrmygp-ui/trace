@@ -282,3 +282,14 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p15-listes-design.md`
 | — | « Ajoute … à ma liste d'épicerie » reconnu | n/a | ✅ | ✅ | ✅ (6 façons de le dire, anglais, pièges « ajoute une réunion à mon calendrier », « ma liste est longue ») | ⏳ | — | sur l'iPhone, sans IA |
 | — | Une note par liste (migration v9) | ✅ | n/a | ✅ | ✅ (sans doublon, case cochée qui revient, jamais ajoutée deux fois, corbeille, dictée mêlée, export) | ⏳ | — | la dictée qui complète ne laisse pas de note |
 | — | Notes › Listes, « Retirer les cases cochées » | ✅ | n/a | ✅ | compile + captures | ⏳ | — | carte en haut des Notes |
+
+## P16 — Tâches qui reviennent (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p16-taches-qui-reviennent-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Rythme dicté reconnu | n/a | ✅ | ✅ | ✅ (jour, matin, jours de la semaine, en semaine, aux deux semaines, tous les 3 mois, le 1er du mois, chaque année ; pièges) | ⏳ | — | sur l'iPhone, sans IA ; seulement tâches et rendez-vous |
+| — | La prochaine fois (migration v10) | n/a | ✅ | ✅ | ✅ (semaine, deux jours dans la semaine, aux deux semaines, 31 → 28 février, année) | ⏳ | — | sans date dite, la tâche prend la prochaine fois |
+| — | « Fait » passe à la prochaine fois | ✅ | n/a | ✅ | ✅ (compte, version, « Jamais » qui archive de nouveau, export) | ⏳ | — | menu, glissement et notification ; les rappels suivent |
+| — | Pastille « Tous les lundis », « Répéter… » | ✅ | n/a | ✅ | compile | ⏳ | — | Jamais, jour, semaine (jours), deux semaines, mois (jour précis), année |

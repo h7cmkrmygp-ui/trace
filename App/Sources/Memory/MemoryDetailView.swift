@@ -25,6 +25,9 @@ struct MemoryDetailView: View {
     /// « En arrivant · Costco » (P14).
     @State private var placeTrigger: PlaceTriggerInfo?
     @State private var isSettingPlace = false
+    /// « Tous les lundis » (P16).
+    @State private var recurrence: MemoryRecurrence?
+    @State private var isSettingRecurrence = false
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
     /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
     @State private var allCategories: [UUID: EngramCategory] = [:]
@@ -105,6 +108,9 @@ struct MemoryDetailView: View {
         .sheet(isPresented: $isAddingEntity, onDismiss: reload) { AddEntitySheet(memoryID: memoryID) }
         .sheet(isPresented: $isShowingInfo, onDismiss: reload) { MemoryInfoSheet(memory: memory, source: source) }
         .sheet(isPresented: $isSettingPlace, onDismiss: reload) { PlaceTriggerSheet(memoryID: memoryID) }
+        .sheet(isPresented: $isSettingRecurrence, onDismiss: reload) {
+            RecurrenceSheet(memoryID: memoryID, current: recurrence?.rule)
+        }
         .confirmationDialog("Supprimer définitivement ce souvenir ?", isPresented: $isConfirmingDeletion,
                             titleVisibility: .visible) {
             Button("Supprimer définitivement", role: .destructive) {
@@ -139,6 +145,11 @@ struct MemoryDetailView: View {
                 }
                 if isPinned {
                     chip("Épinglée", systemImage: "pin.fill", color: .orange)
+                }
+                if let recurrence {
+                    chip(Recurrence.describe(recurrence.rule)
+                            + (recurrence.doneCount > 0 ? " · faite \(recurrence.doneCount) fois" : ""),
+                         systemImage: "repeat", color: .purple)
                 }
                 if let placeTrigger {
                     placeChip(placeTrigger)
@@ -362,7 +373,7 @@ struct MemoryDetailView: View {
             case .active, .unsorted:
                 // Une tâche ou un rendez-vous terminés sont « faits » (rangés dans les Archives, comme le geste « Fait »).
                 if memory.kind == .task || memory.kind == .appointment {
-                    Button("Marquer comme fait", systemImage: "checkmark.circle") {
+                    Button(recurrence == nil ? "Marquer comme fait" : "Fait : à la prochaine fois", systemImage: "checkmark.circle") {
                         run { _ = try model.memories.setStatus(.archived, for: memoryID, actor: .user) }
                     }
                 } else {
@@ -373,6 +384,12 @@ struct MemoryDetailView: View {
                 Button("Modifier tes mots…", systemImage: "quote.opening") { isEditingWords = true }
                 Button(placeTrigger == nil ? "Rappel en arrivant à un lieu…" : "Changer le rappel de lieu…", systemImage: "location") {
                     isSettingPlace = true
+                }
+                // Une tâche qui revient (P16) : « Fait » la passe à la prochaine fois.
+                if memory.kind == .task || memory.kind == .appointment {
+                    Button(recurrence == nil ? "Répéter…" : "Changer la répétition…", systemImage: "repeat") {
+                        isSettingRecurrence = true
+                    }
                 }
                 // Une liste (P15) ou toute note à cocher : on fait le ménage des cases faites.
                 if blocks.contains(where: { $0.kind == .check(done: true) }) {
@@ -475,6 +492,7 @@ struct MemoryDetailView: View {
             noteMeasurements = try model.measurements.measurements(for: memoryID)
             isPinned = try model.memories.isPinned(memoryID)
             placeTrigger = try model.entities.placeTrigger(for: memoryID)
+            recurrence = try model.memories.recurrence(for: memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

@@ -136,6 +136,8 @@ public struct MemoryStore: Sendable {
     func setStatus(_ db: Database, _ status: MemoryStatus, for id: UUID, actor: ChangeActor, now: Date) throws -> Memory {
         guard var memory = try Memory.fetchOne(db, key: id) else { throw StoreError.notFound }
         guard memory.status != status else { return memory }
+        // P16 : une tâche qui revient, faite, passe à la prochaine fois au lieu d'aller dans les Archives.
+        if status == .archived, actor == .user, try advanceRecurrence(db, &memory, now: now) { return memory }
         memory.status = status
         memory.trashedAt = status == .trashed ? now : nil
         memory.version += 1

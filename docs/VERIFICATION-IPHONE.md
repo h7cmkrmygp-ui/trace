@@ -206,3 +206,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 101. **Coché puis redemandé** : coche « Lait », puis redis « ajoute du lait à ma liste d'épicerie » : la case redevient à faire.
 102. **Ménage** : dans la liste, … › « Retirer les cases cochées ».
 103. **Autres listes** : « Sur ma liste de cadeaux, ajoute un livre pour Julie » crée « Liste de cadeaux ».
+
+## Q. P16 — Tâches qui reviennent
+
+104. **Dicté** : « Sortir les poubelles tous les lundis ». La note porte « Tous les lundis » et la date du prochain lundi.
+105. **Fait** : … › « Fait : à la prochaine fois » (ou « Fait » sur la notification) : la tâche reste dans « À faire », pour le lundi suivant ; la pastille dit « · faite 1 fois ».
+106. **Autres rythmes** : « Payer le loyer le 1er de chaque mois », « le recyclage aux deux semaines le jeudi », « prendre mes vitamines chaque matin » (8 h).
+107. **À la main** : dans une tâche, … › « Répéter… » › Chaque semaine › coche mardi et jeudi › Enregistrer. « Jamais » arrête la répétition.
