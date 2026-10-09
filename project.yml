@@ -20,6 +20,8 @@ targets:
     platform: iOS
     sources:
       - path: App/Sources
+      # L'icône de l'app (une seule image 1024 × 1024, la même en mode sombre).
+      - path: App/Resources
       - path: Shared
     entitlements:
       path: App/Engram.entitlements
@@ -81,6 +83,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
         CODE_SIGN_IDENTITY: ""

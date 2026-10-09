@@ -420,3 +420,9 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p30-lieux-trouves-tout-seuls-de
 |---|---|---|---|---|---|---|---|---|
 | — | Adresse trouvée toute seule après la dictée | n/a | ✅ | ✅ | ✅ (3 plus proches à 40 km, noms qui correspondent, mot général, jamais un lieu à soi ni chez quelqu'un) | ⏳ | — | Plans d'Apple : le nom du lieu et la zone seulement |
 | — | N'importe quelle succursale prévient (migration v15) | n/a | ✅ | ✅ | ✅ (une région par succursale, 20 au plus, choix du propriétaire qui l'emporte, recherche refaite après une semaine, export) | ⏳ | — | réglage dans Rappels |
+
+## Icône de l'app (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Icône « une pensée qui devient un souvenir » | ✅ | n/a | ✅ | construction de l'IPA | ⏳ | — | une onde de voix qui devient une constellation ; image 1024 × 1024 sans transparence, la même en mode sombre |
