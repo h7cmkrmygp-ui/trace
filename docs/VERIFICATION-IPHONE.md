@@ -282,3 +282,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## AC. P28 — « Ton mois »
 
 140. **Le mois** : Notes › Plus › « Ta semaine » › « Mois » : « Octobre 2026 », une barre par jour, ton jour le plus actif ; ‹ remonte les mois.
+
+## AD. P29 — La liste t'attend au magasin
+
+141. **Liste d'un magasin** : « Ajoute des piles à ma liste de Costco », avec le lieu Costco qui a une adresse (P14). Rendu chez Costco : « Costco » / « Liste de Costco : piles ». Toucher ouvre la liste.

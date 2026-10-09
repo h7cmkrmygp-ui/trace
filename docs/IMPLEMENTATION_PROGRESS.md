@@ -403,3 +403,11 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p28-ton-mois-design.md`
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Bilan d'un mois | ✅ | ✅ | ✅ | ✅ (titre, mois d'avant, jour le plus actif, mois jour par jour, la semaine inchangée) | ⏳ | — | Semaine | Mois dans « Ta semaine » |
+
+## P29 — La liste t'attend au magasin (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p29-la-liste-t-attend-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Liste de Costco » prévient en arrivant chez Costco | n/a | ✅ | ✅ | ✅ (lieu avec adresse, tout coché, lieu inconnu, pas de double) | ⏳ | — | rien à régler |

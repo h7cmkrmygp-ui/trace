@@ -139,7 +139,7 @@ extension EntityStore {
             WHERE m.status IN ('active','unsorted') AND e.status = 'active' AND s.needs_review = 0
             ORDER BY t.created_at DESC
             """)
-        return rows.map { row in
+        let triggered: [PlaceReminderPlanner.Item] = rows.map { row in
             let status: String = row["status"]
             let event: String = row["event"]
             let latitude: Double? = row["latitude"]
@@ -153,6 +153,42 @@ extension EntityStore {
                 memoryID: row["memory_id"], title: row["title"], status: MemoryStatus(rawValue: status) ?? .active,
                 isPrivate: MemoryStore.isPrivate(row), placeID: row["place_id"], placeName: row["place_name"],
                 event: PlaceEvent(rawValue: event) ?? .arrive, location: location, createdAt: row["created_at"])
+        }
+        return triggered + (try listsWaitingAtPlaces(db, excluding: Set(triggered.map(\.memoryID))))
+    }
+
+    /// P29 — une liste qui porte le nom d'un lieu actif (« Liste de Costco ») l'attend en arrivant, avec ce qui reste à
+    /// prendre ; une liste toute cochée ou déjà reliée à la main à un lieu n'est pas ajoutée.
+    static func listsWaitingAtPlaces(_ db: Database, excluding triggered: Set<UUID>) throws -> [PlaceReminderPlanner.Item] {
+        let places = try EngramEntity.filter(Column("kind") == EntityKind.place.rawValue && Column("status") == "active")
+            .fetchAll(db)
+        guard !places.isEmpty else { return [] }
+        let byKey = Dictionary(places.map { ($0.normalizedName, $0) }, uniquingKeysWith: { first, _ in first })
+        let rows = try Row.fetchAll(db, sql: """
+            SELECT l.name AS name, m.id AS memory_id, m.title AS title, m.summary AS summary, m.status AS status,
+                   m.updated_at AS updated_at, s.keep_local AS keep_local, s.privacy_level AS privacy_level,
+                   s.route_reason AS route_reason
+            FROM memory_list l JOIN memory m ON m.id = l.memory_id JOIN source s ON s.id = m.source_id
+            WHERE m.status IN ('active','unsorted')
+            """)
+        return try rows.compactMap { row -> PlaceReminderPlanner.Item? in
+            let memoryID: UUID = row["memory_id"]
+            let name: String = row["name"]
+            guard !triggered.contains(memoryID), let place = byKey[EntityName.key(name)] else { return nil }
+            let summary: String? = row["summary"]
+            let open = NoteBody.blocks(from: summary ?? "").compactMap { block -> String? in
+                if case .check(done: false) = block.kind { return block.text }
+                return nil
+            }
+            guard !open.isEmpty else { return nil }
+            let location = try PlaceLocation.fetchOne(db, key: place.id).map {
+                PlaceReminderPlanner.Coordinates(latitude: $0.latitude, longitude: $0.longitude, radius: $0.radius)
+            }
+            let status: String = row["status"]
+            return PlaceReminderPlanner.Item(
+                memoryID: memoryID, title: ListSpeech.waitingTitle(row["title"], open: open),
+                status: MemoryStatus(rawValue: status) ?? .active, isPrivate: MemoryStore.isPrivate(row), placeID: place.id,
+                placeName: place.name, event: .arrive, location: location, createdAt: row["updated_at"])
         }
     }
 

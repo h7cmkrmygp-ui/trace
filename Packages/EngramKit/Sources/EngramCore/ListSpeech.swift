@@ -65,5 +65,18 @@ public enum ListSpeech {
 
 extension ListSpeech {
     /// P29 — « Liste de Costco : piles et papier de toilette » (le rappel en arrivant au magasin).
-    public static func waitingTitle(_ title: String, open: [String]) -> String { title }
+    public static func waitingTitle(_ title: String, open: [String]) -> String {
+        guard !open.isEmpty else { return title }
+        let items = open.prefix(3).map(lowerFirst)
+        let rest = open.count - items.count
+        let spoken: String
+        if rest > 0 {
+            spoken = items.joined(separator: ", ") + " et \(rest) autre\(rest > 1 ? "s" : "")"
+        } else if items.count > 1 {
+            spoken = items.dropLast().joined(separator: ", ") + " et " + items[items.count - 1]
+        } else {
+            spoken = items[0]
+        }
+        return "\(title) : \(spoken)"
+    }
 }
