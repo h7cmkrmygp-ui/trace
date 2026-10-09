@@ -39,6 +39,17 @@ struct AnalysisValidatorTests {
         #expect(valid[1].spanStart != nil)
     }
 
+    /// Une note d'un seul sujet en trois morceaux, recopiée presque mot pour mot : elle est classée quand même.
+    @Test func aWholeNoteSlightlyMisquotedIsStillFiled() throws {
+        let text = "Ok faque demain matin faut que je passe au bureau, prendre les papiers, pis revenir avant midi"
+        let analysis = ThoughtAnalysis(thoughts: [
+            thought(title: "Passer au bureau", excerpt: "Ok, demain matin faut que je passe au bureau, prendre les papiers, puis revenir avant midi",
+                    category: "Travail", subcategory: nil),
+        ])
+        let valid = try AnalysisValidator.validate(analysis, against: text)
+        #expect(valid.map(\.excerpt) == [text])
+    }
+
     @Test func keepsValidThoughtsAndDropsInventedOnes() throws {
         let analysis = ThoughtAnalysis(thoughts: [
             thought(excerpt: "acheter des wipers"),

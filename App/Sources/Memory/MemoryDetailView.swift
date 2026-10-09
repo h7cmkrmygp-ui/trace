@@ -54,6 +54,12 @@ struct MemoryDetailView: View {
                         .font(.title2.weight(.bold))
                         .focused($focus, equals: .title)
                         .accessibilityAddTraits(.isHeader)
+                        // Retour dans le titre passe au texte, comme dans Notes.
+                        .onChange(of: title) { _, value in
+                            guard value.contains("\n") else { return }
+                            title = value.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+                            if let first = blocks.first { focus = .block(first.id) }
+                        }
                     NoteBodyEditor(blocks: $blocks, focus: $focus, tint: tint, onToggle: save)
                 }
                 spokenWords(memory)
@@ -88,6 +94,8 @@ struct MemoryDetailView: View {
             Button("Supprimer définitivement", role: .destructive) {
                 model.perform {
                     try model.deletePermanently(memoryID)
+                    // Plus rien à enregistrer en quittant l'écran.
+                    self.memory = nil
                     dismiss()
                 }
             }

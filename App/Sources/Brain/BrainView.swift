@@ -269,6 +269,8 @@ struct BrainView: View {
         let positions = animatedPositions(time: time)
         let dark = colorScheme == .dark
         let nodeByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
+        // Une couleur par nœud, calculée une fois par image (et non pour chaque trait).
+        let colors = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, color(for: $0, in: nodeByID)) })
         return Canvas { context, size in
             let factor = fit * camera.scale
             let center = CGPoint(x: size.width / 2 + camera.offset.width, y: size.height / 2 + camera.offset.height)
@@ -299,7 +301,7 @@ struct BrainView: View {
                 curve.move(to: start)
                 curve.addQuadCurve(to: end, control: Self.control(from: start, to: end, seed: BrainMotion.seed(node.id)))
                 let strength = appearance(node) * emphasis(node)
-                context.stroke(curve, with: .color(color(for: node, in: nodeByID).opacity((dark ? 0.34 : 0.28) * strength)),
+                context.stroke(curve, with: .color((colors[node.id] ?? .gray).opacity((dark ? 0.34 : 0.28) * strength)),
                                lineWidth: node.anchorID == nil ? 1 : 0.75)
             }
 
@@ -314,7 +316,7 @@ struct BrainView: View {
                 guard let p = point(node.id) else { continue }
                 let strength = appearance(node) * emphasis(node)
                 let isMatch = highlighted.contains(node.id)
-                let color = color(for: node, in: nodeByID)
+                let color = colors[node.id] ?? .gray
                 let radius = CGFloat(isMatch ? 3.6 : max(1.8, min(3.2, Double(factor) * 4)))
                 context.fill(circle(p, radius), with: .color(color.opacity(0.85 * strength)))
                 if isMatch { context.stroke(circle(p, radius + 3), with: .color(color.opacity(0.5 * strength)), lineWidth: 1) }
@@ -329,7 +331,7 @@ struct BrainView: View {
                 guard let p = point(node.id) else { continue }
                 let shown = appearance(node)
                 let radius = coreRadius(node, factor: factor, time: time) * CGFloat(0.6 + 0.4 * shown)
-                let color = color(for: node, in: nodeByID)
+                let color = colors[node.id] ?? .gray
                 context.opacity = shown * emphasis(node)
                 context.fill(circle(p, radius + 5), with: .color(color.opacity(dark ? 0.16 : 0.12)))
                 context.fill(circle(p, radius), with: .radialGradient(
