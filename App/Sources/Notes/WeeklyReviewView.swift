@@ -7,8 +7,10 @@ import SwiftUI
 /// habitudes et les suivis. Tout est lu sur l'iPhone ; on remonte les semaines avec les flèches.
 struct WeeklyReviewView: View {
     @Environment(AppModel.self) private var model
-    /// 0 : cette semaine ; -1 : la semaine d'avant…
+    /// 0 : cette semaine (ou ce mois) ; -1 : celle d'avant…
     @State private var offset = 0
+    /// P28 : la semaine ou le mois.
+    @State private var period: ReviewPeriod = .week
     @State private var review: WeeklyReview?
     @State private var highlights: [String] = []
 
@@ -16,10 +18,19 @@ struct WeeklyReviewView: View {
 
     var body: some View {
         List {
+            Section {
+                Picker("Période", selection: $period) {
+                    Text("Semaine").tag(ReviewPeriod.week)
+                    Text("Mois").tag(ReviewPeriod.month)
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
             if let review {
                 Section {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(WeeklyReviewText.title(start: review.start, calendar: calendar))
+                        Text(WeeklyReviewText.title(start: review.start, period: period, calendar: calendar))
                             .font(.title3.weight(.bold))
                             .accessibilityAddTraits(.isHeader)
                         HStack(spacing: 0) {
@@ -27,7 +38,8 @@ struct WeeklyReviewView: View {
                             stat(review.done, review.done == 1 ? "faite" : "faites", .green)
                             stat(review.open, "à faire", .orange)
                         }
-                        if let comparison = WeeklyReviewText.comparison(notes: review.notes, lastWeek: review.notesLastWeek) {
+                        if let comparison = WeeklyReviewText.comparison(notes: review.notes, lastWeek: review.notesLastWeek,
+                                                                        period: period) {
                             Label(comparison, systemImage: review.notes >= review.notesLastWeek ? "arrow.up.right" : "arrow.down.right")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -38,7 +50,8 @@ struct WeeklyReviewView: View {
                 if review.notes > 0 {
                     Section {
                         Chart(Array(review.perDay.enumerated()), id: \.offset) { index, count in
-                            BarMark(x: .value("Jour", dayLetter(index, start: review.start)), y: .value("Notes", count))
+                            BarMark(x: .value("Jour", period == .week ? dayLetter(index, start: review.start) : "\(index + 1)"),
+                                    y: .value("Notes", count))
                                 .foregroundStyle(Color.indigo.gradient)
                                 .cornerRadius(4)
                         }
@@ -48,7 +61,8 @@ struct WeeklyReviewView: View {
                     } header: {
                         Text("Chaque jour")
                     } footer: {
-                        if let busiest = WeeklyReviewText.busiestDay(perDay: review.perDay, start: review.start, calendar: calendar) {
+                        if let busiest = WeeklyReviewText.busiestDay(perDay: review.perDay, start: review.start, period: period,
+                                                                     calendar: calendar) {
                             Text("Ton jour le plus actif : \(busiest).")
                         }
                     }
@@ -97,29 +111,32 @@ struct WeeklyReviewView: View {
                 }
                 if review.notes == 0 {
                     Section {
-                        ContentUnavailableView("Rien noté cette semaine", systemImage: "calendar",
-                                               description: Text("Parle à Engram : ta semaine se remplira toute seule."))
+                        ContentUnavailableView(period == .week ? "Rien noté cette semaine" : "Rien noté ce mois-ci",
+                                               systemImage: "calendar",
+                                               description: Text("Parle à Engram : ta page se remplira toute seule."))
                     }
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Ta semaine")
+        .navigationTitle(period == .week ? "Ta semaine" : "Ton mois")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Semaine d'avant", systemImage: "chevron.left") { offset -= 1 }
-                Button("Semaine d'après", systemImage: "chevron.right") { offset += 1 }
+                Button(period == .week ? "Semaine d'avant" : "Mois d'avant", systemImage: "chevron.left") { offset -= 1 }
+                Button(period == .week ? "Semaine d'après" : "Mois d'après", systemImage: "chevron.right") { offset += 1 }
                     .disabled(offset >= 0)
             }
         }
-        .task(id: offset) { load() }
+        // Changer de période revient à la semaine (ou au mois) en cours.
+        .onChange(of: period) { _, _ in offset = 0 }
+        .task(id: "\(period.rawValue)\(offset)") { load() }
     }
 
     private func load() {
-        let day = calendar.date(byAdding: .weekOfYear, value: offset, to: Date()) ?? Date()
+        let day = calendar.date(byAdding: period == .week ? .weekOfYear : .month, value: offset, to: Date()) ?? Date()
         model.perform {
-            let loaded = try model.memories.weeklyReview(containing: day)
+            let loaded = try model.memories.review(period, containing: day)
             review = loaded
             highlights = model.weekDetails(from: loaded.start, to: loaded.end).highlights
         }

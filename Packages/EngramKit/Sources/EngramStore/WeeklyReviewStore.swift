@@ -18,9 +18,14 @@ extension MemoryStore {
 
     /// La semaine du calendrier qui contient `date`.
     public func weeklyReview(containing date: Date) throws -> WeeklyReview {
+        try review(.week, containing: date)
+    }
+
+    /// La semaine ou le mois (P28) du calendrier qui contient `date`.
+    public func review(_ period: ReviewPeriod, containing date: Date) throws -> WeeklyReview {
         let calendar = self.calendar
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: date),
-              let previous = calendar.date(byAdding: .day, value: -7, to: week.start) else {
+        guard let week = period.interval(containing: date, calendar: calendar),
+              let previous = period.previousStart(of: week.start, calendar: calendar) else {
             throw StoreError.invalidOperation("Semaine introuvable.")
         }
         return try database.writer.read { db in
@@ -32,10 +37,11 @@ extension MemoryStore {
             let lastWeek = try Int.fetchOne(db, sql: """
                 SELECT COUNT(*) FROM memory m WHERE \(living) AND m.captured_at >= ? AND m.captured_at < ?
                 """, arguments: [previous, week.start]) ?? 0
-            var perDay = Array(repeating: 0, count: 7)
+            let length = max(1, calendar.dateComponents([.day], from: week.start, to: week.end).day ?? 7)
+            var perDay = Array(repeating: 0, count: length)
             for moment in captured {
                 let index = calendar.dateComponents([.day], from: week.start, to: calendar.startOfDay(for: moment)).day ?? 0
-                if (0..<7).contains(index) { perDay[index] += 1 }
+                if (0..<length).contains(index) { perDay[index] += 1 }
             }
             let archived = try Int.fetchOne(db, sql: """
                 SELECT COUNT(*) FROM memory WHERE status = 'archived' AND kind IN ('task','appointment')
@@ -104,10 +110,3 @@ extension MemoryStore {
     }
 }
 
-/// P28 — « Ton mois ».
-extension MemoryStore {
-    public func review(_ period: ReviewPeriod, containing date: Date) throws -> WeeklyReview {
-        WeeklyReview(start: date, end: date, notes: 0, notesLastWeek: 0, done: 0, open: 0, perDay: [], categories: [],
-                     people: [], places: [], habits: [])
-    }
-}

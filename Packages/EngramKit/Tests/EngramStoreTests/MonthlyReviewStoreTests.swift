@@ -23,7 +23,7 @@ struct MonthlyReviewStoreTests {
         #expect(Fixtures.calendar.component(.day, from: january.start) == 1)
         #expect(january.notes == 1)
         #expect(january.notesLastWeek == 1)
-        #expect(january.perDay.count == 31)
+        try #require(january.perDay.count == 31)
         #expect(january.perDay[14] == 1)
         #expect(january.categories.map(\.name) == ["Maison"])
         // La semaine, elle, reste de 7 jours.

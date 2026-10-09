@@ -395,3 +395,11 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p27-ma-journee-design.md`
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | « Ma journée dans Engram » | n/a | ✅ | ✅ | ✅ (heures d'abord, retards, fêtes, séries, journée vide, note privée, longue journée) | ⏳ | — | iPhone déverrouillé exigé |
+
+## P28 — « Ton mois » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p28-ton-mois-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Bilan d'un mois | ✅ | ✅ | ✅ | ✅ (titre, mois d'avant, jour le plus actif, mois jour par jour, la semaine inchangée) | ⏳ | — | Semaine | Mois dans « Ta semaine » |

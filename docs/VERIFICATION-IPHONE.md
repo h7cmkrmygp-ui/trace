@@ -278,3 +278,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## AB. P27 — « Ma journée » avec Siri
 
 139. **Ma journée** : « Dis Siri, ma journée dans Engram » : Siri dit ce qui est prévu aujourd'hui (les heures d'abord), ce qui est en retard, les fêtes et les séries à garder.
+
+## AC. P28 — « Ton mois »
+
+140. **Le mois** : Notes › Plus › « Ta semaine » › « Mois » : « Octobre 2026 », une barre par jour, ton jour le plus actif ; ‹ remonte les mois.

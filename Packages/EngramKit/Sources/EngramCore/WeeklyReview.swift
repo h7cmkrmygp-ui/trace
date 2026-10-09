@@ -102,15 +102,41 @@ public enum WeeklyReviewText {
 public enum ReviewPeriod: String, Sendable, CaseIterable {
     case week, month
 
-    public func interval(containing date: Date, calendar: Calendar) -> DateInterval? { nil }
+    var component: Calendar.Component { self == .week ? .weekOfYear : .month }
 
-    public func previousStart(of start: Date, calendar: Calendar) -> Date? { nil }
+    /// La semaine (ou le mois) du calendrier qui contient `date`.
+    public func interval(containing date: Date, calendar: Calendar) -> DateInterval? {
+        calendar.dateInterval(of: component, for: date)
+    }
+
+    /// Le début de la période d'avant.
+    public func previousStart(of start: Date, calendar: Calendar) -> Date? {
+        calendar.date(byAdding: component, value: -1, to: start)
+    }
 }
 
 extension WeeklyReviewText {
-    public static func title(start: Date, period: ReviewPeriod, calendar: Calendar) -> String { "" }
+    /// « Semaine du 10 au 16 janvier » ou « Janvier 2027 ».
+    public static func title(start: Date, period: ReviewPeriod, calendar: Calendar) -> String {
+        guard period == .month else { return title(start: start, calendar: calendar) }
+        let parts = calendar.dateComponents([.year, .month], from: start)
+        let month = months[max(0, min(11, (parts.month ?? 1) - 1))]
+        return month.prefix(1).uppercased() + month.dropFirst() + " \(parts.year ?? 0)"
+    }
 
-    public static func comparison(notes: Int, lastWeek: Int, period: ReviewPeriod) -> String? { nil }
+    /// « 10 notes de plus que le mois d'avant ».
+    public static func comparison(notes: Int, lastWeek: Int, period: ReviewPeriod) -> String? {
+        guard let text = comparison(notes: notes, lastWeek: lastWeek) else { return nil }
+        return period == .week ? text : text.replacingOccurrences(of: "la semaine d'avant", with: "le mois d'avant")
+    }
 
-    public static func busiestDay(perDay: [Int], start: Date, period: ReviewPeriod, calendar: Calendar) -> String? { nil }
+    /// « mercredi » pour une semaine, « le 14 janvier » pour un mois.
+    public static func busiestDay(perDay: [Int], start: Date, period: ReviewPeriod, calendar: Calendar) -> String? {
+        guard period == .month else { return busiestDay(perDay: perDay, start: start, calendar: calendar) }
+        guard let most = perDay.max(), most > 0, let index = perDay.firstIndex(of: most),
+              let day = calendar.date(byAdding: .day, value: index, to: start) else { return nil }
+        let parts = calendar.dateComponents([.month, .day], from: day)
+        let number = parts.day == 1 ? "1er" : "\(parts.day ?? 1)"
+        return "le \(number) \(months[max(0, min(11, (parts.month ?? 1) - 1))])"
+    }
 }
