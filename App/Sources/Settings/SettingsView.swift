@@ -84,6 +84,7 @@ struct SettingsView: View {
             }
             TranscriptionSettingsSection()
             IntelligenceSettingsSection()
+            SecuritySettingsSection()
             Section {
                 Button {
                     Task { await export() }

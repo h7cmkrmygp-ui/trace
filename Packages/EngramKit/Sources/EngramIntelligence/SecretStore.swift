@@ -8,6 +8,8 @@ public enum SecretStore {
     public enum Account: String, Sendable, CaseIterable {
         case gemini = "gemini.apiKey"
         case groq = "groq.apiKey"
+        /// Mot de passe des sauvegardes chiffrées (choisi par le propriétaire), pour les sauvegardes automatiques.
+        case backupPassword = "backup.password"
     }
 
     static let service = "io.github.h7cmkrmygpui.engram"

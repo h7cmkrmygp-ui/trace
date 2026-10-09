@@ -24,6 +24,18 @@ public enum BackupRestore {
         try FileManager.default.moveItem(at: restored, to: pending)
     }
 
+    /// Vérifie qu'une sauvegarde ouverte contient une vraie base d'Engram (elle s'ouvre, les migrations passent) et
+    /// renvoie son nombre de notes (corbeille exclue).
+    public static func noteCount(inRestored folder: URL) throws -> Int {
+        let path = folder.appendingPathComponent(DatabaseRecovery.databaseFileName).path
+        let database = try AppDatabase(DatabaseQueue(path: path, configuration: AppDatabase.makeConfiguration()))
+        let count = try database.writer.read { db in
+            try Memory.filter(Column("status") != MemoryStatus.trashed).fetchCount(db)
+        }
+        try database.writer.close()
+        return count
+    }
+
     public static func hasPending(in storage: URL) -> Bool {
         FileManager.default.fileExists(atPath: storage.appendingPathComponent(pendingFolder)
             .appendingPathComponent(DatabaseRecovery.databaseFileName).path)

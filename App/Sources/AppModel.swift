@@ -36,6 +36,12 @@ final class AppModel {
     /// Rappels de l'iPhone (notifications locales).
     let reminders = ReminderScheduler()
     private let snoozes = ReminderSnoozes()
+    /// Sauvegardes chiffrées.
+    let backups = BackupService()
+    /// Verrouillage Face ID (option).
+    let lock: AppLock
+    /// Ce que la dernière restauration a mis de côté (affiché une fois dans les Réglages).
+    var restoredAside: URL?
     let database: AppDatabase
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
@@ -79,6 +85,7 @@ final class AppModel {
         whisperModels = WhisperModelStore(directory: support.appendingPathComponent("WhisperModels", isDirectory: true))
         let quota = CloudQuota()
         self.quota = quota
+        lock = AppLock(settings: settings)
         let settings = self.settings
         // Neutre → Gemini, personnel → Groq, secret → l'iPhone ; le contrôleur de confidentialité décide sur l'iPhone.
         let router = RoutedAnalyzer(local: AppleThoughtAnalyzer(), judge: ApplePrivacyJudge(),
@@ -171,7 +178,14 @@ final class AppModel {
 
     /// Rappels, résumés du matin et de la semaine, pastille de l'icône et widgets : tout est recalculé ensemble.
     func syncReminders(_ items: [ReminderPlanner.Item]? = nil) async {
-        let current = items ?? ((try? memories.reminderItems()) ?? [])
+        var current = items ?? ((try? memories.reminderItems()) ?? [])
+        // Engram verrouillé : aucun titre dans les widgets ni les notifications.
+        if lock.isEnabled {
+            current = current.map {
+                ReminderPlanner.Item(id: $0.id, title: $0.title, kind: $0.kind, status: $0.status, dueAt: $0.dueAt,
+                                     dueHasTime: $0.dueHasTime, isPrivate: true)
+            }
+        }
         let now = Date()
         let calendar = Self.recallCalendar
         writeWidgetSnapshot(current, now: now, calendar: calendar)
@@ -290,6 +304,8 @@ final class AppModel {
             case .groq:
                 try await GroqClient(apiKey: key).checkKey()
                 return "Clé valide. Modèle : \(GroqClient.model)."
+            case .backupPassword:
+                return "Mot de passe de sauvegarde enregistré."
             }
         } catch let error as CloudError {
             switch error {
@@ -393,8 +409,11 @@ final class AppModel {
         if UITestSeed.isActive { return Result { try UITestSeed.makeModel() } }
         #endif
         return Result {
-            let model = AppModel(database: try AppDatabase.openOnDisk(),
-                                 storageDirectory: try DatabaseRecovery.storageDirectory())
+            // Une restauration préparée s'applique avant d'ouvrir la base (les données actuelles sont mises de côté).
+            let storage = try DatabaseRecovery.storageDirectory()
+            let aside = try? BackupRestore.applyPending(in: storage, at: Date())
+            let model = AppModel(database: try AppDatabase.openOnDisk(), storageDirectory: storage)
+            model.restoredAside = aside ?? nil
             // Un échec du nettoyage ne doit pas empêcher l'app de s'ouvrir.
             _ = try? model.categories.archiveUnusedSeeds()
             return model
@@ -603,6 +622,7 @@ final class AppModel {
         await retryCloudClassifications()
         await syncAppointments(askPermission: false)
         await describeCategoriesIfNeeded()
+        await backups.backupIfDue(model: self)
     }
 
     /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).

@@ -111,6 +111,7 @@ struct IntelligenceSettingsSection: View {
             switch account {
             case .gemini: geminiMessage = message
             case .groq: groqMessage = message
+            case .backupPassword: break
             }
             isWorking = false
             load()

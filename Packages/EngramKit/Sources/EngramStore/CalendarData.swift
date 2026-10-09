@@ -26,6 +26,10 @@ public struct SettingStore: Sendable {
         case digestMorning = "reminders.digestMorning"
         /// « 1 » (défaut) : résumé de la semaine, le dimanche à 18 h.
         case digestWeekly = "reminders.digestWeekly"
+        /// « 1 » : sauvegarde chiffrée automatique, une fois par semaine.
+        case backupWeekly = "backup.weekly"
+        /// « 1 » : Engram se verrouille avec Face ID (ou le code de l'iPhone).
+        case appLock = "privacy.appLock"
         /// Stratégie de langue de Whisper : « bilingual » (défaut), « french » ou « automatic ».
         case whisperStrategy = "transcription.whisperStrategy"
         /// « 1 » : les notes de santé restent sur l'iPhone (jamais envoyées à Groq).

@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @State private var wasInBackground = false
 
     var body: some View {
         @Bindable var model = model
@@ -16,11 +17,37 @@ struct RootView: View {
         }
         .errorAlert($model.errorMessage)
         .onOpenURL { model.open($0) }
-        .task { await model.resumePendingWork() }
+        // Verrou Face ID : écran verrouillé, et contenu masqué dans le sélecteur d'apps.
+        .overlay {
+            if model.lock.isLocked {
+                LockScreen { Task { await model.lock.unlock() } }
+            } else if model.lock.isEnabled && scenePhase != .active {
+                Rectangle().fill(.ultraThickMaterial).ignoresSafeArea()
+            }
+        }
+        .task {
+            if model.lock.isLocked { await model.lock.unlock() }
+            await model.resumePendingWork()
+        }
         // Les rappels suivent la base pendant toute la vie de l'app.
         .task { await model.watchReminders() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await model.resumePendingWork() } }
+            switch phase {
+            case .background:
+                model.lock.lock()
+                wasInBackground = true
+            case .active:
+                // Face ID ne se redemande qu'au vrai retour dans l'app (sa propre fenêtre rend l'app « inactive » un
+                // instant : sans ça, un refus la ferait réapparaître en boucle).
+                let returning = wasInBackground
+                wasInBackground = false
+                Task {
+                    if returning, model.lock.isLocked { await model.lock.unlock() }
+                    await model.resumePendingWork()
+                }
+            default:
+                break
+            }
         }
     }
 }

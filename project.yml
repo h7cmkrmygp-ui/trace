@@ -66,6 +66,7 @@ targets:
         NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
         NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."
         NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."
+        NSFaceIDUsageDescription: "Engram utilise Face ID pour que toi seul puisses ouvrir ta mémoire."
         # AltStore (compte gratuit) renomme le dossier partagé et écrit son vrai nom ici.
         ALTAppGroups:
           - group.io.github.h7cmkrmygpui.engram

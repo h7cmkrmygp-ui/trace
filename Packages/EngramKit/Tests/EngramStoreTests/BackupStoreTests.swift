@@ -21,6 +21,14 @@ struct BackupStoreTests {
         try database.backup(to: copy)
         let reopened = try AppDatabase(DatabaseQueue(path: copy.path, configuration: AppDatabase.makeConfiguration()))
         #expect(try reopened.writer.read { try Memory.fetchCount($0) } == 1)
+
+        // Une sauvegarde ouverte est vérifiée avant d'être préparée : sa base s'ouvre et compte ses notes.
+        let restored = try folder("ouverte")
+        try database.backup(to: restored.appendingPathComponent("engram.sqlite"))
+        #expect(try BackupRestore.noteCount(inRestored: restored) == 1)
+        let broken = try folder("abimee")
+        try Data("pas une base".utf8).write(to: broken.appendingPathComponent("engram.sqlite"))
+        #expect(throws: (any Error).self) { try BackupRestore.noteCount(inRestored: broken) }
     }
 
     @Test func aRestoreKeepsTheCurrentDataAside() throws {
