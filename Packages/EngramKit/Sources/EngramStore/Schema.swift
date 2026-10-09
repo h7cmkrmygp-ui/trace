@@ -25,8 +25,27 @@ enum Schema {
         migrator.registerMigration("v6_measurements") { db in
             try db.execute(sql: v6Measurements)
         }
+        migrator.registerMigration("v7_pins_goals") { db in
+            try db.execute(sql: v7PinsGoals)
+        }
         return migrator
     }
+
+    /// v7 (P11) : notes épinglées et objectifs des suivis.
+    static let v7PinsGoals = """
+        CREATE TABLE memory_pin (
+          memory_id BLOB PRIMARY KEY NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          pinned_at DATETIME NOT NULL
+        );
+        CREATE TABLE tracker_goal (
+          metric TEXT PRIMARY KEY NOT NULL
+            CHECK (metric IN ('weight','sleep','blood_pressure','heart_rate','steps','glucose')),
+          target REAL NOT NULL,
+          unit TEXT NOT NULL CHECK (length(unit) > 0),
+          set_at DATETIME NOT NULL,
+          memory_id BLOB REFERENCES memory(id) ON DELETE SET NULL
+        );
+        """
 
     /// v6 (P10) : les mesures des notes (poids, sommeil, tension, pouls, pas, glycémie). Recalculables depuis le texte.
     static let v6Measurements = """

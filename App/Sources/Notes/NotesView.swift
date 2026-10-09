@@ -20,6 +20,8 @@ enum NotesRoute: Hashable {
     /// P10 : les suivis, et la page de l'un d'eux.
     case trackers
     case metric(Metric)
+    /// P11 : le journal, jour par jour.
+    case journal
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -36,6 +38,7 @@ enum NotesRoute: Hashable {
         case .entity(let id): EntityDetailView(entityID: id)
         case .trackers: TrackersView()
         case .metric(let metric): MetricDetailView(metric: metric)
+        case .journal: JournalView()
         }
     }
 }
@@ -54,6 +57,8 @@ struct NotesView: View {
     @State private var places: [EntityStore.Summary] = []
     /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
     @State private var trackersSummary = ""
+    /// P11 : les notes épinglées.
+    @State private var pinned: [Memory] = []
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -117,6 +122,13 @@ struct NotesView: View {
                     model.errorMessage = AppModel.describe(error)
                 }
             }
+            .task {
+                do {
+                    for try await list in model.memories.pinnedStream() { pinned = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
             .task(id: weightUnit) {
                 do {
                     for try await metrics in model.measurements.metricsStream() {
@@ -170,6 +182,11 @@ struct NotesView: View {
             } label: {
                 Label("Corbeille (\(summary?.trashedCount ?? 0))", systemImage: "trash")
             }
+            Button {
+                model.notesPath.append(NotesRoute.journal)
+            } label: {
+                Label("Journal", systemImage: "book.closed")
+            }
             Divider()
             Button {
                 model.notesPath.append(NotesRoute.settings)
@@ -185,6 +202,7 @@ struct NotesView: View {
     private var folders: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                if !pinned.isEmpty { PinnedCard(memories: Array(pinned.prefix(5))) }
                 if reviewCount > 0 {
                     NavigationLink(value: NotesRoute.reviewQueue) {
                         FolderCard(systemImage: "text.badge.checkmark", title: "À vérifier",

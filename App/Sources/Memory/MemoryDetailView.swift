@@ -19,6 +19,8 @@ struct MemoryDetailView: View {
     @State private var isAddingEntity = false
     /// Mesures de la note (P10).
     @State private var noteMeasurements: [MetricMeasurement] = []
+    /// Épinglée en haut des Notes (P11).
+    @State private var isPinned = false
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
     /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
     @State private var allCategories: [UUID: EngramCategory] = [:]
@@ -129,6 +131,9 @@ struct MemoryDetailView: View {
                 }
                 if memory.status == .archived, memory.kind == .task || memory.kind == .appointment {
                     chip("Fait", systemImage: "checkmark", color: .green)
+                }
+                if isPinned {
+                    chip("Épinglée", systemImage: "pin.fill", color: .orange)
                 }
                 if memory.status == .trashed {
                     chip("Corbeille", systemImage: "trash", color: .red)
@@ -353,6 +358,10 @@ struct MemoryDetailView: View {
                 }
             }
             Divider()
+            Button(isPinned ? "Désépingler" : "Épingler", systemImage: isPinned ? "pin.slash" : "pin") {
+                model.perform { try model.memories.setPinned(!isPinned, for: memoryID) }
+                reload()
+            }
             Button("Détails", systemImage: "info.circle") { isShowingInfo = true }
         }
     }
@@ -420,6 +429,7 @@ struct MemoryDetailView: View {
             allCategories = Dictionary(uniqueKeysWithValues: try model.categories.activeCategories().map { ($0.id, $0) })
             linkedEntities = try model.entities.entities(for: memoryID)
             noteMeasurements = try model.measurements.measurements(for: memoryID)
+            isPinned = try model.memories.isPinned(memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

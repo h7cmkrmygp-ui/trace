@@ -95,8 +95,18 @@ public enum MeasurementParser {
     static let number = #"(\d{1,3}(?: \d{3})+|\d+(?:[.,]\d+)?)"#
 
     public static func parse(_ text: String) -> [ParsedMeasurement] {
-        let folded = normalized(text)
+        var folded = normalized(text)
         let days = daysBefore(in: folded)
+        // Un objectif (« objectif 155 livres ») n'est pas une mesure : il est effacé avant la lecture des mesures
+        // (remplacé par des espaces, pour que les positions restent les mêmes).
+        let goals = GoalParser.matches(in: folded)
+        if !goals.isEmpty {
+            let blanked = NSMutableString(string: folded)
+            for goal in goals {
+                blanked.replaceCharacters(in: goal.range, with: String(repeating: " ", count: goal.range.length))
+            }
+            folded = blanked as String
+        }
         var found: [(position: Int, measurement: ParsedMeasurement)] = []
         func add(_ position: Int, _ metric: Metric, _ value: Double, second: Double? = nil, unit: String) {
             // Une seule mesure par suivi et par note : la première dite.
@@ -178,9 +188,15 @@ public enum MeasurementParser {
     }
 
     struct Match {
-        let position: Int
+        let range: NSRange
+        var position: Int { range.location }
         /// Les groupes capturés, dans l'ordre (vides s'ils n'ont rien capturé).
         let groups: [String]
+    }
+
+    /// Comme `matches`, pour les objectifs (même forme).
+    static func ranged(_ pattern: String, in text: String) -> [Match] {
+        matches(pattern, in: text)
     }
 
     static func matches(_ pattern: String, in text: String) -> [Match] {
@@ -191,7 +207,7 @@ public enum MeasurementParser {
                 let range = result.range(at: index)
                 return range.location == NSNotFound ? "" : source.substring(with: range)
             }
-            return Match(position: result.range.location, groups: groups)
+            return Match(range: result.range, groups: groups)
         }
     }
 }

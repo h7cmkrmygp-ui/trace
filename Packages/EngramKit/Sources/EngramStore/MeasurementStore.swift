@@ -144,11 +144,16 @@ public struct MeasurementStore: Sendable {
         }
         // La reconnaissance (des expressions régulières) se fait sans bloquer la base ; une note sans mesure, ni
         // avant ni maintenant, n'est pas écrite.
-        let changed = notes.filter { !MeasurementParser.parse($0.content).isEmpty || measured.contains($0.id) }
+        let changed = notes.filter {
+            !MeasurementParser.parse($0.content).isEmpty || measured.contains($0.id) || !GoalParser.parse($0.content).isEmpty
+        }
         guard !changed.isEmpty else { return 0 }
         return try database.writer.write { db in
             try changed.reduce(0) { total, memory in
-                total + (try record(db, memoryID: memory.id, text: memory.content, capturedAt: memory.capturedAt, now: now))
+                // Les objectifs dits dans une ancienne note sont repris aussi (P11).
+                try recordGoals(db, memoryID: memory.id, text: memory.content, capturedAt: memory.capturedAt)
+                return total + (try record(db, memoryID: memory.id, text: memory.content, capturedAt: memory.capturedAt,
+                                           now: now))
             }
         }
     }

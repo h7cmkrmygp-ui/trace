@@ -55,6 +55,12 @@ extension Metric {
         return "\(sign)\(amount) en 30 jours"
     }
 
+    /// La valeur d'un objectif dans l'unité affichée (un objectif de poids en kilos s'affiche en livres au besoin).
+    func goalValue(_ goal: TrackerGoal, weightUnit: String) -> Double {
+        guard self == .weight, goal.unit != weightUnit else { return goal.target }
+        return weightUnit == "kg" ? MetricUnits.kilograms(fromPounds: goal.target) : MetricUnits.pounds(fromKilograms: goal.target)
+    }
+
     /// Unité affichée : le poids dans l'unité choisie, le reste tel quel.
     func unit(weightUnit: String) -> String {
         switch self {
@@ -74,13 +80,15 @@ struct TrackersView: View {
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
     @State private var metrics: [Metric] = []
     @State private var points: [Metric: [MetricPoint]] = [:]
+    @State private var goals: [Metric: TrackerGoal] = [:]
 
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
                 ForEach(metrics) { metric in
                     NavigationLink(value: NotesRoute.metric(metric)) {
-                        TrackerCard(metric: metric, points: points[metric] ?? [], unit: metric.unit(weightUnit: weightUnit))
+                        TrackerCard(metric: metric, points: points[metric] ?? [], unit: metric.unit(weightUnit: weightUnit),
+                                    goal: goals[metric].map { metric.goalValue($0, weightUnit: weightUnit) })
                     }
                     .buttonStyle(.plain)
                 }
@@ -104,10 +112,13 @@ struct TrackersView: View {
                 for try await list in model.measurements.metricsStream() {
                     metrics = list
                     var loaded: [Metric: [MetricPoint]] = [:]
+                    var loadedGoals: [Metric: TrackerGoal] = [:]
                     for metric in list {
                         loaded[metric] = (try? model.measurements.points(metric: metric, weightUnit: weightUnit)) ?? []
+                        if let goal = try? model.measurements.goal(metric: metric) { loadedGoals[metric] = goal }
                     }
                     points = loaded
+                    goals = loadedGoals
                 }
             } catch {
                 model.errorMessage = AppModel.describe(error)
@@ -121,8 +132,19 @@ struct TrackerCard: View {
     let metric: Metric
     let points: [MetricPoint]
     let unit: String
+    /// Objectif dans l'unité affichée (P11).
+    var goal: Double?
 
     private var summary: MetricSummary? { MetricStats.summary(of: points) }
+
+    /// « Objectif 155 lb · encore 9,8 lb », « Objectif atteint ».
+    private var goalText: String? {
+        guard let goal, let summary, let first = points.first else { return nil }
+        let status = GoalProgress.evaluate(start: first.value, current: summary.latest, target: goal)
+        if status.reached { return "Objectif atteint" }
+        let format = { (value: Double) in MetricUnits.format(value, second: nil, metric: metric, unit: unit) }
+        return "Objectif \(format(goal)) · encore \(format(status.remaining))"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -145,10 +167,12 @@ struct TrackerCard: View {
                 .chartYScale(domain: .automatic(includesZero: false))
                 .frame(height: 44)
                 .accessibilityHidden(true)
-                Text(metric.changeText(summary.change30, unit: unit) ?? summary.latestDate.formatted(.relative(presentation: .named)))
+                Text(goalText ?? metric.changeText(summary.change30, unit: unit)
+                     ?? summary.latestDate.formatted(.relative(presentation: .named)))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(goalText == "Objectif atteint" ? Color.green : Color.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
         .padding(14)
@@ -167,6 +191,10 @@ struct MetricDetailView: View {
     @State private var points: [MetricPoint] = []
     @State private var entries: [MeasurementStore.Entry] = []
     @State private var range: ChartRange = .threeMonths
+    /// Objectif du suivi (P11).
+    @State private var goal: TrackerGoal?
+    @State private var isSettingGoal = false
+    @State private var goalText = ""
 
     enum ChartRange: String, CaseIterable, Identifiable {
         case month = "Mois", threeMonths = "3 mois", year = "Année", all = "Tout"
@@ -219,6 +247,7 @@ struct MetricDetailView: View {
                     }
                 }
             }
+            if metric != .bloodPressure { goalSection }
             Section("Mesures") {
                 ForEach(entries) { entry in
                     NavigationLink(value: entry.memoryID) {
@@ -259,10 +288,76 @@ struct MetricDetailView: View {
                 model.errorMessage = AppModel.describe(error)
             }
         }
+        .task {
+            do {
+                for try await value in model.measurements.goalStream(metric: metric) { goal = value }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
+            }
+        }
+        .alert("Objectif", isPresented: $isSettingGoal) {
+            TextField(unit, text: $goalText)
+                .keyboardType(.decimalPad)
+            Button("Annuler", role: .cancel) {}
+            Button("OK") { saveGoal() }
+        } message: {
+            Text("La valeur à atteindre, en \(unit). Tu peux aussi le dire dans une note : « mon objectif : 155 livres ».")
+        }
+    }
+
+    /// L'objectif dans l'unité affichée.
+    private var goalTarget: Double? { goal.map { metric.goalValue($0, weightUnit: weightUnit) } }
+
+    /// « Objectif » : la valeur à atteindre, la progression depuis le moment où il a été fixé, et ce qu'il reste.
+    @ViewBuilder private var goalSection: some View {
+        Section("Objectif") {
+            if let goal, let target = goalTarget, let last = points.last {
+                // Départ : la dernière mesure avant que l'objectif soit fixé (sinon la première).
+                let start = points.last { $0.date <= goal.setAt }?.value ?? points.first?.value ?? last.value
+                let status = GoalProgress.evaluate(start: start, current: last.value, target: target)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Objectif \(MetricUnits.format(target, second: nil, metric: metric, unit: unit))")
+                            .font(.body.weight(.semibold))
+                        Spacer()
+                        Text(status.reached ? "Atteint" : "Encore \(MetricUnits.format(status.remaining, second: nil, metric: metric, unit: unit))")
+                            .font(.subheadline)
+                            .foregroundStyle(status.reached ? Color.green : Color.secondary)
+                    }
+                    ProgressView(value: status.fraction)
+                        .tint(status.reached ? .green : metric.tint)
+                        .accessibilityLabel("Progression : \(Int((status.fraction * 100).rounded())) %")
+                }
+                .padding(.vertical, 4)
+            }
+            Button(goal == nil ? "Fixer un objectif" : "Changer l'objectif", systemImage: "target") {
+                goalText = goalTarget.map { MetricUnits.decimal($0) } ?? ""
+                isSettingGoal = true
+            }
+            if goal != nil {
+                Button("Retirer l'objectif", systemImage: "xmark.circle", role: .destructive) {
+                    model.perform { try model.measurements.removeGoal(metric: metric) }
+                }
+            }
+        }
+    }
+
+    private func saveGoal() {
+        guard let value = Double(goalText.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)),
+              value > 0 else { return }
+        model.perform { try model.measurements.setGoal(metric: metric, target: value, unit: unit) }
     }
 
     @ViewBuilder private var chart: some View {
         Chart {
+            if let target = goalTarget {
+                RuleMark(y: .value("Objectif", target))
+                    .foregroundStyle(metric.tint.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text("Objectif").font(.caption2).foregroundStyle(.secondary)
+                    }
+            }
             ForEach(Array(shown.enumerated()), id: \.offset) { _, point in
                 LineMark(x: .value("Date", point.date), y: .value(metric.title, point.value),
                          series: .value("Mesure", metric == .bloodPressure ? "Haute" : metric.title))

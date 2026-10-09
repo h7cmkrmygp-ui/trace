@@ -172,3 +172,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 82. **Suivis** : Notes › tout en bas, « Suivis » : une carte par suivi, la dernière valeur, une petite courbe, l'évolution sur 30 jours.
 83. **Un suivi** : touche « Poids » : le graphique (Mois, 3 mois, Année, Tout), minimum, moyenne, maximum, puis chaque mesure (toucher ouvre la note). En haut à droite : Livres ou Kilos.
 84. **Anciennes notes** : tes pesées d'avant la P10 apparaissent toutes seules après une réouverture d'Engram ; « hier » recule la mesure d'un jour.
+
+## L. P11 — Épingler, journal, objectifs
+
+85. **Épingler** : dans une note, … › « Épingler » : elle apparaît dans « Épinglées », en haut des Notes ; « Désépingler » l'enlève. Mise à la corbeille, elle disparaît aussi de là.
+86. **Journal** : Notes › « Plus » (…) › Journal : toutes tes notes, jour par jour (« Aujourd'hui », « Hier », « Mercredi 13 janvier »).
+87. **Objectif dit** : « Mon objectif : 155 livres » (ou « objectif 10 000 pas », « objectif 8 h de sommeil ») : la carte du suivi dit « Objectif 155 lb · encore … », et le graphique montre une ligne pointillée. « Objectif poids 155 livres » n'est pas pris pour une pesée.
+88. **Objectif à la main** : dans un suivi, « Fixer un objectif » ou « Changer l'objectif » ; la barre montre le chemin parcouru depuis que l'objectif a été fixé.

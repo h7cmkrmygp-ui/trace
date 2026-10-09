@@ -22,9 +22,14 @@ public struct ExportDocument: Codable, Sendable {
     public var entityAssignments: [EntityAssignment]
     /// Mesures des suivis (P10).
     public var measurements: [MetricMeasurement]
+    /// Objectifs des suivis et notes épinglées (P11).
+    public var trackerGoals: [TrackerGoal]
+    public var pinnedMemories: [PinnedMemory]
 
     enum CodingKeys: String, CodingKey {
         case app, sources, memories, categories, tags, entities, measurements
+        case trackerGoals = "tracker_goals"
+        case pinnedMemories = "pinned_memories"
         case entityAliases = "entity_aliases"
         case entityAssignments = "entity_assignments"
         case formatVersion = "format_version"
@@ -73,7 +78,9 @@ public struct Exporter: Sendable {
                 entities: try EngramEntity.order(Column("kind"), Column("name")).fetchAll(db),
                 entityAliases: try EntityAlias.fetchAll(db),
                 entityAssignments: try EntityAssignment.fetchAll(db),
-                measurements: try MetricMeasurement.order(Column("measured_at")).fetchAll(db))
+                measurements: try MetricMeasurement.order(Column("measured_at")).fetchAll(db),
+                trackerGoals: try TrackerGoal.fetchAll(db),
+                pinnedMemories: try PinnedMemory.fetchAll(db))
         }
         let fileManager = FileManager.default
         let folder = parentDirectory.appendingPathComponent("Engram-Export-\(Self.stamp(exportedAt))", isDirectory: true)

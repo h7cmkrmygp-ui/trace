@@ -170,6 +170,13 @@ final class ScreenshotTests: XCTestCase {
             }
         }
 
+        // P11 — le journal, jour par jour (menu « Plus »).
+        if tap(app.buttons["Plus"]), tap(app.buttons["Journal"]) {
+            XCTAssertTrue(app.staticTexts["Aujourd'hui"].waitForExistence(timeout: 4), "Le journal devrait montrer « Aujourd'hui »")
+            snap(app, "28-journal-\(mode)")
+            goBack(app)
+        }
+
         if tap(app.buttons["Nouvelle note"]) {
             snap(app, "10-ecrire-\(mode)")
             tap(app.buttons["Annuler"])

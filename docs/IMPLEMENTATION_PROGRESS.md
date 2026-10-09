@@ -240,3 +240,11 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p10-suivis-design.md`
 | — | Pastilles « Suivi » dans une note | ✅ | n/a | ✅ | compile | ⏳ | — | ouvrent le graphique |
 
 Tests automatiques après la P10 : **393** (Core 142, Store 143, Pipeline 13, Intelligence 63, Capture 32). Relecture des mesures : seulement les notes nouvelles ou modifiées depuis la dernière fois.
+
+## P11 — Épingler, journal, objectifs (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Notes épinglées | ✅ | n/a | ✅ | ✅ (ordre, corbeille) | ⏳ | — | migration v7 ; carte « Épinglées » en haut des Notes |
+| — | Journal jour par jour | ✅ | n/a | ✅ | ✅ (noms des jours, regroupement) | ⏳ | — | « Aujourd'hui », « Hier », « Mercredi 13 janvier », l'année si elle change |
+| — | Objectifs des suivis | ✅ | ✅ | ✅ | ✅ (dits dans une note, le plus récent l'emporte, progression dans les deux sens) | ⏳ | — | ligne pointillée sur le graphique, barre de progression |
