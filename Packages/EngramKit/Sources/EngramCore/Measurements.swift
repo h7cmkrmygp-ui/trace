@@ -31,7 +31,7 @@ public struct ParsedMeasurement: Sendable, Equatable {
 }
 
 /// Une mesure enregistrée, rattachée à sa note.
-public struct Measurement: Codable, Sendable, Hashable, Identifiable {
+public struct MetricMeasurement: Codable, Sendable, Hashable, Identifiable {
     public var id: UUID
     public var memoryID: UUID
     public var metric: Metric

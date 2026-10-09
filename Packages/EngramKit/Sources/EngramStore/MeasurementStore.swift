@@ -25,7 +25,7 @@ public struct MeasurementStore: Sendable {
         public let unit: String
     }
 
-    public func measurements(for memoryID: UUID) throws -> [Measurement] { [] }
+    public func measurements(for memoryID: UUID) throws -> [MetricMeasurement] { [] }
 
     public func points(metric: Metric, weightUnit: String) throws -> [MetricPoint] { [] }
 
