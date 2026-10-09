@@ -49,8 +49,31 @@ enum Schema {
         migrator.registerMigration("v14_duplicates") { db in
             try db.execute(sql: v14Duplicates)
         }
+        migrator.registerMigration("v15_place_finder") { db in
+            try db.execute(sql: v15PlaceFinder)
+        }
         return migrator
     }
+
+    /// v15 (P30) : les autres succursales d'un lieu trouvées toutes seules, et la dernière recherche de chaque lieu.
+    static let v15PlaceFinder = """
+        CREATE TABLE place_branch (
+          id BLOB PRIMARY KEY NOT NULL,
+          entity_id BLOB NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          latitude REAL NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+          longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+          radius REAL NOT NULL CHECK (radius > 0),
+          label TEXT,
+          found_at DATETIME NOT NULL
+        );
+        CREATE INDEX place_branch_entity ON place_branch(entity_id);
+        CREATE TABLE place_lookup (
+          entity_id BLOB PRIMARY KEY NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          tried_at DATETIME NOT NULL,
+          found INTEGER NOT NULL DEFAULT 0 CHECK (found >= 0),
+          manual INTEGER NOT NULL DEFAULT 0 CHECK (manual IN (0,1))
+        );
+        """
 
     /// v14 (P23) : les paires écartées (« ce n'est pas un doublon ») ou déjà réunies.
     static let v14Duplicates = """

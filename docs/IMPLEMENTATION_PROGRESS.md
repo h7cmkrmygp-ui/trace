@@ -411,3 +411,12 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p29-la-liste-t-attend-design.md
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | « Liste de Costco » prévient en arrivant chez Costco | n/a | ✅ | ✅ | ✅ (lieu avec adresse, tout coché, lieu inconnu, pas de double) | ⏳ | — | rien à régler |
+
+## P30 — L'adresse des lieux, trouvée toute seule (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p30-lieux-trouves-tout-seuls-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Adresse trouvée toute seule après la dictée | n/a | ✅ | ✅ | ✅ (3 plus proches à 40 km, noms qui correspondent, mot général, jamais un lieu à soi ni chez quelqu'un) | ⏳ | — | Plans d'Apple : le nom du lieu et la zone seulement |
+| — | N'importe quelle succursale prévient (migration v15) | n/a | ✅ | ✅ | ✅ (une région par succursale, 20 au plus, choix du propriétaire qui l'emporte, recherche refaite après une semaine, export) | ⏳ | — | réglage dans Rappels |

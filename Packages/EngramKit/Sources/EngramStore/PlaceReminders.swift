@@ -33,11 +33,17 @@ extension EntityStore {
             guard entity.kind == .place else { throw StoreError.invalidOperation("Seul un lieu a une adresse.") }
             try PlaceLocation(entityID: entityID, latitude: latitude, longitude: longitude, radius: radius,
                               label: trimmed?.isEmpty == false ? trimmed : nil, updatedAt: now).save(db)
+            // Choisie par le propriétaire (P30) : les succursales trouvées toutes seules s'effacent.
+            try Self.markManual(db, entityID, now: now)
         }
     }
 
     public func removeLocation(_ entityID: UUID) throws {
-        try database.writer.write { db in _ = try PlaceLocation.deleteOne(db, key: entityID) }
+        let now = dates.now()
+        try database.writer.write { db in
+            _ = try PlaceLocation.deleteOne(db, key: entityID)
+            try Self.markManual(db, entityID, now: now)
+        }
     }
 
     public func location(for entityID: UUID) throws -> PlaceLocation? {
@@ -139,6 +145,7 @@ extension EntityStore {
             WHERE m.status IN ('active','unsorted') AND e.status = 'active' AND s.needs_review = 0
             ORDER BY t.created_at DESC
             """)
+        let branches = try branchCoordinates(db)
         let triggered: [PlaceReminderPlanner.Item] = rows.map { row in
             let status: String = row["status"]
             let event: String = row["event"]
@@ -149,10 +156,12 @@ extension EntityStore {
             if let latitude, let longitude, let radius {
                 location = PlaceReminderPlanner.Coordinates(latitude: latitude, longitude: longitude, radius: radius)
             }
+            let placeID: UUID = row["place_id"]
             return PlaceReminderPlanner.Item(
                 memoryID: row["memory_id"], title: row["title"], status: MemoryStatus(rawValue: status) ?? .active,
                 isPrivate: MemoryStore.isPrivate(row), placeID: row["place_id"], placeName: row["place_name"],
-                event: PlaceEvent(rawValue: event) ?? .arrive, location: location, createdAt: row["created_at"])
+                event: PlaceEvent(rawValue: event) ?? .arrive, location: location, branches: branches[placeID] ?? [],
+                createdAt: row["created_at"])
         }
         return triggered + (try listsWaitingAtPlaces(db, excluding: Set(triggered.map(\.memoryID))))
     }
@@ -164,6 +173,7 @@ extension EntityStore {
             .fetchAll(db)
         guard !places.isEmpty else { return [] }
         let byKey = Dictionary(places.map { ($0.normalizedName, $0) }, uniquingKeysWith: { first, _ in first })
+        let branches = try branchCoordinates(db)
         let rows = try Row.fetchAll(db, sql: """
             SELECT l.name AS name, m.id AS memory_id, m.title AS title, m.summary AS summary, m.status AS status,
                    m.updated_at AS updated_at, s.keep_local AS keep_local, s.privacy_level AS privacy_level,
@@ -188,7 +198,8 @@ extension EntityStore {
             return PlaceReminderPlanner.Item(
                 memoryID: memoryID, title: ListSpeech.waitingTitle(row["title"], open: open),
                 status: MemoryStatus(rawValue: status) ?? .active, isPrivate: MemoryStore.isPrivate(row), placeID: place.id,
-                placeName: place.name, event: .arrive, location: location, createdAt: row["updated_at"])
+                placeName: place.name, event: .arrive, location: location, branches: branches[place.id] ?? [],
+                createdAt: row["updated_at"])
         }
     }
 

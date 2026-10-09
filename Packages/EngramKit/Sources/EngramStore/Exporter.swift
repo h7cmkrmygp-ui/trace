@@ -39,6 +39,8 @@ public struct ExportDocument: Codable, Sendable {
     public var personBirthdays: [PersonBirthday]
     /// Les objectifs des habitudes (P21).
     public var habitGoals: [HabitGoal]
+    /// Les autres succursales des lieux, trouvées toutes seules (P30).
+    public var placeBranches: [PlaceBranch]
 
     enum CodingKeys: String, CodingKey {
         case app, sources, memories, categories, tags, entities, measurements
@@ -52,6 +54,7 @@ public struct ExportDocument: Codable, Sendable {
         case habitEntries = "habit_entries"
         case personBirthdays = "person_birthdays"
         case habitGoals = "habit_goals"
+        case placeBranches = "place_branches"
         case entityAliases = "entity_aliases"
         case entityAssignments = "entity_assignments"
         case formatVersion = "format_version"
@@ -110,7 +113,8 @@ public struct Exporter: Sendable {
                 recurrences: try MemoryRecurrence.order(Column("created_at")).fetchAll(db),
                 habitEntries: try HabitEntry.order(Column("done_at")).fetchAll(db),
                 personBirthdays: try PersonBirthday.fetchAll(db),
-                habitGoals: try HabitGoal.fetchAll(db))
+                habitGoals: try HabitGoal.fetchAll(db),
+                placeBranches: try PlaceBranch.fetchAll(db))
         }
         let fileManager = FileManager.default
         let folder = parentDirectory.appendingPathComponent("Engram-Export-\(Self.stamp(exportedAt))", isDirectory: true)

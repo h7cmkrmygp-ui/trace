@@ -278,7 +278,11 @@ struct PlaceTriggerSheet: View {
     }
 
     private func finish() {
-        Task { await model.askForPlaceRemindersIfNeeded() }
+        Task {
+            // P30 : le lieu choisi sans adresse est cherché tout de suite autour de toi.
+            await model.locateMissingPlaces(askPermission: true)
+            await model.askForPlaceRemindersIfNeeded()
+        }
         dismiss()
     }
 }
@@ -338,5 +342,28 @@ final class LocationAccess: NSObject, CLLocationManagerDelegate {
         let pending = waiters
         waiters = []
         pending.forEach { $0.resume() }
+    }
+}
+
+/// P30 — chercher un lieu autour du propriétaire (Plans d'Apple : seulement le nom du lieu et la zone, jamais une note).
+enum PlaceSearch {
+    /// Les commerces et lieux trouvés ; [] s'il n'y en a aucun, nil si la recherche n'a pas pu se faire (réseau).
+    @MainActor
+    static func search(_ text: String, near center: CLLocationCoordinate2D, span: Double = 60_000) async -> [PlaceFinder.Result]? {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = text
+        request.resultTypes = .pointOfInterest
+        request.region = MKCoordinateRegion(center: center, latitudinalMeters: span, longitudinalMeters: span)
+        do {
+            let response = try await MKLocalSearch(request: request).start()
+            return response.mapItems.map { item in
+                PlaceFinder.Result(name: item.name ?? text, address: item.address?.shortAddress ?? item.address?.fullAddress,
+                                   latitude: item.location.coordinate.latitude, longitude: item.location.coordinate.longitude)
+            }
+        } catch let error as MKError where error.code == .placemarkNotFound {
+            return []
+        } catch {
+            return nil
+        }
     }
 }

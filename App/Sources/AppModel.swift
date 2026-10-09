@@ -467,8 +467,33 @@ final class AppModel {
         }
     }
 
+    /// P30 : l'adresse d'un lieu dicté est cherchée toute seule.
+    var autoLocatePlacesEnabled: Bool { (try? settings.bool(.autoLocatePlaces, default: true)) ?? true }
+
+    /// P30 — les lieux dictés sans adresse (« quand j'arrive au Costco ») : Engram cherche les succursales les plus
+    /// proches de toi (Plans d'Apple : seulement le nom du lieu et ta zone, jamais ta note). La maison, le bureau ou
+    /// « chez Julie » ne se cherchent jamais. `askPermission` : juste après une dictée, la position peut être demandée.
+    func locateMissingPlaces(askPermission: Bool) async {
+        guard autoLocatePlacesEnabled, let places = try? entities.placesNeedingLocation(), !places.isEmpty else { return }
+        let access = LocationAccess.shared
+        if askPermission { await access.requestWhenInUse() }
+        guard access.isAuthorized, let here = try? await access.currentLocation() else { return }
+        let point = PlaceFinder.Point(latitude: here.coordinate.latitude, longitude: here.coordinate.longitude)
+        var foundAny = false
+        for place in places.prefix(5) {
+            // Pas de réseau : on réessaiera plus tard, sans compter cette fois.
+            guard let results = await PlaceSearch.search(place.name, near: here.coordinate) else { continue }
+            let chosen = PlaceFinder.choose(results, near: point, placeName: place.name)
+            perform { try entities.recordLookup(place.id, found: chosen) }
+            foundAny = foundAny || !chosen.isEmpty
+        }
+        if foundAny { await askForPlaceRemindersIfNeeded() }
+    }
+
     /// Après une note datée : l'autorisation des rappels est demandée une seule fois, au moment où elle sert.
     func askForRemindersIfNeeded() async {
+        // P30 : un lieu dicté sans adresse est cherché tout de suite, pendant que l'app est ouverte.
+        await locateMissingPlaces(askPermission: true)
         guard remindersEnabled, await reminders.isUndecided(),
               let items = try? memories.reminderItems(),
               !ReminderPlanner.plan(items, now: Date(), calendar: .current).isEmpty else { return }
@@ -862,6 +887,8 @@ final class AppModel {
         _ = await processor.processPending()
         await retryCloudClassifications()
         await syncAppointments(askPermission: false)
+        // P30 : les lieux encore sans adresse (sans redemander la position).
+        await locateMissingPlaces(askPermission: false)
         await describeCategoriesIfNeeded()
         await backups.backupIfDue(model: self)
         // Suivis : les notes jamais relues, et celles modifiées, sur l'iPhone (P10).

@@ -166,6 +166,9 @@ struct EntityDetailView: View {
     @State private var location: PlaceLocation?
     @State private var waiting: [Memory] = []
     @State private var isChoosingAddress = false
+    /// P30 : l'adresse trouvée toute seule, et les autres succursales surveillées.
+    @State private var autoLocated = false
+    @State private var branchLabels: [String] = []
     /// P20 : la fête d'une personne.
     @State private var birthday: PersonBirthday?
     @State private var isEditingBirthday = false
@@ -300,7 +303,11 @@ struct EntityDetailView: View {
         }
         .task {
             do {
-                for try await value in model.entities.locationStream(for: entityID) { location = value }
+                for try await value in model.entities.locationStream(for: entityID) {
+                    location = value
+                    autoLocated = (try? model.entities.isAutoLocated(entityID)) ?? false
+                    branchLabels = ((try? model.entities.branches(for: entityID)) ?? []).compactMap(\.label)
+                }
             } catch {}
         }
         .task {
@@ -379,9 +386,16 @@ struct EntityDetailView: View {
         } header: {
             Text("Adresse")
         } footer: {
-            Text(location == nil
-                 ? "Avec une adresse, Engram te rappelle tes notes en arrivant ici (« quand j'arrive chez \(entity.name)… »)."
-                 : "L'adresse reste sur ton iPhone.")
+            if location == nil {
+                Text("Avec une adresse, Engram te rappelle tes notes en arrivant ici (« quand j'arrive chez \(entity.name)… »).")
+            } else if autoLocated {
+                // P30 : trouvée toute seule ; les autres succursales proches préviennent aussi.
+                Text(branchLabels.isEmpty
+                     ? "Trouvée toute seule près de toi. « Changer l'adresse » si ce n'est pas le bon."
+                     : "Trouvée toute seule près de toi. Aussi surveillé : \(branchLabels.joined(separator: " · ")). « Changer l'adresse » pour n'en garder qu'un.")
+            } else {
+                Text("L'adresse reste sur ton iPhone.")
+            }
         }
     }
 

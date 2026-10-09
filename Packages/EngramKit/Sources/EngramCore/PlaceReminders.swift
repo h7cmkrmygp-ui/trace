@@ -261,17 +261,23 @@ public enum PlaceReminderPlanner {
     }
 
     /// Les notes vivantes dont le lieu a une adresse, les plus récentes d'abord ; une note privée ne dit rien.
+    /// Chaque succursale (P30) compte pour une région : au plus `limit` régions en tout.
     public static func plan(_ items: [Item], limit: Int = maximum) -> [Planned] {
         let watched = items
             .filter { ($0.status == .active || $0.status == .unsorted) && $0.location != nil }
             .sorted { ($0.createdAt, $0.memoryID.uuidString) > ($1.createdAt, $1.memoryID.uuidString) }
-            .prefix(limit)
-        return watched.compactMap { item in
-            guard let location = item.location else { return nil }
-            return Planned(identifier: identifierPrefix + item.memoryID.uuidString, memoryID: item.memoryID,
-                           title: item.isPrivate ? "Rappel Engram" : item.placeName,
-                           body: item.isPrivate ? "Ouvre Engram pour le voir." : item.title, event: item.event,
-                           latitude: location.latitude, longitude: location.longitude, radius: location.radius)
+        var planned: [Planned] = []
+        for item in watched {
+            guard let location = item.location else { continue }
+            for (index, spot) in ([location] + item.branches).enumerated() {
+                guard planned.count < limit else { return planned }
+                planned.append(Planned(
+                    identifier: identifierPrefix + item.memoryID.uuidString + (index == 0 ? "" : ".\(index + 1)"),
+                    memoryID: item.memoryID, title: item.isPrivate ? "Rappel Engram" : item.placeName,
+                    body: item.isPrivate ? "Ouvre Engram pour le voir." : item.title, event: item.event,
+                    latitude: spot.latitude, longitude: spot.longitude, radius: spot.radius))
+            }
         }
+        return planned
     }
 }

@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var weeklyOn = true
     @State private var resurfacingOn = true
     @State private var habitNudgesOn = true
+    @State private var autoLocateOn = true
 
     var body: some View {
         Form {
@@ -90,11 +91,17 @@ struct SettingsView: View {
                             model.perform { try model.settings.set(value, for: .habitNudges) }
                             Task { await model.syncReminders() }
                         }
+                    Toggle("Trouver l'adresse des lieux tout seul", isOn: $autoLocateOn)
+                        .tint(.green)
+                        .onChange(of: autoLocateOn) { _, value in
+                            model.perform { try model.settings.set(value, for: .autoLocatePlaces) }
+                            if value { Task { await model.locateMissingPlaces(askPermission: true) } }
+                        }
                 }
             } header: {
                 Text("Rappels")
             } footer: {
-                Text("Une notification à l'heure dite (1 h avant un rendez-vous), ou à 9 h le jour même sans heure, avec « Fait », « Dans 1 h » et « Demain ». Le matin : ce qui est prévu et ce qui est en retard ; le dimanche : ta semaine. Une note gardée sur l'iPhone n'affiche que « Rappel Engram ».")
+                Text("Une notification à l'heure dite (1 h avant un rendez-vous), ou à 9 h le jour même sans heure, avec « Fait », « Dans 1 h » et « Demain ». Le matin : ce qui est prévu et ce qui est en retard ; le dimanche : ta semaine. Une note gardée sur l'iPhone n'affiche que « Rappel Engram ». « Quand j'arrive au Costco » : Engram cherche les Costco les plus proches de toi avec Plans d'Apple (seulement le nom du lieu et ta zone, jamais ta note).")
             }
             TranscriptionSettingsSection()
             IntelligenceSettingsSection()
@@ -134,6 +141,7 @@ struct SettingsView: View {
             weeklyOn = model.weeklyDigestEnabled
             resurfacingOn = model.resurfacingEnabled
             habitNudgesOn = model.habitNudgesEnabled
+            autoLocateOn = model.autoLocatePlacesEnabled
             let allowed = await model.reminders.isAllowed()
             let undecided = await model.reminders.isUndecided()
             remindersAllowed = allowed || undecided

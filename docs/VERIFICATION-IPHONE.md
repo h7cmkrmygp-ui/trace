@@ -286,3 +286,11 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## AD. P29 — La liste t'attend au magasin
 
 141. **Liste d'un magasin** : « Ajoute des piles à ma liste de Costco », avec le lieu Costco qui a une adresse (P14). Rendu chez Costco : « Costco » / « Liste de Costco : piles ». Toucher ouvre la liste.
+
+## AE. P30 — L'adresse des lieux, trouvée toute seule
+
+142. **Sans rien entrer** : dis « Rappelle-moi d'acheter des piles quand j'arrive au Costco ». iOS demande la position une fois (« Lorsque l'app est active »). Quelques secondes plus tard, la pastille dit « En arrivant · Costco » (plus « adresse à ajouter »).
+143. **La page Costco** : « Trouvée toute seule près de toi. Aussi surveillé : … » (les autres Costco proches) ; la carte montre le plus proche.
+144. **N'importe quel Costco** : arrive à un des Costco proches : la notification arrive.
+145. **Un lieu à toi** : « quand j'arrive à la maison » ne cherche rien ; sur la page Maison, « Ajouter l'adresse » › « Ma position actuelle » quand tu y es.
+146. **Réglage** : Réglages › Rappels › « Trouver l'adresse des lieux tout seul ».

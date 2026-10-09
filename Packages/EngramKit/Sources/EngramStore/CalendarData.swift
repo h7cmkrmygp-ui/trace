@@ -43,6 +43,8 @@ public struct SettingStore: Sendable {
         case habitsScannedAt = "habits.scannedAt"
         /// « 1 » (défaut) : « Te souviens-tu ? », une vieille idée chaque soir à 19 h (P13).
         case resurfacing = "reminders.resurfacing"
+        /// « 1 » (défaut) : l'adresse d'un lieu dicté est cherchée toute seule autour du propriétaire (P30).
+        case autoLocatePlaces = "places.autoLocate"
         /// « 1 » (défaut) : « Garde ta série » à 20 h quand une série d'habitude n'est pas encore faite (P21).
         case habitNudges = "reminders.habitNudges"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
