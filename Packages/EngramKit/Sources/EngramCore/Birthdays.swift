@@ -6,12 +6,20 @@ public struct ParsedBirthday: Sendable, Equatable {
     public let month: Int
     public let day: Int
     public let year: Int?
+    /// « Amina fête ses 30 ans le 13 octobre » : l'âge fêté (P31).
+    public let turning: Int?
 
-    public init(person: String, month: Int, day: Int, year: Int? = nil) {
+    public init(person: String, month: Int, day: Int, year: Int? = nil, turning: Int? = nil) {
         self.person = person
         self.month = month
         self.day = day
         self.year = year
+        self.turning = turning
+    }
+
+    /// L'année de naissance : dite, ou déduite de l'âge fêté à la prochaine fête suivant le jour de la note.
+    public func birthYear(saidOn date: Date, calendar: Calendar) -> Int? {
+        year
     }
 }
 

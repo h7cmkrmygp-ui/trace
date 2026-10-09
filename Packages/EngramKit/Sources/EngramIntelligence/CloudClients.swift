@@ -47,10 +47,13 @@ public struct URLSessionTransport: HTTPTransport {
 public struct CloudContext: Sendable {
     public let now: Date
     public let timeZone: TimeZone
+    /// Ce qu'Engram a déjà reconnu dans la note (P31) : rien de plus que la note elle-même.
+    public let facts: [String]
 
-    public init(now: Date, timeZone: TimeZone) {
+    public init(now: Date, timeZone: TimeZone, facts: [String] = []) {
         self.now = now
         self.timeZone = timeZone
+        self.facts = facts
     }
 }
 

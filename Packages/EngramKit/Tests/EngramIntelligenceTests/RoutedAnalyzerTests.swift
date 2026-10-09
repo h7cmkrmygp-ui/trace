@@ -7,15 +7,16 @@ import Testing
 
 /// Faux service en ligne : renvoie le résultat prévu et retient ce qu'il a reçu.
 final class FakeCloud: CloudThoughtAnalyzing {
-    private let state: Mutex<(result: Result<ThoughtAnalysis, CloudError>, calls: [[String]])>
+    private let state: Mutex<(result: Result<ThoughtAnalysis, CloudError>, calls: [[String]], contexts: [CloudContext])>
 
     init(_ result: Result<ThoughtAnalysis, CloudError>) {
-        state = Mutex((result, []))
+        state = Mutex((result, [], []))
     }
 
     func analyze(text: String, existingCategories: [String], context: CloudContext) async throws -> ThoughtAnalysis {
         let result = state.withLock { state in
             state.calls.append(existingCategories)
+            state.contexts.append(context)
             return state.result
         }
         return try result.get()
@@ -23,6 +24,7 @@ final class FakeCloud: CloudThoughtAnalyzing {
 
     var callCount: Int { state.withLock { $0.calls.count } }
     var receivedCategories: [[String]] { state.withLock { $0.calls } }
+    var receivedContexts: [CloudContext] { state.withLock { $0.contexts } }
 }
 
 /// Routage : neutre → Gemini, personnel → Groq, secret → iPhone ; repli sur l'iPhone si un service manque.

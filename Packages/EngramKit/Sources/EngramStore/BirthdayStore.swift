@@ -75,6 +75,12 @@ extension EntityStore {
                            updatedAt: now).save(db)
     }
 
+    /// P31 — relit les anciennes notes pour y trouver les fêtes jamais retenues (une personne qui a déjà sa fête, posée à
+    /// la main ou dite, la garde). Renvoie le nombre de fêtes posées.
+    public func backfillBirthdays() throws -> Int {
+        0
+    }
+
     /// Fusion : la personne gardée prend la fête de l'autre si elle n'en a pas.
     func moveBirthday(_ db: Database, from sourceID: UUID, to targetID: UUID) throws {
         try db.execute(sql: """

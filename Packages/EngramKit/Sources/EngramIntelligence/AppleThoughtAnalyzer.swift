@@ -73,7 +73,8 @@ enum AnalysisPrompt {
         Never invent facts, dates or names that are not in the note.
         """
 
-    static func prompt(text: String, categories: [String], likely: [String], today: String? = nil) -> String {
+    static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
+                       facts: [String] = []) -> String {
         let existing = categories.isEmpty ? "(none yet)" : categories.map { "- \($0)" }.joined(separator: "\n")
         let hint = likely.isEmpty ? "" : "\nMost likely existing categories for this note: \(likely.joined(separator: ", "))\n"
         let date = today.map { "Today: \($0)\n" } ?? ""

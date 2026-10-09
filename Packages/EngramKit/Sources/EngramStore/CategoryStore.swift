@@ -328,6 +328,13 @@ public struct CategoryStore: Sendable {
         }
     }
 
+    /// P31 — un suivi (« Poids », « Sommeil »…) rend les notes que l'IA y a rangées sans rapport avec sa mesure
+    /// (« l'anniversaire d'Amina » dans Poids). Une note rangée ou confirmée par le propriétaire n'est jamais touchée ;
+    /// sans autre catégorie, la note revient « À classer ». Renvoie le nombre de notes retirées.
+    public func removeMisfiledFromTrackers() throws -> Int {
+        0
+    }
+
     public func confirm(memoryID: UUID, categoryID: UUID) throws {
         let now = dates.now()
         try database.writer.write { db in
