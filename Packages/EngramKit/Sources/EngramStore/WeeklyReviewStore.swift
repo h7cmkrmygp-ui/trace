@@ -103,3 +103,11 @@ extension MemoryStore {
         }
     }
 }
+
+/// P28 — « Ton mois ».
+extension MemoryStore {
+    public func review(_ period: ReviewPeriod, containing date: Date) throws -> WeeklyReview {
+        WeeklyReview(start: date, end: date, notes: 0, notesLastWeek: 0, done: 0, open: 0, perDay: [], categories: [],
+                     people: [], places: [], habits: [])
+    }
+}

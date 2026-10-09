@@ -97,3 +97,20 @@ public enum WeeklyReviewText {
         return Recurrence.dayName(calendar.component(.weekday, from: day))
     }
 }
+
+/// P28 — la période d'un bilan : une semaine ou un mois.
+public enum ReviewPeriod: String, Sendable, CaseIterable {
+    case week, month
+
+    public func interval(containing date: Date, calendar: Calendar) -> DateInterval? { nil }
+
+    public func previousStart(of start: Date, calendar: Calendar) -> Date? { nil }
+}
+
+extension WeeklyReviewText {
+    public static func title(start: Date, period: ReviewPeriod, calendar: Calendar) -> String { "" }
+
+    public static func comparison(notes: Int, lastWeek: Int, period: ReviewPeriod) -> String? { nil }
+
+    public static func busiestDay(perDay: [Int], start: Date, period: ReviewPeriod, calendar: Calendar) -> String? { nil }
+}
