@@ -234,3 +234,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 117. **Retirer** : « Enlève le pain de ma liste d'épicerie » : la case disparaît.
 118. **Pas une liste** : « J'ai acheté une nouvelle tondeuse » reste une note ordinaire.
 119. **Partager** : ouvre la liste › … › « Partager » › Messages.
+
+## U. P20 — Fêtes
+
+120. **Dicté** : « L'anniversaire de Julie est le 12 mars ». La page de Julie (Notes › Personnes › Julie) montre « Fête : 12 mars · dans … jours ».
+121. **À la main** : sur la page d'une personne, « Ajouter sa fête » : mois, jour, et l'année si tu la connais (Engram dira son âge).
+122. **Fêtes à venir** : Notes › Personnes montre en haut les fêtes du prochain mois.
+123. **Rappels** : la veille à 19 h « Demain : la fête de Julie », le jour même à 9 h ; toucher ouvre la page de Julie.

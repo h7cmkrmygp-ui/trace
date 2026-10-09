@@ -324,3 +324,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p19-listes-a-la-voix-design.md`
 | — | Cases retrouvées malgré la façon de les dire | n/a | ✅ | ✅ | ✅ (« Lait 2 % », pluriel, « œufs »/« oeufs », jamais « Laitue ») | ⏳ | — | |
 | — | « J'ai acheté une tondeuse » reste une note | n/a | n/a | ✅ | ✅ | ⏳ | — | une demande claire sans case ne devient pas une note |
 | — | Partager une note | ✅ | n/a | ✅ | compile | ⏳ | — | … › « Partager » |
+
+## P20 — Fêtes (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p20-fetes-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Fête dictée reconnue | n/a | ✅ | ✅ | ✅ (6 façons de le dire, l'année, « ma mère », anglais ; Noël, mariage, 31 février) | ⏳ | — | sur l'iPhone, sans IA ; la personne est créée au besoin |
+| — | Fête d'une personne (migration v12) | ✅ | n/a | ✅ | ✅ (posée, changée, retirée, lieu refusé, fusion, personne masquée, export) | ⏳ | — | section « Fête » et « Fêtes à venir » |
+| — | Rappels la veille et le jour même | n/a | ✅ | ✅ | ✅ (âge, 29 février, sans nom si verrouillé, veille passée) | ⏳ | — | 60 prochains jours |

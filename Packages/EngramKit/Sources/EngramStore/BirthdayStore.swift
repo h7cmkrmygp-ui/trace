@@ -21,13 +21,65 @@ public struct PersonBirthday: Codable, Sendable, Equatable, FetchableRecord, Per
     }
 }
 
-/// P20 — les fêtes des personnes.
+/// P20 — les fêtes des personnes : dites dans une note ou posées à la main ; la plus récente l'emporte.
 extension EntityStore {
-    public func birthday(for entityID: UUID) throws -> PersonBirthday? { nil }
+    public func birthday(for entityID: UUID) throws -> PersonBirthday? {
+        try database.writer.read { db in try PersonBirthday.fetchOne(db, key: entityID) }
+    }
 
-    public func setBirthday(_ entityID: UUID, month: Int, day: Int, year: Int?) throws {}
+    public func birthdayStream(for entityID: UUID) -> AsyncThrowingStream<PersonBirthday?, any Error> {
+        database.stream { db in try PersonBirthday.fetchOne(db, key: entityID) }
+    }
 
-    public func removeBirthday(_ entityID: UUID) throws {}
+    public func setBirthday(_ entityID: UUID, month: Int, day: Int, year: Int?) throws {
+        guard BirthdayParser.isValid(month: month, day: day) else { throw StoreError.invalidOperation("Date invalide.") }
+        let now = dates.now()
+        try database.writer.write { db in
+            guard let entity = try EngramEntity.fetchOne(db, key: entityID) else { throw StoreError.notFound }
+            guard entity.kind == .person else { throw StoreError.invalidOperation("Seule une personne a une fête.") }
+            try PersonBirthday(entityID: entityID, month: month, day: day, year: year, memoryID: nil, updatedAt: now).save(db)
+        }
+    }
 
-    public func birthdays() throws -> [Birthday] { [] }
+    public func removeBirthday(_ entityID: UUID) throws {
+        try database.writer.write { db in _ = try PersonBirthday.deleteOne(db, key: entityID) }
+    }
+
+    /// Les fêtes des personnes encore affichées, dans l'ordre de l'année.
+    public func birthdays() throws -> [Birthday] {
+        try database.writer.read { db in try Self.birthdays(db) }
+    }
+
+    public func birthdaysStream() -> AsyncThrowingStream<[Birthday], any Error> {
+        database.stream { db in try Self.birthdays(db) }
+    }
+
+    static func birthdays(_ db: Database) throws -> [Birthday] {
+        try Row.fetchAll(db, sql: """
+            SELECT e.id AS id, e.name AS name, b.month AS month, b.day AS day, b.year AS year
+            FROM person_birthday b JOIN entity e ON e.id = b.entity_id
+            WHERE e.status = 'active' AND e.kind = 'person'
+            ORDER BY b.month, b.day, e.name
+            """)
+            .map { Birthday(personID: $0["id"], name: $0["name"], month: $0["month"], day: $0["day"], year: $0["year"]) }
+    }
+
+    /// « L'anniversaire de Julie est le 12 mars » au classement : Julie est reliée à la note et sa fête est posée.
+    func recordBirthday(_ db: Database, memoryID: UUID, text: String, now: Date) throws {
+        guard let parsed = BirthdayParser.parse(text),
+              let person = try resolve(db, name: parsed.person, kind: .person, now: now) else { return }
+        _ = try link(db, memoryID: memoryID, entityID: person.id, origin: .ai, now: now)
+        let known = try PersonBirthday.fetchOne(db, key: person.id)
+        try PersonBirthday(entityID: person.id, month: parsed.month, day: parsed.day, year: parsed.year ?? (
+            known?.month == parsed.month && known?.day == parsed.day ? known?.year : nil), memoryID: memoryID,
+                           updatedAt: now).save(db)
+    }
+
+    /// Fusion : la personne gardée prend la fête de l'autre si elle n'en a pas.
+    func moveBirthday(_ db: Database, from sourceID: UUID, to targetID: UUID) throws {
+        try db.execute(sql: """
+            INSERT OR IGNORE INTO person_birthday (entity_id, month, day, year, memory_id, updated_at)
+            SELECT ?, month, day, year, memory_id, updated_at FROM person_birthday WHERE entity_id = ?
+            """, arguments: [targetID, sourceID])
+    }
 }

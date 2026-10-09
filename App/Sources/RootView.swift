@@ -34,6 +34,7 @@ struct RootView: View {
         // Les rappels suivent la base pendant toute la vie de l'app.
         .task { await model.watchReminders() }
         .task { await model.watchPlaceReminders() }
+        .task { await model.watchBirthdays() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:

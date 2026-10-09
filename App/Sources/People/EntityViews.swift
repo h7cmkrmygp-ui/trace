@@ -75,17 +75,61 @@ struct EntityListView: View {
     let kind: EntityKind
     @State private var summaries: [EntityStore.Summary] = []
     @State private var query = ""
+    /// P20 : les fêtes du prochain mois.
+    @State private var birthdays: [Birthday] = []
 
     private var shown: [EntityStore.Summary] {
         let needle = query.trimmingCharacters(in: .whitespaces)
         return needle.isEmpty ? summaries : summaries.filter { $0.entity.name.localizedStandardContains(needle) }
     }
 
+    /// Les fêtes des 31 prochains jours, la plus proche d'abord.
+    private var upcoming: [Birthday] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dated = birthdays.compactMap { birthday -> (Birthday, Date)? in
+            guard let next = BirthdayPlanner.next(month: birthday.month, day: birthday.day, from: today, calendar: calendar),
+                  next < calendar.date(byAdding: .day, value: 31, to: today) ?? today else { return nil }
+            return (birthday, next)
+        }
+        return dated.sorted { $0.1 < $1.1 }.map { $0.0 }
+    }
+
     var body: some View {
-        List(shown) { summary in
-            NavigationLink(value: NotesRoute.entity(summary.entity.id)) { EntityRow(summary: summary) }
+        List {
+            if kind == .person, query.isEmpty, !upcoming.isEmpty {
+                Section("Fêtes à venir") {
+                    ForEach(upcoming) { birthday in
+                        NavigationLink(value: NotesRoute.entity(birthday.personID)) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(birthday.name)
+                                    Text(BirthdayPlanner.describe(birthday, now: Date(), calendar: .current))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "gift.fill").foregroundStyle(.pink)
+                            }
+                        }
+                    }
+                }
+            }
+            Section {
+                ForEach(shown) { summary in
+                    NavigationLink(value: NotesRoute.entity(summary.entity.id)) { EntityRow(summary: summary) }
+                }
+            }
         }
         .listStyle(.plain)
+        .task {
+            guard kind == .person else { return }
+            do {
+                for try await list in model.entities.birthdaysStream() { birthdays = list }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
+            }
+        }
         .searchable(text: $query, prompt: kind == .person ? "Chercher une personne" : "Chercher un lieu")
         .overlay {
             if summaries.isEmpty {
@@ -122,6 +166,9 @@ struct EntityDetailView: View {
     @State private var location: PlaceLocation?
     @State private var waiting: [Memory] = []
     @State private var isChoosingAddress = false
+    /// P20 : la fête d'une personne.
+    @State private var birthday: PersonBirthday?
+    @State private var isEditingBirthday = false
 
     private var openTasks: [Memory] {
         memories.filter {
@@ -160,6 +207,9 @@ struct EntityDetailView: View {
                     }
                     .padding(.vertical, 6)
                     .listRowSeparator(.hidden)
+                }
+                if entity.kind == .person {
+                    birthdaySection(entity)
                 }
                 if entity.kind == .place {
                     addressSection(entity)
@@ -237,6 +287,14 @@ struct EntityDetailView: View {
         } message: {
             Text("Sa page disparaît et Engram ne la recréera plus. Tes notes restent intactes.")
         }
+        .sheet(isPresented: $isEditingBirthday) {
+            BirthdaySheet(entityID: entityID, name: entity?.name ?? "", current: birthday)
+        }
+        .task {
+            do {
+                for try await value in model.entities.birthdayStream(for: entityID) { birthday = value }
+            } catch {}
+        }
         .sheet(isPresented: $isChoosingAddress) {
             PlaceAddressSheet(placeID: entityID, placeName: entity?.name ?? "", current: location)
         }
@@ -270,6 +328,33 @@ struct EntityDetailView: View {
             parts.append("dernière fois \(last.formatted(.relative(presentation: .named)))")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// « Fête » : la date, dans combien de jours, l'âge ; Engram la rappelle la veille et le jour même (P20).
+    private func birthdaySection(_ entity: EngramEntity) -> some View {
+        Section {
+            if let birthday {
+                let info = Birthday(personID: entityID, name: entity.name, month: birthday.month, day: birthday.day,
+                                    year: birthday.year)
+                Label {
+                    Text(BirthdayPlanner.describe(info, now: Date(), calendar: .current))
+                } icon: {
+                    Image(systemName: "gift.fill").foregroundStyle(.pink)
+                }
+                Button("Changer la fête", systemImage: "pencil") { isEditingBirthday = true }
+                Button("Retirer la fête", systemImage: "trash", role: .destructive) {
+                    model.perform { try model.entities.removeBirthday(entityID) }
+                }
+            } else {
+                Button("Ajouter sa fête", systemImage: "gift") { isEditingBirthday = true }
+            }
+        } header: {
+            Text("Fête")
+        } footer: {
+            if birthday == nil {
+                Text("Ou dis-le dans une note : « l'anniversaire de \(entity.name) est le 12 mars ».")
+            }
+        }
     }
 
     /// « Adresse » : une petite carte et le rayon ; sans adresse, de quoi en ajouter une.

@@ -118,6 +118,7 @@ final class AppModel {
         }
         reminders.onOpenTodo = { [weak self] in self?.openTodo() }
         reminders.onOpenWeekly = { [weak self] in self?.openWeeklySummary() }
+        reminders.onOpenEntity = { [weak self] id in self?.openEntity(id) }
     }
 
     func openTodo() {
@@ -130,6 +131,23 @@ final class AppModel {
         guard openTodoRequest > servedTodoRequest else { return false }
         servedTodoRequest = openTodoRequest
         return true
+    }
+
+    /// Une fête touchée : la page de la personne s'ouvre dans les Notes (P20).
+    func openEntity(_ id: UUID) {
+        selectedTab = .notes
+        var path = NavigationPath()
+        path.append(NotesRoute.entity(id))
+        notesPath = path
+    }
+
+    /// Une fête posée, changée ou retirée : les rappels sont recalculés (P20).
+    func watchBirthdays() async {
+        do {
+            for try await _ in entities.birthdaysStream() { await syncReminders() }
+        } catch {
+            // Recalculés au prochain lancement.
+        }
     }
 
     /// Le résumé du dimanche touché : « Ta semaine » s'ouvre dans les Notes, tout lu sur l'iPhone (P18).
@@ -286,6 +304,12 @@ final class AppModel {
                 requests.append((reminder: weekly, kind: .weekly))
             }
         }
+        // Les fêtes (P20) : la veille à 19 h et le jour même à 9 h ; sans nom si Engram est verrouillé. Seulement les
+        // 60 prochains jours : iOS garde au plus 64 notifications en attente (recalculées à chaque ouverture).
+        requests += BirthdayPlanner.plan((try? entities.birthdays()) ?? [], now: now, calendar: calendar,
+                                         hideNames: lock.isEnabled)
+            .filter { $0.date < now.addingTimeInterval(60 * 86_400) }
+            .map { (reminder: $0, kind: .birthday) }
         // « Te souviens-tu ? » : sans titre si Engram est verrouillé.
         if resurfacingEnabled,
            let evening = Resurfacing.reminder(from: resurfacingCandidates(), now: now, calendar: calendar,

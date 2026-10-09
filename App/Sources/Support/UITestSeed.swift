@@ -77,6 +77,9 @@ enum UITestSeed {
         if let haie = try memories.recallDocuments().first(where: { $0.title.hasPrefix("Tailler la haie") }) {
             try memories.setPinned(true, for: haie.id)
         }
+        // P20 : une fête inventée.
+        try file("L'anniversaire de Julie est le 12 mars", kind: .info, path: ["Famille"], people: ["Julie"],
+                 provider: "groq", level: .personal)
         // P17 : une habitude inventée, deux jours d'affilée.
         try file("Hier j'ai médité 15 minutes", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
         try file("J'ai médité 10 minutes ce matin", kind: .info, path: ["Santé"], provider: "apple", level: .personal)

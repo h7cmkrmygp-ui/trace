@@ -46,11 +46,11 @@ struct BirthdaysTests {
         #expect(BirthdayPlanner.age(turningOn: Self.date(2027, 12, 24), born: nil, calendar: cal) == nil)
     }
 
-    @Test func theEveAndTheDayAreReminded() {
+    @Test func theEveAndTheDayAreReminded() throws {
         let cal = Self.calendar
         let julie = Birthday(personID: UUID(), name: "Julie", month: 3, day: 12, year: 1992)
         let planned = BirthdayPlanner.plan([julie], now: Self.date(2027, 1, 15), calendar: cal, hideNames: false)
-        #expect(planned.count == 2)
+        try #require(planned.count == 2)
         #expect(planned[0].date == Self.date(2027, 3, 11, 19))
         #expect(planned[0].title == "Demain : la fête de Julie")
         #expect(planned[0].body == "Julie aura 35 ans.")

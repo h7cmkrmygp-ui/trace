@@ -40,8 +40,23 @@ enum Schema {
         migrator.registerMigration("v11_habits") { db in
             try db.execute(sql: v11Habits)
         }
+        migrator.registerMigration("v12_birthdays") { db in
+            try db.execute(sql: v12Birthdays)
+        }
         return migrator
     }
+
+    /// v12 (P20) : la fête des personnes (une par personne), dite dans une note ou posée à la main.
+    static let v12Birthdays = """
+        CREATE TABLE person_birthday (
+          entity_id BLOB PRIMARY KEY NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+          day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 31),
+          year INTEGER CHECK (year IS NULL OR year BETWEEN 1800 AND 2300),
+          memory_id BLOB REFERENCES memory(id) ON DELETE SET NULL,
+          updated_at DATETIME NOT NULL
+        );
+        """
 
     /// v11 (P17) : les habitudes faites, relevées dans les notes (recalculables depuis le texte).
     static let v11Habits = """

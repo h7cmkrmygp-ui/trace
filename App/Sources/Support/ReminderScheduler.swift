@@ -14,6 +14,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         case resurface
         /// Rappel de lieu (P14) : en arrivant à un lieu, ou en le quittant.
         case place
+        /// Une fête (P20) : la veille et le jour même ; toucher ouvre la page de la personne.
+        case birthday
 
         var category: String { "engram.\(rawValue)" }
     }
@@ -31,6 +33,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
     var onOpenTodo: (() -> Void)?
     /// Toucher le résumé de la semaine.
     var onOpenWeekly: (() -> Void)?
+    /// Toucher une fête : la page de la personne.
+    var onOpenEntity: ((UUID) -> Void)?
 
     override init() {
         super.init()
@@ -47,6 +51,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationCategory(identifier: Kind.weekly.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.resurface.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.place.category, actions: [done], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Kind.birthday.category, actions: [], intentIdentifiers: []),
         ])
     }
 
@@ -82,7 +87,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
 
     func removeAll() async {
         let prefixes = [ReminderPlanner.identifierPrefix, DigestPlanner.morningPrefix, DigestPlanner.weeklyIdentifier,
-                        Resurfacing.identifier]
+                        Resurfacing.identifier, BirthdayPlanner.identifierPrefix]
         let ours = await center.pendingNotificationRequests().map(\.identifier)
             .filter { identifier in prefixes.contains { identifier.hasPrefix($0) } }
         center.removePendingNotificationRequests(withIdentifiers: ours)
@@ -154,6 +159,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         case .weekly: onOpenWeekly?()
         case .resurface:
             if let memoryID, action != UNNotificationDismissActionIdentifier { onOpen?(memoryID) }
+        case .birthday:
+            if let memoryID, action != UNNotificationDismissActionIdentifier { onOpenEntity?(memoryID) }
         case .reminder, .place:
             guard let memoryID else { return }
             if action == UNNotificationDefaultActionIdentifier {
