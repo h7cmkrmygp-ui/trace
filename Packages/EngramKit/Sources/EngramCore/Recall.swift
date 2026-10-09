@@ -122,9 +122,11 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
     /// Dossiers (chemins complets, du plus large au plus précis).
     public let categories: [String]
     public let tags: [String]
+    /// Gardée sur l'iPhone ou jugée secrète : jamais donnée à un assistant extérieur.
+    public let isPrivate: Bool
 
     public init(id: UUID, title: String, text: String, kind: MemoryKind?, status: MemoryStatus, capturedAt: Date,
-                dueAt: Date?, categories: [String], tags: [String]) {
+                dueAt: Date?, categories: [String], tags: [String], isPrivate: Bool = false) {
         self.id = id
         self.title = title
         self.text = text
@@ -134,6 +136,7 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
         self.dueAt = dueAt
         self.categories = categories
         self.tags = tags
+        self.isPrivate = isPrivate
     }
 
     /// Ce que le sens compare à la question.
