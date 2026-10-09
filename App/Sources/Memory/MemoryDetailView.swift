@@ -17,6 +17,9 @@ struct MemoryDetailView: View {
     /// Personnes et lieux de la note (P9).
     @State private var linkedEntities: [EngramEntity] = []
     @State private var isAddingEntity = false
+    /// Mesures de la note (P10).
+    @State private var noteMeasurements: [MetricMeasurement] = []
+    @AppStorage("engram.weightUnit") private var weightUnit = "lb"
     /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
     @State private var allCategories: [UUID: EngramCategory] = [:]
     @State private var title = ""
@@ -68,6 +71,7 @@ struct MemoryDetailView: View {
                 spokenWords(memory)
                 categoriesSection
                 entitiesSection
+                if !noteMeasurements.isEmpty { measurementsSection }
                 if !related.isEmpty { relatedSection }
             }
             .padding(.horizontal, 20)
@@ -238,6 +242,38 @@ struct MemoryDetailView: View {
         }
     }
 
+    /// « Suivi » : les mesures dites dans la note ; toucher ouvre le graphique du suivi.
+    private var measurementsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Suivi")
+            FlowLayout(spacing: 8) {
+                ForEach(noteMeasurements) { measurement in
+                    NavigationLink(value: NotesRoute.metric(measurement.metric)) {
+                        Label("\(measurement.metric.title) · \(Self.shown(measurement, weightUnit: weightUnit))",
+                              systemImage: measurement.metric.symbol)
+                            .font(.subheadline)
+                            .foregroundStyle(measurement.metric.tint)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(measurement.metric.tint.opacity(0.14), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    /// Une mesure lisible, le poids dans l'unité choisie.
+    static func shown(_ measurement: MetricMeasurement, weightUnit: String) -> String {
+        var value = measurement.value
+        var unit = measurement.unit
+        if measurement.metric == .weight, unit != weightUnit {
+            value = weightUnit == "kg" ? MetricUnits.kilograms(fromPounds: value) : MetricUnits.pounds(fromKilograms: value)
+            unit = weightUnit
+        }
+        return MetricUnits.format(value, second: measurement.secondValue, metric: measurement.metric, unit: unit)
+    }
+
     private var relatedSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Notes liées")
@@ -383,6 +419,7 @@ struct MemoryDetailView: View {
             assigned = try model.categories.categories(for: memoryID)
             allCategories = Dictionary(uniqueKeysWithValues: try model.categories.activeCategories().map { ($0.id, $0) })
             linkedEntities = try model.entities.entities(for: memoryID)
+            noteMeasurements = try model.measurements.measurements(for: memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

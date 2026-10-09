@@ -164,3 +164,11 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 77. **Anciennes notes** : Réglages › Intelligence › « Retrouver les personnes et les lieux de mes anciennes notes » : un message dit combien de liens ont été ajoutés (sans rien envoyer).
 78. **Cerveau** : le bouton « Personnes » (en haut à gauche) montre chaque personne en petit nœud relié à ses notes par des pointillés ; toucher une personne ouvre sa page. Chercher son nom allume toutes ses notes.
 79. **Retrouver** : « Qu'est-ce que je dois dire à Julie ? » trouve les notes où Julie est nommée.
+
+## K. P10 — Les suivis
+
+80. **Une mesure dite** : « Je pèse 162,5 livres » (ou « j'ai dormi 7 h 30 », « tension 120 sur 80 », « pouls 62 », « 8 000 pas », « glycémie 5,6 »). Dans la note, « Suivi » montre la pastille « Poids · 162,5 lb ».
+81. **Les pièges** : « Acheter 2 livres de bœuf » ne crée aucun suivi.
+82. **Suivis** : Notes › tout en bas, « Suivis » : une carte par suivi, la dernière valeur, une petite courbe, l'évolution sur 30 jours.
+83. **Un suivi** : touche « Poids » : le graphique (Mois, 3 mois, Année, Tout), minimum, moyenne, maximum, puis chaque mesure (toucher ouvre la note). En haut à droite : Livres ou Kilos.
+84. **Anciennes notes** : tes pesées d'avant la P10 apparaissent toutes seules après une réouverture d'Engram ; « hier » recule la mesure d'un jour.

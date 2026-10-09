@@ -227,3 +227,16 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p9-personnes-lieux-design.md`
 | — | Anciennes notes relues sur l'iPhone | n/a | ✅ | ✅ | ✅ (faux reconnaisseur) | ⏳ | — | NaturalLanguage d'Apple, rien n'est envoyé |
 | — | Personnes dans le Cerveau | ✅ | n/a | ✅ | ✅ (liens) | ⏳ | — | nœuds neutres reliés à leurs notes par des pointillés |
 | — | Retrouver et export | n/a | ✅ | ✅ | ✅ | ⏳ | — | les noms comptent comme mots forts ; export JSON complet |
+
+## P10 — Les suivis (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p10-suivis-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Mesures reconnues sur l'iPhone | n/a | ✅ | ✅ | ✅ (une trentaine de phrases, pièges) | ⏳ | — | poids, sommeil, tension, pouls, pas, glycémie ; aucune IA, aucun envoi |
+| — | Table des mesures (migration v6) | n/a | n/a | ✅ | ✅ (classement, hier, corbeille, suppression, relecture, export) | ⏳ | — | relevées au classement et au lancement |
+| — | Suivis et graphiques | ✅ | n/a | ✅ | compile + captures | ⏳ | — | cartes, courbes, Mois/3 mois/Année/Tout, min/moy/max, livres ou kilos |
+| — | Pastilles « Suivi » dans une note | ✅ | n/a | ✅ | compile | ⏳ | — | ouvrent le graphique |
+
+Tests automatiques après la P10 : **392** (Core 142, Store 142, Pipeline 13, Intelligence 63, Capture 32).

@@ -55,6 +55,8 @@ final class AppModel {
     let memories: MemoryStore
     /// Les personnes et les lieux de la mémoire (P9).
     let entities: EntityStore
+    /// Les suivis : mesures dites dans les notes (P10).
+    let measurements: MeasurementStore
     let categories: CategoryStore
     let processor: ThoughtProcessor
     let settings: SettingStore
@@ -88,6 +90,7 @@ final class AppModel {
         self.storageDirectory = storageDirectory
         memories = MemoryStore(database: database)
         entities = EntityStore(database: database)
+        measurements = MeasurementStore(database: database)
         categories = CategoryStore(database: database)
         settings = SettingStore(database: database)
         calendarLinks = CalendarLinkStore(database: database)
@@ -663,6 +666,9 @@ final class AppModel {
         await syncAppointments(askPermission: false)
         await describeCategoriesIfNeeded()
         await backups.backupIfDue(model: self)
+        // Suivis : les notes jamais relues, et celles modifiées, sur l'iPhone (P10).
+        let measurementStore = measurements
+        _ = await Task.detached(priority: .utility) { try? measurementStore.backfill() }.value
     }
 
     /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).

@@ -17,6 +17,9 @@ enum NotesRoute: Hashable {
     case people
     case places
     case entity(UUID)
+    /// P10 : les suivis, et la page de l'un d'eux.
+    case trackers
+    case metric(Metric)
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -31,6 +34,8 @@ enum NotesRoute: Hashable {
         case .people: EntityListView(kind: .person)
         case .places: EntityListView(kind: .place)
         case .entity(let id): EntityDetailView(entityID: id)
+        case .trackers: TrackersView()
+        case .metric(let metric): MetricDetailView(metric: metric)
         }
     }
 }
@@ -47,6 +52,9 @@ struct NotesView: View {
     @State private var results: [Memory] = []
     @State private var people: [EntityStore.Summary] = []
     @State private var places: [EntityStore.Summary] = []
+    /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
+    @State private var trackersSummary = ""
+    @AppStorage("engram.weightUnit") private var weightUnit = "lb"
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     private var roots: [CategoryStore.CategorySummary] { summary?.categories.filter { $0.depth == 0 } ?? [] }
@@ -105,6 +113,21 @@ struct NotesView: View {
             .task {
                 do {
                     for try await list in model.entities.summariesStream(kind: .place) { places = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task(id: weightUnit) {
+                do {
+                    for try await metrics in model.measurements.metricsStream() {
+                        trackersSummary = metrics.prefix(2).compactMap { metric -> String? in
+                            guard let last = (try? model.measurements.points(metric: metric, weightUnit: weightUnit))?.last
+                            else { return nil }
+                            return "\(metric.title) " + MetricUnits.format(last.value, second: last.secondValue, metric: metric,
+                                                                            unit: metric.unit(weightUnit: weightUnit))
+                        }
+                        .joined(separator: " · ")
+                    }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
                 }
@@ -195,6 +218,12 @@ struct NotesView: View {
                 if !places.isEmpty {
                     NavigationLink(value: NotesRoute.places) {
                         FolderCard(systemImage: "mappin.and.ellipse", title: "Lieux", subtitle: Self.names(places))
+                    }
+                }
+                // Les suivis (P10) : poids, sommeil, tension… dits dans les notes.
+                if !trackersSummary.isEmpty {
+                    NavigationLink(value: NotesRoute.trackers) {
+                        FolderCard(systemImage: "chart.xyaxis.line", title: "Suivis", subtitle: trackersSummary)
                     }
                 }
             }

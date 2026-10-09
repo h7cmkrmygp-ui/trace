@@ -66,6 +66,12 @@ enum UITestSeed {
         try file("Rapporter le livre de Julie", kind: .task, path: ["Famille"], people: ["Julie"],
                  provider: "groq", level: .personal)
         try file("Rapporter les bouteilles au Costco", kind: .task, path: ["Achats"], places: ["au Costco"])
+        // P10 : des mesures inventées, sur trois jours, pour les suivis.
+        try file("Je pèse 166 livres avant-hier", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        try file("Je pèse 165,4 livres hier", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        try file("Je pèse 164,8 livres ce matin", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        try file("J'ai dormi 7 h 30 cette nuit", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        try file("Tension 118 sur 76", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
 
         if case .saved(let unsorted) = try memories.saveTextNoteWithoutAnalysis("Pensée en vrac à classer plus tard") {
             try filer.markFallback(sourceID: unsorted.sourceID)

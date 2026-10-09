@@ -103,6 +103,19 @@ final class ScreenshotTests: XCTestCase {
         } else {
             XCTFail("Dossier « Personnes » introuvable dans les Notes")
         }
+        // P10 — suivis (mesures inventées) : le poids sur trois jours, avec son graphique.
+        if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Suivis")).firstMatch) {
+            snap(app, "26-suivis-\(mode)")
+            if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Poids")).firstMatch) {
+                snap(app, "27-suivi-poids-\(mode)")
+                goBack(app)
+            } else {
+                XCTFail("Carte « Poids » introuvable dans les Suivis")
+            }
+            goBack(app)
+        } else {
+            XCTFail("Dossier « Suivis » introuvable dans les Notes")
+        }
         app.swipeDown()
 
         if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "À vérifier")).firstMatch) {
