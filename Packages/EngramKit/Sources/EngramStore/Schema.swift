@@ -46,8 +46,21 @@ enum Schema {
         migrator.registerMigration("v13_habit_goals") { db in
             try db.execute(sql: v13HabitGoals)
         }
+        migrator.registerMigration("v14_duplicates") { db in
+            try db.execute(sql: v14Duplicates)
+        }
         return migrator
     }
+
+    /// v14 (P23) : les paires écartées (« ce n'est pas un doublon ») ou déjà réunies.
+    static let v14Duplicates = """
+        CREATE TABLE duplicate_dismissal (
+          first_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          second_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          dismissed_at DATETIME NOT NULL,
+          PRIMARY KEY (first_id, second_id)
+        );
+        """
 
     /// v13 (P21) : l'objectif de chaque habitude, en fois par semaine.
     static let v13HabitGoals = """

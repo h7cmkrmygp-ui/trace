@@ -28,6 +28,8 @@ enum NotesRoute: Hashable {
     case habit(Habit)
     /// P18 : « Ta semaine ».
     case weekly
+    /// P23 : les doublons possibles.
+    case duplicates
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -48,6 +50,7 @@ enum NotesRoute: Hashable {
         case .lists: ListsView()
         case .habit(let habit): HabitDetailView(habit: habit)
         case .weekly: WeeklyReviewView()
+        case .duplicates: DuplicatesView()
         }
     }
 }
@@ -66,6 +69,8 @@ struct NotesView: View {
     @State private var places: [EntityStore.Summary] = []
     /// P15 : les listes.
     @State private var lists: [ListStore.Summary] = []
+    /// P23 : les doublons possibles à vérifier.
+    @State private var duplicateCount = 0
     /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
     @State private var trackersSummary = ""
     /// P17 : « Méditation 5 jours ».
@@ -176,6 +181,8 @@ struct NotesView: View {
                     model.errorMessage = AppModel.describe(error)
                 }
             }
+            // P23 : les doublons possibles, recomptés à chaque retour sur les Notes.
+            .onAppear { duplicateCount = (try? model.memories.duplicatePairs().count) ?? 0 }
             // Résumé du matin ou widget « Aujourd'hui » touché : « À faire » s'ouvre.
             .task(id: model.openTodoRequest) {
                 guard model.consumeTodoRequest() else { return }
@@ -224,6 +231,11 @@ struct NotesView: View {
             } label: {
                 Label("Ta semaine", systemImage: "calendar.badge.clock")
             }
+            Button {
+                model.notesPath.append(NotesRoute.duplicates)
+            } label: {
+                Label("Doublons possibles", systemImage: "doc.on.doc")
+            }
             Divider()
             Button {
                 model.notesPath.append(NotesRoute.settings)
@@ -254,6 +266,14 @@ struct NotesView: View {
                 if unsortedCount > 0 {
                     NavigationLink(value: NotesRoute.list(title: "À classer", statuses: [.unsorted])) {
                         FolderCard(systemImage: "tray", title: "À classer", subtitle: Self.count(unsortedCount, "note", "à classer"))
+                    }
+                }
+                // La même pensée dite deux fois (P23).
+                if duplicateCount > 0 {
+                    NavigationLink(value: NotesRoute.duplicates) {
+                        FolderCard(systemImage: "doc.on.doc", title: "Doublons possibles",
+                                   subtitle: duplicateCount == 1 ? "1 paire à vérifier" : "\(duplicateCount) paires à vérifier",
+                                   tint: .orange)
                     }
                 }
                 // Les listes (P15) : « ajoute du lait à ma liste d'épicerie ».

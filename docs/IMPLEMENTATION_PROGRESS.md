@@ -352,3 +352,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p22-calendrier-complet-design.m
 |---|---|---|---|---|---|---|---|---|
 | — | Prochaines fois des tâches qui reviennent | ✅ | ✅ | ✅ | ✅ (après l'échéance, jamais avant, mois suivant, tâche jetée) | ⏳ | — | dans le Calendrier |
 | — | Fêtes dans le Calendrier | ✅ | ✅ | ✅ | ✅ (âge, 29 février) | ⏳ | — | toucher ouvre la personne |
+
+## P23 — Doublons possibles (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p23-doublons-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | La même pensée dite deux fois est proposée | ✅ | ✅ | ✅ | ✅ (pas deux notes différentes, pas un autre genre, pas à 45 jours, pas un seul mot) | ⏳ | — | carte « Doublons possibles » |
+| — | Réunir sans rien perdre (migration v14) | ✅ | n/a | ✅ | ✅ (texte, dossiers, personnes, doublon à la corbeille, plus proposé) | ⏳ | — | le doublon se récupère dans la corbeille |
+| — | « Ce n'est pas un doublon » | ✅ | n/a | ✅ | ✅ | ⏳ | — | |

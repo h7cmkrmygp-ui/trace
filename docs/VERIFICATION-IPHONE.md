@@ -253,3 +253,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 128. **Tâche qui revient** : avec « Sortir les poubelles tous les lundis », le Calendrier marque chaque lundi du mois ; touche un lundi à venir : « Revient ce jour-là ».
 129. **Fêtes** : avec la fête de Julie le 12 mars, mars marque le 12 : « Fête de Julie ».
+
+## X. P23 — Doublons possibles
+
+130. **Deux fois la même pensée** : dis « Appeler l'assurance pour la voiture », puis plus tard « Il faut appeler l'assurance pour la voiture ». Notes : la carte « Doublons possibles » apparaît.
+131. **Réunir** : touche la carte › « Réunir les deux notes » : une seule note reste, avec ses dossiers ; l'autre est dans la Corbeille.
+132. **Écarter** : « Ce n'est pas un doublon » : la paire ne revient plus.
