@@ -303,3 +303,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p17-habitudes-design.md`
 | — | Habitudes reconnues | n/a | ✅ | ✅ | ✅ (7 habitudes, quantités, hier, anglais ; projets, refus et faux amis) | ⏳ | — | sur l'iPhone, sans IA |
 | — | Séries, semaine, grille (migration v11) | ✅ | ✅ | ✅ | ✅ (série vivante jusqu'au lendemain, meilleure série, semaine, grille de 16 semaines, corbeille, anciennes notes, export) | ⏳ | — | une relecture complète des anciennes notes, une seule fois |
 | — | Cartes « Habitudes » et page d'une habitude | ✅ | n/a | ✅ | compile + captures | ⏳ | — | dans Notes › Suivis |
+
+## P18 — « Ta semaine » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p18-ta-semaine-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Chiffres de la semaine | n/a | ✅ | ✅ | ✅ (notes, semaine d'avant, faites dont les tâches qui reviennent, à faire, jours, dossiers principaux, personnes, habitudes) | ⏳ | — | lus sur l'iPhone |
+| — | Page « Ta semaine » | ✅ | n/a | ✅ | compile + capture | ⏳ | — | titre, comparaison, jour le plus actif, flèches pour remonter les semaines |
+| — | Le résumé du dimanche ouvre « Ta semaine » | n/a | n/a | ✅ | compile | ⏳ | — | au lieu d'une question à Retrouver |

@@ -26,6 +26,8 @@ enum NotesRoute: Hashable {
     case lists
     /// P17 : une habitude.
     case habit(Habit)
+    /// P18 : « Ta semaine ».
+    case weekly
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -45,6 +47,7 @@ enum NotesRoute: Hashable {
         case .journal: JournalView()
         case .lists: ListsView()
         case .habit(let habit): HabitDetailView(habit: habit)
+        case .weekly: WeeklyReviewView()
         }
     }
 }
@@ -215,6 +218,11 @@ struct NotesView: View {
                 model.notesPath.append(NotesRoute.journal)
             } label: {
                 Label("Journal", systemImage: "book.closed")
+            }
+            Button {
+                model.notesPath.append(NotesRoute.weekly)
+            } label: {
+                Label("Ta semaine", systemImage: "calendar.badge.clock")
             }
             Divider()
             Button {

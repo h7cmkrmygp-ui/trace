@@ -209,6 +209,14 @@ final class ScreenshotTests: XCTestCase {
             goBack(app)
         }
 
+        // P18 — « Ta semaine » (menu « Plus ») : la semaine des notes inventées.
+        if tap(app.buttons["Plus"]), tap(app.buttons["Ta semaine"]) {
+            XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Semaine du")).firstMatch
+                .waitForExistence(timeout: 4), "« Ta semaine » devrait montrer la semaine")
+            snap(app, "33-ta-semaine-\(mode)")
+            goBack(app)
+        }
+
         if tap(app.buttons["Nouvelle note"]) {
             snap(app, "10-ecrire-\(mode)")
             tap(app.buttons["Annuler"])

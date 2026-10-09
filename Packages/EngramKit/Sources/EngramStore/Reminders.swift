@@ -56,10 +56,11 @@ extension MemoryStore {
                 .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
                 .filter(sql: notReview)
                 .fetchCount(db)
+            // Une tâche qui revient (P16) compte chaque fois qu'elle est faite.
             let done = try Memory
                 .filter(Column("status") == MemoryStatus.archived && todo.contains(Column("kind")))
                 .filter(Column("updated_at") >= start && Column("updated_at") < end)
-                .fetchCount(db)
+                .fetchCount(db) + Self.repeatedCompletions(db, from: start, to: end)
             let open = try Memory
                 .filter([MemoryStatus.active, MemoryStatus.unsorted].contains(Column("status")) && todo.contains(Column("kind")))
                 .filter(sql: notReview)

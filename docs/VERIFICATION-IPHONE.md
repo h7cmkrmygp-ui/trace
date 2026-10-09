@@ -220,3 +220,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 109. **Une série** : le lendemain, « j'ai médité 15 minutes » : la carte dit « 2 jours d'affilée » avec la flamme ; la carte « Suivis » des Notes dit « Méditation 2 jours ».
 110. **La page** : touche « Méditation » : série, meilleure série, cette semaine, la grille des 16 dernières semaines, et chaque fois (« 10 min »).
 111. **Autres** : « j'ai fait mon workout », « j'ai couru 5 km », « j'ai bu 2 litres d'eau », « hier j'ai fait du yoga » (compte pour hier). « J'ai pas médité » ne compte pas.
+
+## S. P18 — « Ta semaine »
+
+112. **La page** : Notes › Plus (…) › « Ta semaine » : « Semaine du … au … », tes notes, ce qui est fait, ce qui reste, et la comparaison avec la semaine d'avant.
+113. **Les détails** : « Chaque jour » (barres) et ton jour le plus actif ; tes dossiers ; « Avec » (toucher une personne ouvre sa page) ; tes habitudes ; tes suivis.
+114. **Les semaines d'avant** : la flèche ‹ en haut à droite ; › revient.
+115. **Le dimanche** : toucher la notification « Ta semaine » de 18 h ouvre cette page.

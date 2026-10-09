@@ -62,12 +62,38 @@ public struct WeeklyReview: Sendable, Equatable {
 
 /// Les mots de « Ta semaine ».
 public enum WeeklyReviewText {
+    static let months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+                         "novembre", "décembre"]
+
     /// « Semaine du 10 au 16 janvier », « Semaine du 28 février au 6 mars », l'année si elle change.
-    public static func title(start: Date, calendar: Calendar) -> String { "" }
+    public static func title(start: Date, calendar: Calendar) -> String {
+        let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start
+        let first = calendar.dateComponents([.year, .month, .day], from: start)
+        let last = calendar.dateComponents([.year, .month, .day], from: end)
+        func day(_ parts: DateComponents) -> String { parts.day == 1 ? "1er" : "\(parts.day ?? 1)" }
+        func month(_ parts: DateComponents) -> String { months[max(0, min(11, (parts.month ?? 1) - 1))] }
+        if first.year != last.year {
+            return "Semaine du \(day(first)) \(month(first)) \(first.year ?? 0) au \(day(last)) \(month(last)) \(last.year ?? 0)"
+        }
+        if first.month != last.month {
+            return "Semaine du \(day(first)) \(month(first)) au \(day(last)) \(month(last))"
+        }
+        return "Semaine du \(day(first)) au \(day(last)) \(month(last))"
+    }
 
     /// « 3 notes de plus que la semaine d'avant » ; nil s'il n'y avait rien la semaine d'avant.
-    public static func comparison(notes: Int, lastWeek: Int) -> String? { nil }
+    public static func comparison(notes: Int, lastWeek: Int) -> String? {
+        guard lastWeek > 0 else { return nil }
+        let difference = notes - lastWeek
+        if difference == 0 { return "Autant de notes que la semaine d'avant" }
+        let count = abs(difference)
+        return "\(count) note\(count > 1 ? "s" : "") de \(difference > 0 ? "plus" : "moins") que la semaine d'avant"
+    }
 
-    /// Le jour où il y a eu le plus de notes (« mercredi ») ; nil si la semaine est vide.
-    public static func busiestDay(perDay: [Int], start: Date, calendar: Calendar) -> String? { nil }
+    /// Le jour où il y a eu le plus de notes (« mercredi ») ; nil si la semaine est vide. À égalité, le premier.
+    public static func busiestDay(perDay: [Int], start: Date, calendar: Calendar) -> String? {
+        guard let most = perDay.max(), most > 0, let index = perDay.firstIndex(of: most),
+              let day = calendar.date(byAdding: .day, value: index, to: start) else { return nil }
+        return Recurrence.dayName(calendar.component(.weekday, from: day))
+    }
 }

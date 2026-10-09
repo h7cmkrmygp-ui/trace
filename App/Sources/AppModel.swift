@@ -90,7 +90,8 @@ final class AppModel {
     init(database: AppDatabase, storageDirectory: URL) {
         self.database = database
         self.storageDirectory = storageDirectory
-        memories = MemoryStore(database: database)
+        // Semaine du lundi au dimanche (comme le Calendrier d'Engram) : « Ta semaine », tâches qui reviennent.
+        memories = MemoryStore(database: database, calendar: Self.recallCalendar)
         entities = EntityStore(database: database)
         measurements = MeasurementStore(database: database)
         lists = ListStore(database: database)
@@ -131,9 +132,12 @@ final class AppModel {
         return true
     }
 
+    /// Le résumé du dimanche touché : « Ta semaine » s'ouvre dans les Notes, tout lu sur l'iPhone (P18).
     func openWeeklySummary() {
-        selectedTab = .recall
-        recallQuestionRequest = "Résume ce que j'ai noté cette semaine"
+        selectedTab = .notes
+        var path = NavigationPath()
+        path.append(NotesRoute.weekly)
+        notesPath = path
     }
 
     /// « Fait », « Dans 1 h », « Demain » depuis un rappel (l'app peut être lancée en arrière-plan pour ça).
