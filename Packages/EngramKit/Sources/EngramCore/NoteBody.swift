@@ -59,6 +59,11 @@ public enum NoteBody {
         .joined(separator: "\n")
     }
 
+    /// Cases cochées sur le total, pour les listes (« 2/3 ») ; nil sans case.
+    public static func progress(of body: String?) -> (done: Int, total: Int)? {
+        nil
+    }
+
     static func checkbox(_ line: String) -> (done: Bool, text: String)? {
         let trimmed = line.drop { $0 == " " || $0 == "\t" }
         for marker in markers where trimmed.hasPrefix(marker.prefix) {

@@ -36,6 +36,14 @@ struct NoteBodyTests {
         #expect(NoteBody.text(from: []).isEmpty)
     }
 
+    /// Dans les listes : « 2/3 » pour une note à cases, rien pour un texte simple.
+    @Test func checklistProgressIsCounted() {
+        #expect(NoteBody.progress(of: "Préparer\n☐ Passeport\n☑ Valise\n☑ Billets")?.done == 2)
+        #expect(NoteBody.progress(of: "Préparer\n☐ Passeport\n☑ Valise\n☑ Billets")?.total == 3)
+        #expect(NoteBody.progress(of: "Un texte sans cases") == nil)
+        #expect(NoteBody.progress(of: nil) == nil)
+    }
+
     @Test func checkingABoxOnlyChangesThatLine() {
         var blocks = NoteBody.blocks(from: "☐ Passeport\n☐ Valise")
         blocks[1].kind = .check(done: true)
