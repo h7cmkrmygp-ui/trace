@@ -105,3 +105,8 @@ extension MemoryStore {
         return true
     }
 }
+
+/// P22 — les tâches qui reviennent, pour le Calendrier.
+extension MemoryStore {
+    public func recurringTasks() throws -> [CalendarProjection.Recurring] { [] }
+}
