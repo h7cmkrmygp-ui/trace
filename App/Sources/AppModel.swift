@@ -415,6 +415,15 @@ final class AppModel {
         }
     }
 
+    /// « Qu'est-ce qu'il y a sur ma liste ? » (P26) : la liste nommée, sinon l'épicerie (ou la plus récente).
+    func readList(named name: String?) -> String {
+        let sources = (try? lists.widgetSources()) ?? []
+        let spoken = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let chosen = spoken.isEmpty ? sources : sources.filter { ListSpeech.matches(spoken, listName: $0.name) }
+        if !spoken.isEmpty && chosen.isEmpty { return "Je ne trouve pas ta liste « \(spoken) »." }
+        return ListSpeech.read(ListsSnapshot.make(chosen, hideItems: false, now: Date()).lists.first)
+    }
+
     /// Suit les listes : une case cochée, une chose ajoutée… et le widget suit.
     func watchListsWidget() async {
         do {

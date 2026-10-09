@@ -92,5 +92,53 @@ struct EngramShortcuts: AppShortcutsProvider {
         AppShortcut(intent: AskEngramIntent(),
                     phrases: ["Demande à \(.applicationName)", "Cherche dans \(.applicationName)"],
                     shortTitle: "Demander à Engram", systemImageName: "magnifyingglass")
+        // P26 : les listes avec Siri.
+        AppShortcut(intent: ReadListIntent(),
+                    phrases: ["Lis ma liste dans \(.applicationName)", "Qu'est-ce qu'il y a sur ma liste dans \(.applicationName)"],
+                    shortTitle: "Lire ma liste", systemImageName: "checklist")
+        AppShortcut(intent: AddToListIntent(),
+                    phrases: ["Ajoute à ma liste dans \(.applicationName)", "Ajoute à ma liste d'épicerie dans \(.applicationName)"],
+                    shortTitle: "Ajouter à ma liste", systemImageName: "text.badge.plus")
+    }
+}
+
+/// P26 — « Qu'est-ce qu'il y a sur ma liste ? » : Siri lit ce qui reste (l'épicerie d'abord, ou la liste nommée). iPhone
+/// déverrouillé exigé ; une liste privée ne dit que le nombre.
+struct ReadListIntent: AppIntent {
+    static let title: LocalizedStringResource = "Lire une liste Engram"
+    static let description = IntentDescription("Siri lit ce qui reste sur ta liste d'épicerie, ou sur la liste que tu nommes.")
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+
+    @Parameter(title: "Liste", requestValueDialog: "Quelle liste ?")
+    var list: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard case .success(let model) = AppModel.shared else {
+            return .result(dialog: "Engram ne peut pas ouvrir ta mémoire pour l'instant.")
+        }
+        return .result(dialog: "\(model.readList(named: list))")
+    }
+}
+
+/// P26 — « Ajoute du lait à ma liste » : Engram classe la demande comme une dictée (la liste est complétée).
+struct AddToListIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ajouter à une liste Engram"
+    static let description = IntentDescription("Ajoute des choses à ta liste d'épicerie, ou à la liste que tu nommes.")
+
+    @Parameter(title: "Quoi", requestValueDialog: "Qu'est-ce que j'ajoute ?")
+    var item: String
+
+    @Parameter(title: "Liste")
+    var list: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard case .success(let model) = AppModel.shared else {
+            return .result(dialog: "Engram ne peut pas ouvrir ta mémoire pour l'instant.")
+        }
+        _ = model.saveThought(ListSpeech.addCommand(item: item, list: list))
+        let reply = ListSpeech.added(to: list)
+        return .result(dialog: "\(reply)")
     }
 }

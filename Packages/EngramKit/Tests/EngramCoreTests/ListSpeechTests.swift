@@ -25,6 +25,15 @@ struct ListSpeechTests {
             == "Ta liste privée a 2 choses. Ouvre Engram pour les voir.")
     }
 
+    @Test func theListNamedToSiriIsFound() {
+        #expect(ListSpeech.matches("l'épicerie", listName: "Épicerie"))
+        #expect(ListSpeech.matches("mes courses", listName: "Épicerie"))
+        #expect(ListSpeech.matches("Costco", listName: "Costco"))
+        #expect(!ListSpeech.matches("cadeaux", listName: "Épicerie"))
+        #expect(ListSpeech.added(to: nil) == "C'est ajouté à ta liste d'épicerie.")
+        #expect(ListSpeech.added(to: "cadeaux") == "C'est ajouté à ta liste de cadeaux.")
+    }
+
     @Test func whatSiriHearsBecomesAListCommand() {
         #expect(ListCommandParser.parse(ListSpeech.addCommand(item: "du lait et des œufs", list: nil))
             == ListCommand(listName: "épicerie", items: ["Lait", "Œufs"]))

@@ -378,3 +378,12 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p25-widget-liste-design.md`
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Ce qui reste sur la liste, sur l'écran d'accueil | ✅ | ✅ | ✅ | ✅ (épicerie d'abord, 4 listes, 8 choses, liste privée, Engram verrouillé) | ⏳ | — | installation complète seulement ; toucher ouvre la liste |
+
+## P26 — Les listes avec Siri (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p26-listes-avec-siri-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Lis ma liste dans Engram » | n/a | ✅ | ✅ | ✅ (liste, tout coché, vide, longue, privée, liste nommée) | ⏳ | — | iPhone déverrouillé exigé |
+| — | « Ajoute à ma liste dans Engram » | n/a | ✅ | ✅ | ✅ (la demande devient une vraie commande de liste) | ⏳ | — | classée comme une dictée |

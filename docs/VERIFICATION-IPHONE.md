@@ -269,3 +269,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 134. **Ajouter le widget** (installation complète) : appui long sur l'écran d'accueil › + › Engram › « Liste ». Il montre ce qui reste sur ta liste d'épicerie.
 135. **Il suit** : coche « Lait » dans Engram (ou dis « j'ai acheté le lait ») : le widget ne le montre plus.
 136. **Toucher** le widget ouvre la liste.
+
+## AA. P26 — Les listes avec Siri
+
+137. **Lire** : « Dis Siri, lis ma liste dans Engram » : Siri lit ce qui reste sur ta liste d'épicerie.
+138. **Ajouter** : « Dis Siri, ajoute à ma liste dans Engram » › « du beurre » : « C'est ajouté à ta liste d'épicerie. » ; ouvre la liste : « Beurre » y est.
