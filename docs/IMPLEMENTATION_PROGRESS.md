@@ -212,7 +212,7 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p8-corrections-finales-design.m
 | — | « Demande à ton cerveau » | n/a | n/a | ✅ | ✅ (recherche sur simulateur) | ⏳ | — | la recherche du Cerveau passe par le moteur de Retrouver ; « Réponse complète dans Retrouver » |
 | — | Visuel des dossiers des Notes | ✅ | n/a | ✅ | ✅ (disposition, cases à cocher) | ⏳ | — | petit réseau du dossier en haut ; icône du type et « 2/3 » dans les lignes |
 
-Tests automatiques : **357** (Core 127, Store 124, Pipeline 12, Intelligence 62 dont 2 mesures du modèle d'Apple lancées à la main, Capture 32).
+Tests automatiques : **357** (Core 127, Store 124, Pipeline 12, Intelligence 62 dont 2 mesures du modèle d'Apple lancées à la main, Capture 32) ; après la P9 : **376** (Core 132, Store 136, Pipeline 13, Intelligence 63, Capture 32).
 
 ## P9 — Les personnes et les lieux de ta mémoire (branche `p2-je-parle`)
 
