@@ -25,9 +25,12 @@ struct MemoryRow: View {
                     }
                     Text(memory.capturedAt, format: .relative(presentation: .named))
                     if let progress = NoteBody.progress(of: memory.summary) {
-                        Label("\(progress.done)/\(progress.total)", systemImage: "checklist")
-                            .labelStyle(.titleAndIcon)
-                            .accessibilityLabel("\(progress.done) sur \(progress.total) fait\(progress.done > 1 ? "s" : "")")
+                        HStack(spacing: 3) {
+                            Image(systemName: progress.done == progress.total ? "checkmark.circle.fill" : "checklist")
+                            Text("\(progress.done)/\(progress.total)").monospacedDigit()
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(progress.done) sur \(progress.total) fait\(progress.done > 1 ? "s" : "")")
                     } else if let preview = Self.preview(of: memory) {
                         Text(preview).lineLimit(1)
                     }

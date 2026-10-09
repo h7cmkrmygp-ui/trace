@@ -50,19 +50,22 @@ struct CategoryConstellationView: View {
             + (subcategories.isEmpty ? "" : ", \(NotesView.count(subcategories.count, "sous-dossier", nil))"))
     }
 
-    private func scale(for size: CGSize) -> CGFloat { min(size.width, size.height) / 2 * 0.78 }
+    /// Un ou deux sous-dossiers vont sur les côtés (la carte est plus large que haute) ; à partir de trois, tout autour.
+    private var turnsSideways: Bool { subcategories.count <= 2 }
 
     private func position(_ node: CategoryConstellation.Node, in size: CGSize, time: Double,
                           anchors: [UUID: CategoryConstellation.Node]) -> CGPoint {
-        let s = scale(for: size)
         let drift = node.kind == .root ? (x: 0.0, y: 0.0)
             : BrainView.drift(seed: BrainMotion.seed(node.id), time: time, amplitude: node.kind == .item ? 0.012 : 0.02)
         // Une pensée suit le flottement de son dossier.
         let follow = node.anchorID.flatMap { anchors[$0] }.map { anchor in
             anchor.kind == .root ? (x: 0.0, y: 0.0) : BrainView.drift(seed: BrainMotion.seed(anchor.id), time: time, amplitude: 0.02)
         } ?? (x: 0.0, y: 0.0)
-        return CGPoint(x: size.width / 2 + (node.x + drift.x + follow.x) * s,
-                       y: size.height / 2 + (node.y + drift.y + follow.y) * s)
+        let x = node.x + drift.x + follow.x
+        let y = node.y + drift.y + follow.y
+        let (dx, dy) = turnsSideways ? (-y, x) : (x, y)
+        // Une ellipse qui épouse la carte, en laissant la place des noms.
+        return CGPoint(x: size.width / 2 + dx * (size.width / 2 - 56), y: size.height / 2 + dy * (size.height / 2 - 30))
     }
 
     private func canvas(_ layout: [CategoryConstellation.Node], time: Double) -> some View {
@@ -82,10 +85,11 @@ struct CategoryConstellationView: View {
                 line.addLine(to: p)
                 context.stroke(line, with: .color(tint.opacity(dark ? 0.35 : 0.28)), lineWidth: 1)
             }
-            // Pensées : de petits points de la couleur du dossier.
+            // Pensées : de petits points de la couleur du dossier, avec un léger halo.
             for node in layout where node.kind == .item {
                 let p = position(node, in: size, time: time, anchors: anchors)
-                context.fill(circle(p, 3.2), with: .color(tint.opacity(0.85)))
+                context.fill(circle(p, 7), with: .color(tint.opacity(dark ? 0.14 : 0.1)))
+                context.fill(circle(p, 3.8), with: .color(tint.opacity(0.9)))
             }
             // Sous-dossiers et dossier : des sphères douces, éclairées d'en haut.
             for node in layout where node.kind != .item {
@@ -96,8 +100,13 @@ struct CategoryConstellationView: View {
                     Gradient(colors: [tint.mix(with: .white, by: dark ? 0.3 : 0.4), tint]),
                     center: CGPoint(x: p.x - radius * 0.4, y: p.y - radius * 0.4), startRadius: 0, endRadius: radius * 1.7))
                 if node.kind == .subcategory, let name = names[node.id] {
+                    // Le nom vers l'extérieur, à l'opposé du dossier : il ne chevauche ni le trait ni le centre.
                     let label = Text(name).font(.caption.weight(.medium)).foregroundStyle(Color.primary.opacity(0.7))
-                    context.draw(context.resolve(label), at: CGPoint(x: p.x, y: p.y + radius + 6), anchor: .top)
+                    let gap = radius + 6
+                    let (at, anchor): (CGPoint, UnitPoint) = abs(p.x - center.x) > abs(p.y - center.y)
+                        ? (p.x > center.x ? (CGPoint(x: p.x + gap, y: p.y), .leading) : (CGPoint(x: p.x - gap, y: p.y), .trailing))
+                        : (p.y > center.y ? (CGPoint(x: p.x, y: p.y + gap), .top) : (CGPoint(x: p.x, y: p.y - gap), .bottom))
+                    context.draw(context.resolve(label), at: at, anchor: anchor)
                 }
             }
         }
