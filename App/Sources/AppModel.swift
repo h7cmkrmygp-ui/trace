@@ -312,6 +312,7 @@ final class AppModel {
         let now = Date()
         let calendar = Self.recallCalendar
         writeWidgetSnapshot(current, now: now, calendar: calendar)
+        writeListsWidget()
         guard remindersEnabled else {
             await reminders.removeAll()
             await reminders.setBadge(0)
@@ -406,12 +407,37 @@ final class AppModel {
         }
     }
 
-    /// engram://record (widget, Centre de contrôle) et engram://today (widget Aujourd'hui).
+    /// Le widget « Liste » (P25) : les choses qui restent ; sans détail si Engram est verrouillé ou la liste privée.
+    func writeListsWidget() {
+        let snapshot = ListsSnapshot.make((try? lists.widgetSources()) ?? [], hideItems: lock.isEnabled, now: Date())
+        if SharedContainer.writeLists(snapshot) {
+            WidgetCenter.shared.reloadTimelines(ofKind: "engram.lists")
+        }
+    }
+
+    /// Suit les listes : une case cochée, une chose ajoutée… et le widget suit.
+    func watchListsWidget() async {
+        do {
+            for try await _ in lists.listsStream() { writeListsWidget() }
+        } catch {
+            // Réécrit au prochain lancement.
+        }
+    }
+
+    /// engram://record (widget, Centre de contrôle), engram://today (widget Aujourd'hui), engram://list/<id> et
+    /// engram://lists (widget Liste, P25).
     func open(_ url: URL) {
         guard url.scheme == "engram" else { return }
         switch url.host {
         case "record": requestRecording()
         case "today": openTodo()
+        case "list":
+            if let id = UUID(uuidString: url.lastPathComponent) { openMemory(id) }
+        case "lists":
+            selectedTab = .notes
+            var path = NavigationPath()
+            path.append(NotesRoute.lists)
+            notesPath = path
         default: break
         }
     }

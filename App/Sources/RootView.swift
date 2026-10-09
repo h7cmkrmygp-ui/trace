@@ -36,6 +36,7 @@ struct RootView: View {
         .task { await model.watchPlaceReminders() }
         .task { await model.watchBirthdays() }
         .task { await model.watchHabits() }
+        .task { await model.watchListsWidget() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:

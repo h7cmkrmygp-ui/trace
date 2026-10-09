@@ -41,5 +41,27 @@ public struct ListsSnapshot: Codable, Sendable, Equatable {
         self.lists = lists
     }
 
-    public static func make(_ sources: [Source], hideItems: Bool, now: Date) -> ListsSnapshot { ListsSnapshot() }
+    public static func make(_ sources: [Source], hideItems: Bool, now: Date) -> ListsSnapshot {
+        let grocery = ListCommandParser.key("épicerie")
+        let ordered = sources.enumerated()
+            .sorted { first, second in
+                let a = ListCommandParser.key(first.element.name) == grocery
+                let b = ListCommandParser.key(second.element.name) == grocery
+                return a != b ? a : first.offset < second.offset
+            }
+            .map { $0.element }
+        let lists = ordered.prefix(maximumLists).map { source -> List in
+            var open: [String] = []
+            var done = 0
+            for block in NoteBody.blocks(from: source.body) {
+                if case .check(let checked) = block.kind {
+                    if checked { done += 1 } else { open.append(block.text) }
+                }
+            }
+            let hidden = hideItems || source.isPrivate
+            return List(memoryID: source.memoryID, title: source.isPrivate ? "Liste privée" : source.title,
+                        open: hidden ? [] : Array(open.prefix(maximumItems)), openCount: open.count, done: done)
+        }
+        return ListsSnapshot(generatedAt: now, lists: Array(lists))
+    }
 }

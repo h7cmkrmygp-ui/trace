@@ -263,3 +263,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## Y. P24 — « Ce jour-là »
 
 133. **La carte** : un mois après une note, la carte « Ce jour-là » apparaît dans les Notes (« Il y a un mois : … ») ; la toucher montre les notes de ce jour-là.
+
+## Z. P25 — Widget « Liste »
+
+134. **Ajouter le widget** (installation complète) : appui long sur l'écran d'accueil › + › Engram › « Liste ». Il montre ce qui reste sur ta liste d'épicerie.
+135. **Il suit** : coche « Lait » dans Engram (ou dis « j'ai acheté le lait ») : le widget ne le montre plus.
+136. **Toucher** le widget ouvre la liste.

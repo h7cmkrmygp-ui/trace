@@ -39,6 +39,32 @@ enum SharedContainer {
         return (try? data.write(to: url, options: .atomic)) != nil
     }
 
+    /// P25 : les listes du widget « Liste » (jamais le détail d'une liste privée).
+    static var listsURL: URL? { directory?.appendingPathComponent("widget-lists.json") }
+
+    /// Écrit les listes du widget ; renvoie vrai si elles ont changé.
+    @discardableResult
+    static func writeLists(_ snapshot: ListsSnapshot) -> Bool {
+        guard let url = listsURL else { return false }
+        if var previous = readLists() {
+            var comparable = snapshot
+            comparable.generatedAt = .distantPast
+            previous.generatedAt = .distantPast
+            if previous == comparable { return false }
+        }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(snapshot) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
+
+    static func readLists() -> ListsSnapshot? {
+        guard let url = listsURL, let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(ListsSnapshot.self, from: data)
+    }
+
     static func readSnapshot() -> WidgetSnapshot? {
         guard let url = snapshotURL, let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()

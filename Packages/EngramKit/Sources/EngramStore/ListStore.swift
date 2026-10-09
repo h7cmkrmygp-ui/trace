@@ -122,5 +122,20 @@ public struct ListStore: Sendable {
 
 /// P25 — ce que lit le widget « Liste ».
 extension ListStore {
-    public func widgetSources() throws -> [ListsSnapshot.Source] { [] }
+    /// Les listes vivantes, la plus récemment complétée d'abord, avec leur texte et leur discrétion (comme les rappels).
+    public func widgetSources() throws -> [ListsSnapshot.Source] {
+        try database.writer.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT l.name AS name, m.id AS memory_id, m.title AS title, m.summary AS summary,
+                       s.keep_local AS keep_local, s.privacy_level AS privacy_level, s.route_reason AS route_reason
+                FROM memory_list l JOIN memory m ON m.id = l.memory_id JOIN source s ON s.id = m.source_id
+                WHERE m.status IN ('active','unsorted')
+                ORDER BY m.updated_at DESC
+                """).map { row in
+                let body: String? = row["summary"]
+                return ListsSnapshot.Source(memoryID: row["memory_id"], name: ListCommandParser.displayName(row["name"]),
+                                            title: row["title"], body: body ?? "", isPrivate: MemoryStore.isPrivate(row))
+            }
+        }
+    }
 }

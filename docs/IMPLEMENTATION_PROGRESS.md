@@ -370,3 +370,11 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p24-ce-jour-la-design.md`
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Notes du même jour, il y a un mois, six mois, un an… | ✅ | ✅ | ✅ | ✅ (moments, note privée, mois plus court, trois au plus) | ⏳ | — | carte dans les Notes |
+
+## P25 — Widget « Liste » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p25-widget-liste-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Ce qui reste sur la liste, sur l'écran d'accueil | ✅ | ✅ | ✅ | ✅ (épicerie d'abord, 4 listes, 8 choses, liste privée, Engram verrouillé) | ⏳ | — | installation complète seulement ; toucher ouvre la liste |

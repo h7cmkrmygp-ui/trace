@@ -10,6 +10,7 @@ import WidgetKit
 struct EngramWidgetBundle: WidgetBundle {
     var body: some Widget {
         TodayWidget()
+        ListsWidget()
         RecordWidget()
         RecordControl()
     }
@@ -194,5 +195,112 @@ struct RecordControl: ControlWidget {
         }
         .displayName("Enregistrer une pensée")
         .description("Ouvre Engram et commence à enregistrer.")
+    }
+}
+
+// MARK: - Liste (P25)
+
+struct ListsEntry: TimelineEntry {
+    let date: Date
+    let snapshot: ListsSnapshot?
+}
+
+struct ListsProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ListsEntry {
+        let sample = ListsSnapshot.make([ListsSnapshot.Source(memoryID: UUID(), name: "Épicerie", title: "Liste d'épicerie",
+                                                              body: "☐ Lait\n☐ Pain\n☐ Œufs\n☑ Café", isPrivate: false)],
+                                        hideItems: false, now: .now)
+        return ListsEntry(date: .now, snapshot: sample)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (ListsEntry) -> Void) {
+        completion(context.isPreview ? placeholder(in: context) : ListsEntry(date: .now, snapshot: SharedContainer.readLists()))
+    }
+
+    /// L'app réécrit les listes et rafraîchit le widget dès qu'une case change.
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ListsEntry>) -> Void) {
+        completion(Timeline(entries: [ListsEntry(date: .now, snapshot: SharedContainer.readLists())], policy: .never))
+    }
+}
+
+struct ListsWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "engram.lists", provider: ListsProvider()) { entry in
+            ListsWidgetView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(entry.snapshot?.lists.first.map { URL(string: "engram://list/\($0.memoryID.uuidString)")! }
+                           ?? URL(string: "engram://lists"))
+        }
+        .configurationDisplayName("Liste")
+        .description("Ce qui reste sur ta liste d'épicerie (ou ta liste la plus récente).")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
+struct ListsWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: ListsEntry
+
+    private var shownLists: [ListsSnapshot.List] {
+        let lists = entry.snapshot?.lists ?? []
+        return Array(lists.prefix(family == .systemLarge ? 2 : 1))
+    }
+
+    private var itemsPerList: Int {
+        switch family {
+        case .systemSmall: 4
+        case .systemMedium: 6
+        default: 6
+        }
+    }
+
+    var body: some View {
+        if shownLists.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Liste", systemImage: "checklist").font(.headline)
+                Spacer()
+                Text("Dis « ajoute du lait à ma liste d'épicerie ».").font(.subheadline).foregroundStyle(.secondary)
+                Spacer()
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(shownLists) { list in
+                    listView(list)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func listView(_ list: ListsSnapshot.List) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(list.title).font(.headline).lineLimit(1)
+                Spacer(minLength: 4)
+                Text("\(list.openCount)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            if list.openCount == 0 {
+                Text(list.done > 0 ? "Tout est coché." : "Vide.").font(.subheadline).foregroundStyle(.secondary)
+            } else if list.open.isEmpty {
+                // Liste privée ou Engram verrouillé : seulement le nombre.
+                Text(list.openCount == 1 ? "1 chose à prendre" : "\(list.openCount) choses à prendre")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                let columns = family == .systemMedium ? 2 : 1
+                let items = Array(list.open.prefix(itemsPerList))
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: columns),
+                          alignment: .leading, spacing: 3) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                        HStack(spacing: 5) {
+                            Image(systemName: "circle").font(.caption2).foregroundStyle(.secondary)
+                            Text(item).font(.subheadline).lineLimit(1).privacySensitive()
+                        }
+                    }
+                }
+                if list.openCount > items.count {
+                    Text("et \(list.openCount - items.count) de plus").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }
