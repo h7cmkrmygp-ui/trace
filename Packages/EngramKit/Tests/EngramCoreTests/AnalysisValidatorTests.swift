@@ -50,6 +50,16 @@ struct AnalysisValidatorTests {
         #expect(valid.map(\.excerpt) == [text])
     }
 
+    /// Les personnes et les lieux proposés par l'IA ne sont gardés que s'ils sont dans le texte.
+    @Test func peopleAndPlacesMustAppearInTheText() throws {
+        var proposed = thought(excerpt: "Appeler mon gestionnaire de placements", category: "Finance", subcategory: nil)
+        proposed.people = ["mon gestionnaire", "Julie"]
+        proposed.places = ["Corolla", "Banque"]
+        let valid = try AnalysisValidator.validate(ThoughtAnalysis(thoughts: [proposed]), against: text)
+        #expect(valid[0].people == ["mon gestionnaire"])
+        #expect(valid[0].places == ["Corolla"])
+    }
+
     @Test func keepsValidThoughtsAndDropsInventedOnes() throws {
         let analysis = ThoughtAnalysis(thoughts: [
             thought(excerpt: "acheter des wipers"),

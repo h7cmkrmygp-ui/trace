@@ -158,7 +158,22 @@ struct CloudClientsTests {
         #expect(system.localizedCaseInsensitiveContains("aujourd'hui"))
         #expect(system.contains("☐"))
         #expect(system.contains("Finance › Assurances"))
-        #expect(CloudPrompt.version == "p8-cloud-v1")
+        #expect(CloudPrompt.version == "p9-cloud-v1")
+    }
+
+    /// P9 : les services renvoient aussi les personnes et les lieux de chaque élément ; le schéma les exige.
+    @Test func peopleAndPlacesAreAskedForAndDecoded() throws {
+        let answer = #"{"notes":[{"title":"Appeler Julie","summary":"","excerpt":"appeler Julie avant le Costco","kind":"task","category":"Famille","categoryDescription":"","subcategory":"","tags":[],"dates":[],"people":["Julie"],"places":["Costco"]}]}"#
+        let thought = try #require(try CloudDecoder.decode(answer).thoughts.first)
+        #expect(thought.people == ["Julie"])
+        #expect(thought.places == ["Costco"])
+        // Ancienne réponse sans ces champs : rien ne casse.
+        let older = #"{"notes":[{"title":"Idée","excerpt":"une idée"}]}"#
+        #expect(try CloudDecoder.decode(older).thoughts.first?.people.isEmpty == true)
+        let request = try GeminiClient.makeRequest(model: "gemini-3.8-flash", apiKey: "CLE-TEST", system: "s", user: "u")
+        let body = String(decoding: try #require(request.httpBody), as: UTF8.self)
+        #expect(body.contains("\"people\"") && body.contains("\"places\""))
+        #expect(CloudPrompt.system.contains("people:") && CloudPrompt.system.contains("places:"))
     }
 
     @Test func decoderToleratesFencesAndMissingFieldsButRejectsGarbage() throws {

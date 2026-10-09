@@ -15,9 +15,15 @@ public struct AnalyzedThought: Sendable, Hashable {
     public var subcategory: String?
     /// Courte description de la catégorie quand l'IA la crée (« Suivi de la santé, du poids… »).
     public var categoryDescription: String?
+    /// Personnes et lieux nommés dans l'élément, recopiés de la note (P9).
+    public var people: [String]
+    public var places: [String]
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
-                mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil) {
+                mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil,
+                people: [String] = [], places: [String] = []) {
+        self.people = people
+        self.places = places
         self.title = title
         self.summary = summary
         self.excerpt = excerpt
@@ -110,9 +116,15 @@ public struct ValidThought: Sendable, Hashable {
     public var mentionedDates: [String]
     /// Description de la catégorie principale proposée par l'IA (posée seulement si elle n'en a pas).
     public var categoryDescription: String?
+    /// Personnes et lieux vérifiés (présents dans le texte).
+    public var people: [String]
+    public var places: [String]
 
     public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
-                tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil) {
+                tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
+                people: [String] = [], places: [String] = []) {
+        self.people = people
+        self.places = places
         self.title = title
         self.summary = summary
         self.excerpt = excerpt
