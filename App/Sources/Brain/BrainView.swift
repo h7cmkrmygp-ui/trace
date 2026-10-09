@@ -154,6 +154,24 @@ struct BrainView: View {
             }
             let nodeByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
 
+            // Profondeur : une poussière de lueurs lointaines qui scintillent et suivent un peu le mouvement.
+            if !nodes.isEmpty {
+                for index in 0..<70 {
+                    let seed = BrainMotion.seed("dust-\(index)")
+                    let x = CGFloat(Double(seed % 1_000) / 1_000) * size.width + camera.offset.width * 0.25
+                    let y = CGFloat(Double((seed / 1_000) % 1_000) / 1_000) * size.height + camera.offset.height * 0.25
+                    let twinkle = 0.5 + 0.5 * sin(time * (0.4 + Double(seed % 7) / 10) + Double(seed % 628) / 100)
+                    let radius = CGFloat(0.6 + Double(seed % 10) / 10)
+                    let width = size.width + 1
+                    let height = size.height + 1
+                    let wrapped = CGPoint(x: (x.truncatingRemainder(dividingBy: width) + width).truncatingRemainder(dividingBy: width),
+                                          y: (y.truncatingRemainder(dividingBy: height) + height).truncatingRemainder(dividingBy: height))
+                    context.fill(Path(ellipseIn: CGRect(x: wrapped.x - radius, y: wrapped.y - radius, width: radius * 2, height: radius * 2)),
+                                 with: .color((dark ? Color.white : Color(hue: 0.7, saturation: 0.5, brightness: 0.6))
+                                    .opacity((dark ? 0.08 : 0.07) + (dark ? 0.22 : 0.12) * twinkle)))
+                }
+            }
+
             // Synapses : courbes douces de la couleur des neurones qu'elles relient.
             for node in nodes where node.kind != .center {
                 let anchorID = node.anchorID ?? BrainLayout.centerID
@@ -224,10 +242,19 @@ struct BrainView: View {
                     Gradient(colors: [.white.opacity(0.95), color, color.opacity(0.75)]),
                     center: CGPoint(x: p.x - radius * 0.35, y: p.y - radius * 0.35), startRadius: 0, endRadius: radius * 1.5))
                 context.stroke(Path(ellipseIn: rect.insetBy(dx: -1.5, dy: -1.5)), with: .color(color.opacity(0.5)), lineWidth: 1)
+                let isRoot = node.anchorID == nil
                 let label = Text(node.label)
-                    .font(.system(size: node.anchorID == nil ? 13 : 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(dark ? Color.white.opacity(0.92) : Color.primary.opacity(0.85))
-                context.draw(context.resolve(label), at: CGPoint(x: p.x, y: p.y + radius + 5), anchor: .top)
+                    .font(.system(size: isRoot ? 13 : 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(dark ? Color.white.opacity(isRoot ? 0.92 : 0.75) : Color.primary.opacity(isRoot ? 0.85 : 0.65))
+                if isRoot {
+                    context.draw(context.resolve(label), at: CGPoint(x: p.x, y: p.y + radius + 5), anchor: .top)
+                } else {
+                    // Une sous-catégorie a son nom à côté, du côté opposé à son parent : il ne chevauche plus le sien.
+                    let parent = node.anchorID.flatMap { point($0) } ?? center
+                    let toRight = p.x >= parent.x
+                    context.draw(context.resolve(label), at: CGPoint(x: p.x + (toRight ? radius + 6 : -radius - 6), y: p.y),
+                                 anchor: toRight ? .leading : .trailing)
+                }
                 context.opacity = 1
             }
         }
@@ -251,7 +278,10 @@ struct BrainView: View {
         for node in nodes where node.kind != .item { positions[node.id] = (node.x, node.y) }
         for node in nodes where node.kind == .item {
             let anchor = positions[node.anchorID ?? BrainLayout.centerID] ?? (0, 0)
-            positions[node.id] = BrainMotion.orbit((node.x, node.y), around: anchor, seed: BrainMotion.seed(node.id), time: time)
+            // Un anneau bien visible autour du neurone (la disposition les place tout contre lui).
+            let spread = 2.6
+            let start = (x: anchor.x + (node.x - anchor.x) * spread, y: anchor.y + (node.y - anchor.y) * spread)
+            positions[node.id] = BrainMotion.orbit(start, around: anchor, seed: BrainMotion.seed(node.id), time: time)
         }
         return positions
     }
@@ -432,7 +462,8 @@ private struct BrainBackdrop: View {
                 if !isEmpty {
                     Image(systemName: "brain")
                         .font(.system(size: side * 0.82, weight: .ultraLight))
-                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.05) : Color(hue: 0.7, saturation: 0.4, brightness: 0.5).opacity(0.06))
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.035) : Color(hue: 0.7, saturation: 0.4, brightness: 0.5).opacity(0.045))
+                        .blur(radius: 2.5)
                         .scaleEffect(breathing ? 1.025 : 1)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                         .accessibilityHidden(true)

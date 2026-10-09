@@ -65,4 +65,9 @@ public enum BrainMotion {
     public static func seed(_ id: UUID) -> UInt64 {
         CategoryPalette.fnv1a(id.uuidString)
     }
+
+    /// Graine stable tirée d'un texte (décor du Cerveau).
+    public static func seed(_ text: String) -> UInt64 {
+        CategoryPalette.fnv1a(text)
+    }
 }
