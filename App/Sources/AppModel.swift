@@ -147,6 +147,17 @@ final class AppModel {
 
     // MARK: - Navigation (Siri, rappels)
 
+    /// Ouvre un écran dans l'onglet affiché, sur la même pile que les liens (un point touché dans un petit réseau).
+    func push<Value: Hashable>(_ value: Value) {
+        switch selectedTab {
+        case .notes: notesPath.append(value)
+        case .brain: brainPath.append(value)
+        case .calendar: calendarPath.append(value)
+        case .record: recordPath.append(value)
+        case .recall: recallPath.append(value)
+        }
+    }
+
     /// L'onglet quitté revient à sa page principale (Réglages, une note ouverte… sont refermés).
     func leave(_ tab: AppTab) {
         switch tab {

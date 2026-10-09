@@ -31,6 +31,8 @@ struct BrainView: View {
     @State private var focused: UUID?
     /// Notes affichées dans le panneau du bas (catégorie touchée ou résultats de recherche).
     @State private var panelNotes: [Memory] = []
+    /// Ce que le moteur de Retrouver a trouvé pour la question (sens, mots proches, dates), du plus pertinent au moins.
+    @State private var recallHits: [RecallHit] = []
     @State private var tapCount = 0
     /// Apparition du réseau (une fois, à l'arrivée des données).
     @State private var revealStart: Date?
@@ -46,9 +48,13 @@ struct BrainView: View {
     private var categoryNodes: [BrainLayout.Node] { nodes.filter { $0.kind == .category } }
     private var rootNodes: [BrainLayout.Node] { categoryNodes.filter { $0.anchorID == nil } }
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespaces) }
+    /// Ce qui s'allume : les titres qui contiennent les mots tapés (tout de suite), puis ce que Retrouver comprend
+    /// de la question (« mon idée de la semaine passée », « le garage »…).
     private var matches: Set<UUID> {
         guard !trimmedQuery.isEmpty else { return [] }
-        return Set(nodes.filter { $0.kind != .center && $0.label.localizedStandardContains(trimmedQuery) }.map(\.id))
+        let byTitle = nodes.filter { $0.kind != .center && $0.label.localizedStandardContains(trimmedQuery) }.map(\.id)
+        let present = Set(nodes.map(\.id))
+        return Set(byTitle).union(recallHits.map(\.document.id).filter { present.contains($0) })
     }
     /// Le neurone touché, ses sous-catégories et toutes leurs notes.
     private var focusedFamily: Set<UUID> {
@@ -106,7 +112,7 @@ struct BrainView: View {
             .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: matches)
             .navigationTitle("Cerveau")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "Chercher dans ton cerveau")
+            .searchable(text: $query, prompt: "Demande à ton cerveau")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Recentrer", systemImage: "scope") { move(to: BrainCamera(), focus: nil) }
@@ -133,7 +139,22 @@ struct BrainView: View {
                 }
             }
             .onChange(of: focused) { _, _ in loadPanel() }
-            .onChange(of: query) { _, _ in loadPanel() }
+            // La question passe par le moteur de Retrouver (sur l'iPhone), un instant après la dernière lettre.
+            .task(id: trimmedQuery) {
+                let question = trimmedQuery
+                guard !question.isEmpty else {
+                    recallHits = []
+                    loadPanel()
+                    return
+                }
+                loadPanel()
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                let result = await model.recallSearch(question)
+                guard !Task.isCancelled else { return }
+                recallHits = result.hits
+                loadPanel()
+            }
         }
     }
 
@@ -180,7 +201,7 @@ struct BrainView: View {
     }
 
     private var panelCount: Int {
-        if !trimmedQuery.isEmpty { return nodes.filter { $0.kind == .item && matches.contains($0.id) }.count }
+        if !trimmedQuery.isEmpty { return panelNotes.count }
         return nodes.filter { $0.kind == .item && focusedFamily.contains($0.id) }.count
     }
 
@@ -233,6 +254,17 @@ struct BrainView: View {
                 }
                 .buttonStyle(.plain)
             }
+            // La réponse rédigée (et la suite de la conversation) : dans Retrouver, avec la même question.
+            if !trimmedQuery.isEmpty {
+                Button {
+                    model.recallQuestionRequest = trimmedQuery
+                    model.selectedTab = .recall
+                } label: {
+                    Label("Réponse complète dans Retrouver", systemImage: "text.bubble")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .padding(.top, 4)
+            }
         }
         .padding(16)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -241,11 +273,18 @@ struct BrainView: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    /// Les notes du panneau, les plus récentes d'abord.
+    /// Les notes du panneau : pour une question, les plus pertinentes d'abord ; pour un neurone, les plus récentes.
     private func loadPanel() {
         let ids: [UUID]
         if !trimmedQuery.isEmpty {
-            ids = nodes.filter { $0.kind == .item && matches.contains($0.id) }.map(\.id)
+            var ranked = recallHits.map(\.document.id)
+            for node in nodes where node.kind == .item && node.label.localizedStandardContains(trimmedQuery)
+                && !ranked.contains(node.id) {
+                ranked.append(node.id)
+            }
+            let found = Dictionary(uniqueKeysWithValues: ((try? model.memories.memories(ids: ranked)) ?? []).map { ($0.id, $0) })
+            panelNotes = ranked.compactMap { found[$0] }
+            return
         } else if focused != nil {
             ids = nodes.filter { $0.kind == .item && focusedFamily.contains($0.id) }.map(\.id)
         } else {

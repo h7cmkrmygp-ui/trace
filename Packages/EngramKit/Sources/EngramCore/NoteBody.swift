@@ -61,7 +61,13 @@ public enum NoteBody {
 
     /// Cases cochées sur le total, pour les listes (« 2/3 ») ; nil sans case.
     public static func progress(of body: String?) -> (done: Int, total: Int)? {
-        nil
+        guard let body else { return nil }
+        let checks = blocks(from: body).compactMap { block -> Bool? in
+            if case .check(let done) = block.kind { return done }
+            return nil
+        }
+        guard !checks.isEmpty else { return nil }
+        return (checks.filter { $0 }.count, checks.count)
     }
 
     static func checkbox(_ line: String) -> (done: Bool, text: String)? {
