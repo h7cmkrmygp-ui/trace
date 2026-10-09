@@ -30,13 +30,13 @@ struct TodayProvider: TimelineProvider {
         return TodayEntry(date: .now, snapshot: sample)
     }
 
-    func snapshot(in context: Context) async -> TodayEntry {
-        context.isPreview ? placeholder(in: context) : TodayEntry(date: .now, snapshot: SharedContainer.readSnapshot())
+    func getSnapshot(in context: Context, completion: @escaping (TodayEntry) -> Void) {
+        completion(context.isPreview ? placeholder(in: context) : TodayEntry(date: .now, snapshot: SharedContainer.readSnapshot()))
     }
 
     /// Une entrée maintenant, puis une à chaque minuit des trois prochains jours (le widget recalcule « aujourd'hui »).
     /// L'app rafraîchit aussi les widgets dès que ses rappels changent.
-    func timeline(in context: Context) async -> Timeline<TodayEntry> {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
         let snapshot = SharedContainer.readSnapshot()
         let calendar = Calendar.current
         var entries = [TodayEntry(date: .now, snapshot: snapshot)]
@@ -45,7 +45,7 @@ struct TodayProvider: TimelineProvider {
                 entries.append(TodayEntry(date: midnight, snapshot: snapshot))
             }
         }
-        return Timeline(entries: entries, policy: .atEnd)
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
@@ -149,8 +149,14 @@ struct RecordProvider: TimelineProvider {
     struct Entry: TimelineEntry { let date: Date }
 
     func placeholder(in context: Context) -> Entry { Entry(date: .now) }
-    func snapshot(in context: Context) async -> Entry { Entry(date: .now) }
-    func timeline(in context: Context) async -> Timeline<Entry> { Timeline(entries: [Entry(date: .now)], policy: .never) }
+
+    func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
+        completion(Entry(date: .now))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
+        completion(Timeline(entries: [Entry(date: .now)], policy: .never))
+    }
 }
 
 struct RecordWidgetView: View {

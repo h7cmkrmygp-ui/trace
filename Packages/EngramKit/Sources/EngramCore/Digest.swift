@@ -91,6 +91,12 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         /// « 14 h » si une heure a été dite.
         public let time: String?
         public let isAppointment: Bool
+
+        public init(title: String, time: String?, isAppointment: Bool) {
+            self.title = title
+            self.time = time
+            self.isAppointment = isAppointment
+        }
     }
 
     /// Une chose à faire datée, titre déjà masqué si la note est privée.
