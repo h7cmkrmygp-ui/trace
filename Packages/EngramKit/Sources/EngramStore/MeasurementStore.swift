@@ -131,7 +131,7 @@ public struct MeasurementStore: Sendable {
 
     /// Au lancement : les notes jamais relues, et celles modifiées depuis leur dernier relevé. Renvoie le nombre de
     /// mesures ajoutées. Tout se passe sur l'iPhone.
-    public func backfill() throws -> Int {
+    public func backfill(since: Date? = nil) throws -> Int {
         let now = dates.now()
         return try database.writer.write { db in
             let notes = try Memory.fetchAll(db, sql: """

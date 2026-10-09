@@ -74,6 +74,19 @@ struct MeasurementStoreTests {
         #expect(try store(env).measurements(for: old.id).map(\.value) == [58])
     }
 
+    /// Au retour dans l'app, seules les notes nouvelles ou modifiées depuis la dernière relecture sont relues
+    /// (l'app reste rapide avec des centaines de notes).
+    @Test func onlyNotesChangedSinceTheLastReadAreReadAgain() throws {
+        let env = try StoreTestEnvironment()
+        let note = try env.saveNote("Ce matin : pouls 62")
+        let before = env.dates.now().addingTimeInterval(-1)
+        let after = env.dates.now().addingTimeInterval(1)
+        #expect(try store(env).backfill(since: after) == 0)
+        #expect(try store(env).measurements(for: note.id).isEmpty)
+        #expect(try store(env).backfill(since: before) == 1)
+        #expect(try store(env).measurements(for: note.id).map(\.value) == [62])
+    }
+
     @Test func theExportContainsTheMeasurements() throws {
         let env = try StoreTestEnvironment()
         try file(env, "Tension 120 sur 80")
