@@ -180,3 +180,15 @@ Spec : `docs/superpowers/specs/2026-10-08-engram-p6-cerveau-rappels-widgets-desi
 | INFRA | Deux IPA | n/a | n/a | ✅ | ✅ | ⏳ | — | `Engram.ipa` (extensions, droits en signature ad hoc) et `Engram-simple.ipa` (comme avant) |
 
 Tests automatiques : **317** (Core 100, Store 120, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).
+
+## P7 — Sauvegarde chiffrée et Face ID (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p7-sauvegarde-faceid-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| F89 | Sauvegarde chiffrée automatique | ✅ | ✅ | ✅ | ✅ (chiffrement, copie, restauration) | ⏳ | — | PBKDF2 600 000 tours + AES-GCM par blocs ; dossier choisi (iCloud Drive) ; chaque semaine ; 4 gardées |
+| F90 | Restauration | ✅ | ✅ | ✅ | ✅ | ⏳ | — | vérifiée avant ; appliquée au lancement suivant ; anciennes données gardées dans « Avant-restauration » |
+| PRIV | Verrouillage Face ID | ✅ | n/a | ✅ | compile | ⏳ | — | au retour dans l'app ; contenu masqué dans le sélecteur ; widgets et notifications sans titres |
+
+Tests automatiques : **324** (Core 105, Store 122, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).

@@ -130,3 +130,12 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
     - Centre de contrôle › « + » › Engram › « Enregistrer une pensée ».
 54. **Partager** : dans Safari, Partager › Engram › « Ajouter ». À la réouverture d'Engram, la note est là, classée.
 55. **Conversation gardée** : pose une question dans Retrouver, ferme l'app, rouvre-la : la conversation est toujours là ; « Nouvelle recherche » l'efface.
+
+## H. P7 — Sauvegarde chiffrée et Face ID
+
+56. **Réglages › Sauvegarde chiffrée** : choisis un dossier dans iCloud Drive, puis un mot de passe (8 caractères ou plus) que tu notes ailleurs.
+57. **« Sauvegarder maintenant »** : un fichier « Engram-Sauvegarde-… » apparaît dans ce dossier (app Fichiers).
+58. **Restaurer** (sur une copie de test) : « Restaurer une sauvegarde… », choisis le fichier, entre le mot de passe. Engram dit combien de notes il contient ; ferme l'app et rouvre-la : tes notes sont là, et l'ancien état est gardé.
+    - Avec un mauvais mot de passe : « Impossible d'ouvrir cette sauvegarde », rien ne change.
+59. **Chaque semaine** : active l'option ; la sauvegarde se refait seule une fois par semaine à l'ouverture d'Engram.
+60. **Face ID** : active « Verrouiller avec Face ID ». Quitte l'app et reviens : Face ID est demandé. Dans le sélecteur d'apps, le contenu est masqué. Les widgets n'affichent plus les titres.
