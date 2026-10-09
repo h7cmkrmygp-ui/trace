@@ -50,7 +50,7 @@ struct RecurrenceStoreTests {
         let recurrence = try #require(try env.memories.recurrence(for: trash.id))
         #expect(recurrence.doneCount == 1)
         #expect(recurrence.lastDoneAt == Fixtures.date)
-        #expect(try env.memories.versions(of: trash.id).last?.reason?.hasPrefix("fait") == true)
+        #expect(try env.memories.versions(of: trash.id).first?.changeReason?.hasPrefix("fait") == true)
         // La corbeille reste la corbeille.
         #expect(try env.memories.setStatus(.trashed, for: trash.id, actor: .user).status == .trashed)
     }
