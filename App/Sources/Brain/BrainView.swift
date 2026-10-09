@@ -33,6 +33,9 @@ struct BrainView: View {
     @State private var panelNotes: [Memory] = []
     /// Ce que le moteur de Retrouver a trouvé pour la question (sens, mots proches, dates), du plus pertinent au moins.
     @State private var recallHits: [RecallHit] = []
+    /// P9 : les personnes, reliées à leurs notes d'une catégorie à l'autre (bouton « Personnes »).
+    @State private var showsPeople = false
+    @State private var peopleLinks: [EntityStore.Links] = []
     @State private var tapCount = 0
     /// Apparition du réseau (une fois, à l'arrivée des données).
     @State private var revealStart: Date?
@@ -54,7 +57,10 @@ struct BrainView: View {
         guard !trimmedQuery.isEmpty else { return [] }
         let byTitle = nodes.filter { $0.kind != .center && $0.label.localizedStandardContains(trimmedQuery) }.map(\.id)
         let present = Set(nodes.map(\.id))
+        // Le nom d'une personne allume toutes ses notes.
+        let byPerson = peopleLinks.filter { $0.entity.name.localizedStandardContains(trimmedQuery) }.flatMap(\.memoryIDs)
         return Set(byTitle).union(recallHits.map(\.document.id).filter { present.contains($0) })
+            .union(byPerson.filter { present.contains($0) })
     }
     /// Le neurone touché, ses sous-catégories et toutes leurs notes.
     private var focusedFamily: Set<UUID> {
@@ -114,8 +120,14 @@ struct BrainView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Demande à ton cerveau")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Recentrer", systemImage: "scope") { move(to: BrainCamera(), focus: nil) }
+                    if !peopleLinks.isEmpty {
+                        Button(showsPeople ? "Masquer les personnes" : "Montrer les personnes",
+                               systemImage: showsPeople ? "person.2.fill" : "person.2") {
+                            withAnimation(reduceMotion ? nil : .smooth) { showsPeople.toggle() }
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Text(NotesView.count(itemCount, "note", nil)).font(.footnote).foregroundStyle(.secondary)
@@ -134,6 +146,13 @@ struct BrainView: View {
                         if let focused, !nodes.contains(where: { $0.id == focused }) { self.focused = nil }
                         loadPanel()
                     }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await links in model.entities.linksStream(kind: .person) { peopleLinks = links }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
                 }
@@ -310,6 +329,8 @@ struct BrainView: View {
         let nodeByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
         // Une couleur par nœud, calculée une fois par image (et non pour chaque trait).
         let colors = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, color(for: $0, in: nodeByID)) })
+        let people = showsPeople ? personPositions(positions) : []
+        let needle = trimmedQuery
         return Canvas { context, size in
             let factor = fit * camera.scale
             let center = CGPoint(x: size.width / 2 + camera.offset.width, y: size.height / 2 + camera.offset.height)
@@ -397,6 +418,43 @@ struct BrainView: View {
                 }
                 context.opacity = 1
             }
+
+            // Personnes (bouton « Personnes ») : un petit nœud neutre au milieu de ses notes, relié à chacune par un
+            // fil pointillé — les liens entre des notes de catégories différentes deviennent visibles.
+            let neutral = dark ? Color.white : Color(white: 0.3)
+            for person in people {
+                let p = CGPoint(x: center.x + person.x * factor, y: center.y + person.y * factor)
+                let isMatch = !needle.isEmpty && person.links.entity.name.localizedStandardContains(needle)
+                let strength = needle.isEmpty || isMatch || person.links.memoryIDs.contains(where: { highlighted.contains($0) }) ? 1.0 : 0.15
+                for memoryID in person.links.memoryIDs {
+                    guard let note = point(memoryID) else { continue }
+                    var thread = Path()
+                    thread.move(to: p)
+                    thread.addLine(to: note)
+                    context.stroke(thread, with: .color(neutral.opacity(0.35 * strength)),
+                                   style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+                }
+                context.fill(circle(p, 9), with: .color(neutral.opacity((dark ? 0.16 : 0.1) * strength)))
+                context.fill(circle(p, 5.5), with: .color(neutral.opacity(0.9 * strength)))
+                let name = Text(person.links.entity.name)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Color.primary.opacity(0.75 * strength))
+                context.draw(context.resolve(name), at: CGPoint(x: p.x, y: p.y + 10), anchor: .top)
+            }
+        }
+    }
+
+    /// Où se tient chaque personne : au milieu de ses notes, un peu à l'écart (une note seule : juste à côté d'elle).
+    private func personPositions(_ positions: [UUID: (x: Double, y: Double)])
+        -> [(links: EntityStore.Links, x: Double, y: Double)] {
+        peopleLinks.compactMap { links in
+            let points = links.memoryIDs.compactMap { positions[$0] }
+            guard !points.isEmpty else { return nil }
+            let x = points.map(\.x).reduce(0, +) / Double(points.count)
+            let y = points.map(\.y).reduce(0, +) / Double(points.count)
+            let angle = Double(BrainMotion.seed(links.entity.id) % 628) / 100
+            let push = points.count == 1 ? 34.0 : 18.0
+            return (links: links, x: x + cos(angle) * push, y: y + sin(angle) * push)
         }
     }
 
@@ -525,6 +583,17 @@ struct BrainView: View {
         let factor = fit * current.scale
         let center = CGPoint(x: size.width / 2 + current.offset.width, y: size.height / 2 + current.offset.height)
         let positions = animatedPositions(time: reduceMotion ? 0 : Date().timeIntervalSince(epoch))
+        // Une personne touchée (bouton « Personnes ») ouvre sa page.
+        if showsPeople {
+            let touched = personPositions(positions)
+                .map { ($0.links.entity.id, hypot(center.x + $0.x * factor - location.x, center.y + $0.y * factor - location.y)) }
+                .min { $0.1 < $1.1 }
+            if let touched, touched.1 < 24 {
+                tapCount += 1
+                model.brainPath.append(NotesRoute.entity(touched.0))
+                return
+            }
+        }
         let candidates = nodes.filter { $0.kind != .center }.compactMap { node -> (BrainLayout.Node, CGFloat)? in
             guard let position = positions[node.id] else { return nil }
             let p = CGPoint(x: center.x + position.x * factor, y: center.y + position.y * factor)

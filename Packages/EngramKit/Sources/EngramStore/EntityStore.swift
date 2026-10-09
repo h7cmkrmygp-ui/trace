@@ -102,11 +102,31 @@ public struct EntityStore: Sendable {
     }
 
     public func links(kind: EntityKind) throws -> [Links] {
-        []
+        try database.writer.read { db in try Self.links(db, kind: kind) }
     }
 
     public func linksStream(kind: EntityKind) -> AsyncThrowingStream<[Links], any Error> {
-        database.stream { db in [] }
+        database.stream { db in try Self.links(db, kind: kind) }
+    }
+
+    /// Les mêmes notes que le Cerveau : vivantes, jamais faites ni à la corbeille, jamais en attente de vérification.
+    static func links(_ db: Database, kind: EntityKind) throws -> [Links] {
+        let rows = try Row.fetchAll(db, sql: """
+            SELECT me.entity_id AS entity_id, me.memory_id AS memory_id FROM memory_entity me
+            JOIN entity e ON e.id = me.entity_id
+            JOIN memory m ON m.id = me.memory_id
+            WHERE me.rejected = 0 AND e.kind = ? AND e.status = 'active' AND m.status IN ('active','unsorted')
+              AND m.source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)
+            ORDER BY m.captured_at
+            """, arguments: [kind.rawValue])
+        var notes: [UUID: [UUID]] = [:]
+        for row in rows {
+            let entityID: UUID = row["entity_id"]
+            let memoryID: UUID = row["memory_id"]
+            notes[entityID, default: []].append(memoryID)
+        }
+        return try EngramEntity.filter(keys: Array(notes.keys)).order(Column("name")).fetchAll(db)
+            .map { Links(entity: $0, memoryIDs: notes[$0.id] ?? []) }
     }
 
     public func entity(id: UUID) throws -> EngramEntity? {

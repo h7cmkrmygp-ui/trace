@@ -155,3 +155,12 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 71. **Depuis ChatGPT ou Claude** : sélectionne une réponse › Partager › Engram : elle devient une note classée.
 72. **Demande à ton cerveau** : dans le Cerveau, touche la barre « Demande à ton cerveau » et pose une vraie question (« mon idée de la semaine passée », « le garage ») : les notes trouvées s'allument, s'affichent en bas, et « Réponse complète dans Retrouver » ouvre la réponse rédigée.
 73. **Visuel des dossiers** : ouvre un dossier des Notes (et un sous-dossier) : en haut, ses pensées en petit réseau (le dossier au centre, ses sous-dossiers autour). Touche un point : la note s'ouvre ; touche un sous-dossier : la liste défile jusqu'à lui. Chaque note de la liste a l'icône de son type dans la couleur du dossier, et « 2/3 » si elle a des cases à cocher.
+
+## J. P9 — Les personnes et les lieux de ta mémoire
+
+74. **Noms reconnus** : dicte « Faut que j'appelle Julie avant d'aller au Costco » (prénom inventé ou réel, peu importe). Dans la note, « Personnes et lieux » montre « Julie » et « Costco ».
+75. **Pages** : Notes › tout en bas, « Personnes » puis « Julie » : ses notes par mois et « À faire avec Julie ». « Lieux » fonctionne pareil.
+76. **Tes décisions** : dans une note, appui long sur une pastille › « Retirer de cette note » ; « Ajouter » pour en mettre une à la main. Sur une page : … › Renommer (un nom qui existe déjà réunit les deux pages), Fusionner avec…, « Ce n'est pas une personne » (la page disparaît, l'IA ne la recrée plus).
+77. **Anciennes notes** : Réglages › Intelligence › « Retrouver les personnes et les lieux de mes anciennes notes » : un message dit combien de liens ont été ajoutés (sans rien envoyer).
+78. **Cerveau** : le bouton « Personnes » (en haut à gauche) montre chaque personne en petit nœud relié à ses notes par des pointillés ; toucher une personne ouvre sa page. Chercher son nom allume toutes ses notes.
+79. **Retrouver** : « Qu'est-ce que je dois dire à Julie ? » trouve les notes où Julie est nommée.

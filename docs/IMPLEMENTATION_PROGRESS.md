@@ -213,3 +213,17 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p8-corrections-finales-design.m
 | — | Visuel des dossiers des Notes | ✅ | n/a | ✅ | ✅ (disposition, cases à cocher) | ⏳ | — | petit réseau du dossier en haut ; icône du type et « 2/3 » dans les lignes |
 
 Tests automatiques : **357** (Core 127, Store 124, Pipeline 12, Intelligence 62 dont 2 mesures du modèle d'Apple lancées à la main, Capture 32).
+
+## P9 — Les personnes et les lieux de ta mémoire (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p9-personnes-lieux-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Noms reconnus au classement | n/a | ✅ | ✅ (consignes p9) | ✅ (décodage, schéma, anti-invention) | ⏳ | — | Gemini, Groq ou Apple ; 4 personnes et 4 lieux au plus par note ; jamais « je » ni « moi » |
+| — | Doublons et décisions du propriétaire | n/a | ✅ | ✅ | ✅ (clés, alias, fusion, renommage, masquage, retrait) | ⏳ | — | « mon manager » = « le manager » ; un nom retiré ne revient pas |
+| — | Pages Personnes et Lieux | ✅ | n/a | ✅ | compile + captures | ⏳ | — | à faire, notes par mois, renommer, fusionner, masquer |
+| — | Pastilles dans une note | ✅ | n/a | ✅ | compile | ⏳ | — | toucher ouvre la page, appui long retire, « Ajouter » |
+| — | Anciennes notes relues sur l'iPhone | n/a | ✅ | ✅ | ✅ (faux reconnaisseur) | ⏳ | — | NaturalLanguage d'Apple, rien n'est envoyé |
+| — | Personnes dans le Cerveau | ✅ | n/a | ✅ | ✅ (liens) | ⏳ | — | nœuds neutres reliés à leurs notes par des pointillés |
+| — | Retrouver et export | n/a | ✅ | ✅ | ✅ | ⏳ | — | les noms comptent comme mots forts ; export JSON complet |
