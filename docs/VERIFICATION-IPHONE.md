@@ -227,3 +227,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 113. **Les détails** : « Chaque jour » (barres) et ton jour le plus actif ; tes dossiers ; « Avec » (toucher une personne ouvre sa page) ; tes habitudes ; tes suivis.
 114. **Les semaines d'avant** : la flèche ‹ en haut à droite ; › revient.
 115. **Le dimanche** : toucher la notification « Ta semaine » de 18 h ouvre cette page.
+
+## T. P19 — Listes à la voix
+
+116. **Cocher** : avec une liste d'épicerie qui contient du lait, dis « J'ai acheté le lait » (ou « coche le lait ») : la case est cochée, aucune nouvelle note.
+117. **Retirer** : « Enlève le pain de ma liste d'épicerie » : la case disparaît.
+118. **Pas une liste** : « J'ai acheté une nouvelle tondeuse » reste une note ordinaire.
+119. **Partager** : ouvre la liste › … › « Partager » › Messages.

@@ -423,11 +423,21 @@ struct MemoryDetailView: View {
                 model.perform { try model.memories.setPinned(!isPinned, for: memoryID) }
                 reload()
             }
+            // P19 : envoyer la note (une liste d'épicerie, par exemple) par Messages ou ailleurs ; c'est toi qui choisis.
+            ShareLink(item: shareText) {
+                Label("Partager", systemImage: "square.and.arrow.up")
+            }
             Button("Détails", systemImage: "info.circle") { isShowingInfo = true }
         }
     }
 
     // MARK: - Textes
+
+    /// Le titre et le texte tels qu'affichés (cases comprises), pour « Partager ».
+    private var shareText: String {
+        let body = NoteBody.text(from: blocks).trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.isEmpty ? title : title + "\n\n" + body
+    }
 
     /// « pour jeudi 9 octobre à 14 h », « pour samedi 10 octobre ».
     static func dueText(_ memory: Memory) -> String? {

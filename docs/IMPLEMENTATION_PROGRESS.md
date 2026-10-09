@@ -313,3 +313,14 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p18-ta-semaine-design.md`
 | — | Chiffres de la semaine | n/a | ✅ | ✅ | ✅ (notes, semaine d'avant, faites dont les tâches qui reviennent, à faire, jours, dossiers principaux, personnes, habitudes) | ⏳ | — | lus sur l'iPhone |
 | — | Page « Ta semaine » | ✅ | n/a | ✅ | compile + capture | ⏳ | — | titre, comparaison, jour le plus actif, flèches pour remonter les semaines |
 | — | Le résumé du dimanche ouvre « Ta semaine » | n/a | n/a | ✅ | compile | ⏳ | — | au lieu d'une question à Retrouver |
+
+## P19 — Listes à la voix (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p19-listes-a-la-voix-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Coche le lait », « j'ai acheté le pain » | n/a | ✅ | ✅ | ✅ (cocher, retirer, anglais, pièges « enlève tes souliers ») | ⏳ | — | sans nouvelle note ; la liste qui contient la chose, l'épicerie d'abord |
+| — | Cases retrouvées malgré la façon de les dire | n/a | ✅ | ✅ | ✅ (« Lait 2 % », pluriel, « œufs »/« oeufs », jamais « Laitue ») | ⏳ | — | |
+| — | « J'ai acheté une tondeuse » reste une note | n/a | n/a | ✅ | ✅ | ⏳ | — | une demande claire sans case ne devient pas une note |
+| — | Partager une note | ✅ | n/a | ✅ | compile | ⏳ | — | … › « Partager » |

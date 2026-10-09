@@ -97,6 +97,13 @@ public struct ThoughtFiler: Sendable {
             if kept.isEmpty {
                 if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
                 for thought in thoughts {
+                    // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19). « J'ai
+                    // acheté une tondeuse », sans case qui corresponde, reste une note.
+                    if let action = ListActionParser.parse(thought.excerpt),
+                       let outcome = try listStore.apply(db, action, now: now), !outcome.changed.isEmpty || action.isExplicit {
+                        if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
+                        continue
+                    }
                     // « ajoute du lait à ma liste d'épicerie » : la liste est complétée, sans nouvelle note (P15).
                     if let command = ListCommandParser.parse(thought.excerpt) {
                         let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
