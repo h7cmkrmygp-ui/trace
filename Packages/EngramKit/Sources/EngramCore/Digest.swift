@@ -5,11 +5,17 @@ public struct WeekStats: Sendable, Equatable {
     public let notes: Int
     public let done: Int
     public let open: Int
+    /// Les personnes les plus nommées de la semaine (P13) ; vide si Engram est verrouillé.
+    public let people: [String]
+    /// L'évolution des suivis (« Poids −1,2 lb »).
+    public let highlights: [String]
 
-    public init(notes: Int, done: Int, open: Int) {
+    public init(notes: Int, done: Int, open: Int, people: [String] = [], highlights: [String] = []) {
         self.notes = notes
         self.done = done
         self.open = open
+        self.people = people
+        self.highlights = highlights
     }
 }
 
