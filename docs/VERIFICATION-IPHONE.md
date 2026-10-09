@@ -274,3 +274,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 137. **Lire** : « Dis Siri, lis ma liste dans Engram » : Siri lit ce qui reste sur ta liste d'épicerie.
 138. **Ajouter** : « Dis Siri, ajoute à ma liste dans Engram » › « du beurre » : « C'est ajouté à ta liste d'épicerie. » ; ouvre la liste : « Beurre » y est.
+
+## AB. P27 — « Ma journée » avec Siri
+
+139. **Ma journée** : « Dis Siri, ma journée dans Engram » : Siri dit ce qui est prévu aujourd'hui (les heures d'abord), ce qui est en retard, les fêtes et les séries à garder.

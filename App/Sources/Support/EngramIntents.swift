@@ -92,6 +92,10 @@ struct EngramShortcuts: AppShortcutsProvider {
         AppShortcut(intent: AskEngramIntent(),
                     phrases: ["Demande à \(.applicationName)", "Cherche dans \(.applicationName)"],
                     shortTitle: "Demander à Engram", systemImageName: "magnifyingglass")
+        // P27 : la journée avec Siri.
+        AppShortcut(intent: TodayIntent(),
+                    phrases: ["Ma journée dans \(.applicationName)", "Qu'est-ce que j'ai aujourd'hui dans \(.applicationName)"],
+                    shortTitle: "Ma journée", systemImageName: "sun.max")
         // P26 : les listes avec Siri.
         AppShortcut(intent: ReadListIntent(),
                     phrases: ["Lis ma liste dans \(.applicationName)", "Qu'est-ce qu'il y a sur ma liste dans \(.applicationName)"],
@@ -139,6 +143,23 @@ struct AddToListIntent: AppIntent {
         }
         _ = model.saveThought(ListSpeech.addCommand(item: item, list: list))
         let reply = ListSpeech.added(to: list)
+        return .result(dialog: "\(reply)")
+    }
+}
+
+/// P27 — « Ma journée » : Siri dit ce qui est prévu aujourd'hui, ce qui est en retard, les fêtes et les séries à garder.
+/// iPhone déverrouillé exigé.
+struct TodayIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ma journée dans Engram"
+    static let description = IntentDescription("Siri te dit ce qui est prévu aujourd'hui, ce qui est en retard et les fêtes.")
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard case .success(let model) = AppModel.shared else {
+            return .result(dialog: "Engram ne peut pas ouvrir ta mémoire pour l'instant.")
+        }
+        let reply = model.daySummary()
         return .result(dialog: "\(reply)")
     }
 }

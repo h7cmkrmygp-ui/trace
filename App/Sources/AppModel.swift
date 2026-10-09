@@ -415,6 +415,22 @@ final class AppModel {
         }
     }
 
+    /// « Ma journée » (P27) : ce qui est prévu aujourd'hui, les retards, les fêtes du jour, les séries pas encore faites.
+    func daySummary(now: Date = Date()) -> String {
+        let calendar = Self.recallCalendar
+        let start = calendar.startOfDay(for: now)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let known = (try? entities.birthdays()) ?? []
+        let birthdays = CalendarProjection.birthdays(known, from: start, to: end, calendar: calendar)
+            .compactMap { day in known.first { $0.personID == day.personID }?.name }
+        let streaks = ((try? measurements.habitSummaries(today: now)) ?? []).filter { summary in
+            summary.streak >= 2 && !summary.days.contains { calendar.isDate($0, inSameDayAs: now) }
+        }
+        .map(\.habit.title)
+        return DaySpeech.summary((try? memories.reminderItems()) ?? [], birthdays: birthdays, streaks: streaks, now: now,
+                                 calendar: calendar)
+    }
+
     /// « Qu'est-ce qu'il y a sur ma liste ? » (P26) : la liste nommée, sinon l'épicerie (ou la plus récente).
     func readList(named name: String?) -> String {
         let sources = (try? lists.widgetSources()) ?? []

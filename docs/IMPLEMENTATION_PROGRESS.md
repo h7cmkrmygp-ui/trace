@@ -387,3 +387,11 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p26-listes-avec-siri-design.md`
 |---|---|---|---|---|---|---|---|---|
 | — | « Lis ma liste dans Engram » | n/a | ✅ | ✅ | ✅ (liste, tout coché, vide, longue, privée, liste nommée) | ⏳ | — | iPhone déverrouillé exigé |
 | — | « Ajoute à ma liste dans Engram » | n/a | ✅ | ✅ | ✅ (la demande devient une vraie commande de liste) | ⏳ | — | classée comme une dictée |
+
+## P27 — « Ma journée » avec Siri (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p27-ma-journee-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Ma journée dans Engram » | n/a | ✅ | ✅ | ✅ (heures d'abord, retards, fêtes, séries, journée vide, note privée, longue journée) | ⏳ | — | iPhone déverrouillé exigé |
