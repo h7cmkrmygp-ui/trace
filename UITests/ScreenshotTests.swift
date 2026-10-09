@@ -103,6 +103,18 @@ final class ScreenshotTests: XCTestCase {
         } else {
             XCTFail("Dossier « Personnes » introuvable dans les Notes")
         }
+        // P14 — un lieu inventé avec son adresse et le rappel qui l'attend.
+        if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Lieux")).firstMatch) {
+            if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Costco")).firstMatch) {
+                XCTAssertTrue(app.staticTexts["Rappels ici"].waitForExistence(timeout: 4),
+                              "La page de Costco devrait montrer le rappel qui l'attend")
+                snap(app, "29-lieu-costco-\(mode)")
+                goBack(app)
+            }
+            goBack(app)
+        } else {
+            XCTFail("Dossier « Lieux » introuvable dans les Notes")
+        }
         // P10 — suivis (mesures inventées) : le poids sur trois jours, avec son graphique.
         if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Suivis")).firstMatch) {
             snap(app, "26-suivis-\(mode)")

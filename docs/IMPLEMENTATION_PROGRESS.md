@@ -261,3 +261,14 @@ Tests automatiques après la P10 : **393** (Core 142, Store 143, Pipeline 13, In
 |---|---|---|---|---|---|---|---|---|
 | — | « Te souviens-tu ? » à 19 h | ✅ | n/a | ✅ | ✅ (19 h, demain après 19 h, une différente chaque soir, jamais une tâche ni une note privée) | ⏳ | — | idées de plus de 30 jours ; toucher ouvre la note ; sans titre si Engram est verrouillé ; réglage dans Rappels |
 | — | Résumé du dimanche plus riche | n/a | n/a | ✅ | ✅ (personnes, évolution des suivis) | ⏳ | — | « Avec Julie et Marc », « Poids −1,2 lb · Sommeil 7 h 10 en moyenne » ; aucun nom si Engram est verrouillé |
+
+## P14 — Rappels de lieu (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p14-rappels-de-lieu-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Quand j'arrive chez… » reconnu | n/a | ✅ | ✅ | ✅ (arriver, partir, maison, anglais ; pièges « j'arrive à dormir », « à l'aise », « au bout ») | ⏳ | — | sur l'iPhone, sans IA ; le lieu est créé et relié à la note |
+| — | Adresse d'un lieu (migration v8) | ✅ | n/a | ✅ | ✅ (personne refusée, fusion, export, effacée avec la note) | ⏳ | — | ma position actuelle ou recherche Plans d'Apple ; rayon 100, 200 ou 500 m ; petite carte |
+| — | Notification en arrivant (ou en partant) | n/a | n/a | ✅ | ✅ (20 lieux au plus, notes privées discrètes) | ⏳ | — | `UNLocationNotificationTrigger` : iOS surveille seul ; « Fait » depuis la notification ; revient à chaque arrivée tant que ce n'est pas fait |
+| — | Pastille « En arrivant · Costco » | ✅ | n/a | ✅ | compile + capture | ⏳ | — | menu : voir le lieu ou ajouter l'adresse, « en partant plutôt », retirer ; poser à la main depuis … |

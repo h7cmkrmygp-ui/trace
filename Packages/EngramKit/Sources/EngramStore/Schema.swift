@@ -28,8 +28,31 @@ enum Schema {
         migrator.registerMigration("v7_pins_goals") { db in
             try db.execute(sql: v7PinsGoals)
         }
+        migrator.registerMigration("v8_place_reminders") { db in
+            try db.execute(sql: v8PlaceReminders)
+        }
         return migrator
     }
+
+    /// v8 (P14) : l'adresse des lieux et les notes qui attendent un lieu (une par note).
+    static let v8PlaceReminders = """
+        CREATE TABLE place_location (
+          entity_id BLOB PRIMARY KEY NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          latitude REAL NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+          longitude REAL NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+          radius REAL NOT NULL CHECK (radius > 0),
+          label TEXT,
+          updated_at DATETIME NOT NULL
+        );
+        CREATE TABLE place_trigger (
+          memory_id BLOB PRIMARY KEY NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          entity_id BLOB NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          event TEXT NOT NULL CHECK (event IN ('arrive','leave')),
+          origin TEXT NOT NULL CHECK (origin IN ('ai','user')),
+          created_at DATETIME NOT NULL
+        );
+        CREATE INDEX place_trigger_entity ON place_trigger(entity_id);
+        """
 
     /// v7 (P11) : notes épinglées et objectifs des suivis.
     static let v7PinsGoals = """

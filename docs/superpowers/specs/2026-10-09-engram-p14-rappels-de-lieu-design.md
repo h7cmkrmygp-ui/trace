@@ -24,7 +24,7 @@ S'appuie sur les lieux de la P9.
 - Pièges : « quand j'arrive à dormir », « je suis à l'aise », « acheter du lait chez Costco » (aucun déclencheur), « au
   bout », « à travers » ne créent rien. Un « à » nu exige un nom propre (« à Laval », « à Costco »).
 - « chez nous », « chez moi », « à la maison », « home » → le lieu « Maison ».
-- Une décision du propriétaire (pastille posée ou retirée à la main) n'est jamais remplacée par l'IA.
+- Un rappel posé à la main n'est jamais remplacé par l'IA.
 - Fusionner deux lieux garde les rappels et l'adresse (celle du lieu gardé d'abord).
 
 ## Technique

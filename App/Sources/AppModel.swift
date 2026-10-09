@@ -261,6 +261,7 @@ final class AppModel {
         guard remindersEnabled else {
             await reminders.removeAll()
             await reminders.setBadge(0)
+            await reminders.applyPlaces([])
             return
         }
         guard await reminders.isAllowed() else { return }
@@ -286,6 +287,42 @@ final class AppModel {
         }
         await reminders.apply(requests, calendar: calendar)
         await reminders.setBadge(DigestPlanner.badgeCount(current, now: now, calendar: calendar))
+        await syncPlaceReminders()
+    }
+
+    /// Rappels de lieu (P14) : iOS surveille lui-même les adresses ; sans titre si Engram est verrouillé.
+    func syncPlaceReminders(_ items: [PlaceReminderPlanner.Item]? = nil) async {
+        guard remindersEnabled else {
+            await reminders.applyPlaces([])
+            return
+        }
+        var current = items ?? ((try? entities.placeReminderItems()) ?? [])
+        if lock.isEnabled {
+            current = current.map {
+                PlaceReminderPlanner.Item(memoryID: $0.memoryID, title: $0.title, status: $0.status, isPrivate: true,
+                                          placeID: $0.placeID, placeName: $0.placeName, event: $0.event,
+                                          location: $0.location, createdAt: $0.createdAt)
+            }
+        }
+        await reminders.applyPlaces(PlaceReminderPlanner.plan(current))
+    }
+
+    /// Suit la base : une note qui attend un lieu, une adresse posée, une note faite… et iOS surveille les bons lieux.
+    func watchPlaceReminders() async {
+        do {
+            for try await items in entities.placeReminderItemsStream() { await syncPlaceReminders(items) }
+        } catch {
+            // Recalculés au prochain lancement.
+        }
+    }
+
+    /// Après un rappel de lieu ou une adresse : l'autorisation des notifications est demandée une seule fois.
+    func askForPlaceRemindersIfNeeded() async {
+        guard remindersEnabled else { return }
+        if await reminders.isUndecided(), await reminders.requestPermission() {
+            await syncReminders()
+        }
+        await syncPlaceReminders()
     }
 
     /// Résumé du jour pour les widgets, dans le dossier partagé (rien de secret en clair). Sans dossier partagé, rien.

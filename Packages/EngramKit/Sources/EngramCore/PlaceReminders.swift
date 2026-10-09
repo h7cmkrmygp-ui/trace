@@ -16,10 +16,138 @@ public struct ParsedPlaceTrigger: Sendable, Equatable {
     }
 }
 
-/// Reconnaît, sur l'iPhone et sans IA, un rappel qui attend un lieu.
+/// Reconnaît, sur l'iPhone et sans IA, un rappel qui attend un lieu : « quand j'arrive chez Costco », « en sortant du
+/// gym », « une fois rendu au bureau », « when I get home ». Une phrase ordinaire (« quand j'arrive à dormir », « à
+/// l'aise », « au bout ») n'en est pas un.
 public enum PlaceTriggerParser {
+    /// Une façon de dire le moment, et les petits mots qui peuvent suivre (« chez », « au », « du »…).
+    struct Pattern: Sendable {
+        let pattern: String
+        let event: PlaceEvent
+        let prepositions: [String]
+    }
+
+    /// Après « arriver » : « chez », « à la », « au »… (« à » seul exige un nom propre : « à Laval »).
+    static let toward = ["chez", "à la", "a la", "à l'", "a l'", "aux", "au", "à", "a"]
+    /// Après « partir », « sortir » : « de chez », « du », « de la »…
+    static let away = ["de chez", "de la", "de l'", "des", "du", "de", "d'"]
+    /// Après « quitter » : « le travail », « la job », ou un nom propre.
+    static let quitting = ["les", "le", "la", "l'", ""]
+    static let englishToward = ["at the", "to the", "by the", "at", "to", "in", "by", "the", ""]
+    static let englishAway = ["the", ""]
+
+    static let patterns: [Pattern] = {
+        func make(_ pattern: String, _ event: PlaceEvent, _ prepositions: [String]) -> Pattern {
+            Pattern(pattern: pattern, event: event, prepositions: prepositions)
+        }
+        let me = "(?:j'|je\\s+)"
+        let arriveVerbs = "(?:arrive|arriverai|serai|suis|passe|passerai|vais|irai|retourne|retournerai)"
+        let leaveVerbs = "(?:pars|partirai|repars|sors|sortirai)"
+        return [
+            make("\\b(?:quand|lorsque|dès que|des que|aussitôt que|aussitot que)\\s+\(me)\(arriveVerbs)\\s+(?:rendue?\\s+)?",
+                 .arrive, toward),
+            make("\\b(?:la\\s+)?prochaine fois que\\s+\(me)\(arriveVerbs)\\s+", .arrive, toward),
+            make("\\ben\\s+(?:arrivant|passant)\\s+", .arrive, toward),
+            make("\\bune fois\\s+(?:rendue?s?|arrivée?s?)\\s+", .arrive, toward),
+            make("(?:^|[,.;:!?]\\s*)rendue?\\s+", .arrive, toward),
+            make("\\b(?:quand|lorsque|dès que|des que|aussitôt que|aussitot que)\\s+\(me)\(leaveVerbs)\\s+", .leave, away),
+            make("\\ben\\s+(?:partant|sortant)\\s+", .leave, away),
+            make("\\b(?:quand|lorsque|dès que|des que)\\s+\(me)(?:quitte|quitterai)\\s+", .leave, quitting),
+            make("\\ben\\s+quittant\\s+", .leave, quitting),
+            make("\\b(?:when|once|as soon as|next time|whenever)\\s+i(?:'m|\\s+am)?\\s+(?:get|arrive|go|stop by|stop|reach|come)?\\s*(?:back\\s+)?",
+                 .arrive, englishToward),
+            make("\\b(?:when|once|as soon as|before)\\s+i(?:'m|\\s+am)?\\s+(?:leave|leaving|exit|get out of)\\s+", .leave,
+                 englishAway),
+        ]
+    }()
+
+    /// Ces mots après « au », « à la »… ne sont pas des lieux (« au bout », « à l'aise », « à la fin »).
+    static let notPlaces: Set<String> = [
+        "aise", "heure", "instant", "avance", "occasion", "envers", "bout", "point", "moins", "plus", "cas", "fond",
+        "debut", "lieu", "final", "fin", "travers", "temps", "peu", "nouveau", "chaque", "meme", "demain", "soir", "matin",
+        "midi", "retard", "rien", "tout", "milieu", "courant", "sujet", "propos", "sec", "pied", "velo", "jour", "limite",
+        "suite", "moment", "fois", "mieux", "pire", "rendez-vous", "the", "a", "an", "tomorrow", "tonight", "today",
+        "back", "there", "it", "that", "this", "up", "out", "done", "ready", "sure",
+    ]
+    /// Sans petit mot, en anglais : « when I get home », « when I leave work ».
+    static let bareEnglish: Set<String> = ["home", "work", "school", "church", "office", "campus"]
+    static let home: Set<String> = ["nous", "moi", "maison", "home", "chez nous", "chez moi"]
+    static let possessives: Set<String> = ["mon", "ma", "mes", "ton", "ta", "notre", "nos", "my", "our"]
+    /// Un mot en majuscule qui n'allonge pas le nom (« Costco Rappelle-moi »).
+    static let stopWords: Set<String> = [
+        "rappelle", "rappelle-moi", "rappeler", "acheter", "achète", "achete", "faut", "il", "je", "j", "pour", "et", "puis",
+        "pis", "then", "and", "remind", "pick", "buy", "call", "appeler", "demander", "prendre", "passer", "dire", "penser",
+    ]
+
     public static func parse(_ text: String) -> ParsedPlaceTrigger? {
-        nil
+        let cleaned = text.replacingOccurrences(of: "’", with: "'")
+        let whole = NSRange(cleaned.startIndex..., in: cleaned)
+        var found: [(position: Int, trigger: ParsedPlaceTrigger)] = []
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern.pattern, options: [.caseInsensitive]) else { continue }
+            for match in regex.matches(in: cleaned, range: whole) {
+                guard let end = Range(match.range, in: cleaned)?.upperBound else { continue }
+                let rest = cleaned[end...].prefix { !",.;:!?\n«»\"()".contains($0) }
+                if let place = place(in: String(rest), prepositions: pattern.prepositions) {
+                    found.append((position: match.range.location, trigger: ParsedPlaceTrigger(place: place, event: pattern.event)))
+                    break
+                }
+            }
+        }
+        return found.min { $0.position < $1.position }?.trigger
+    }
+
+    /// Le lieu au début de `rest`, après l'un des petits mots permis.
+    static func place(in rest: String, prepositions: [String]) -> String? {
+        let lower = rest.lowercased()
+        for preposition in prepositions {
+            let elided = preposition.hasSuffix("'")
+            let prefix = preposition.isEmpty || elided ? preposition : preposition + " "
+            guard lower.hasPrefix(prefix) else { continue }
+            let tokens = rest.dropFirst(prefix.count).split(whereSeparator: \.isWhitespace).map(String.init)
+            guard let first = tokens.first else { continue }
+            let firstKey = key(first)
+            if home.contains(firstKey) && (preposition == "chez" || firstKey == "maison" || firstKey == "home") {
+                return "Maison"
+            }
+            guard !notPlaces.contains(firstKey) else { return nil }
+            let english = prepositions == englishToward || prepositions == englishAway
+            if preposition.isEmpty && english {
+                // « when I get home », « when I leave work » ; jamais « when I see Marc ».
+                guard bareEnglish.contains(firstKey) else { return nil }
+            } else if ["à", "a", "at", "to", "in", "by", ""].contains(preposition) && !isCapitalized(first)
+                        && !(english && bareEnglish.contains(firstKey)) {
+                // « quand j'arrive à dormir », « à travers » : un « à » nu n'introduit qu'un nom propre (« à Laval »).
+                return nil
+            }
+            var words = [first]
+            var index = 1
+            if possessives.contains(firstKey), tokens.count > 1 {
+                words.append(tokens[1])
+                index = 2
+            }
+            // Un nom en plusieurs mots : « Canadian Tire », « Costco Laval », « Marché Jean-Talon ».
+            while index < tokens.count, words.count < 4 {
+                let token = tokens[index]
+                guard isCapitalized(token), !stopWords.contains(key(token)) else { break }
+                words.append(token)
+                index += 1
+            }
+            let name = words.joined(separator: " ")
+            guard EntityName.isAcceptable(name) else { return nil }
+            return name
+        }
+        return nil
+    }
+
+    static func key(_ word: String) -> String {
+        word.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "fr_CA"))
+            .lowercased()
+            .trimmingCharacters(in: CharacterSet.letters.union(CharacterSet(charactersIn: "-")).inverted)
+    }
+
+    static func isCapitalized(_ word: String) -> Bool {
+        word.first.map { $0.isUppercase || $0.isNumber } ?? false
     }
 }
 
@@ -129,7 +257,18 @@ public enum PlaceReminderPlanner {
         public let radius: Double
     }
 
+    /// Les notes vivantes dont le lieu a une adresse, les plus récentes d'abord ; une note privée ne dit rien.
     public static func plan(_ items: [Item], limit: Int = maximum) -> [Planned] {
-        []
+        let watched = items
+            .filter { ($0.status == .active || $0.status == .unsorted) && $0.location != nil }
+            .sorted { ($0.createdAt, $0.memoryID.uuidString) > ($1.createdAt, $1.memoryID.uuidString) }
+            .prefix(limit)
+        return watched.compactMap { item in
+            guard let location = item.location else { return nil }
+            return Planned(identifier: identifierPrefix + item.memoryID.uuidString, memoryID: item.memoryID,
+                           title: item.isPrivate ? "Rappel Engram" : item.placeName,
+                           body: item.isPrivate ? "Ouvre Engram pour le voir." : item.title, event: item.event,
+                           latitude: location.latitude, longitude: location.longitude, radius: location.radius)
+        }
     }
 }

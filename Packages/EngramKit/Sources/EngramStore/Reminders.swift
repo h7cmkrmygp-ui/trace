@@ -25,17 +25,22 @@ extension MemoryStore {
               AND s.needs_review = 0
             """)
         return rows.map { row in
-            let reason: String? = row["route_reason"]
-            let level: String? = row["privacy_level"]
-            let judgedSecret = level == PrivacyLevel.secret.rawValue
-                && reason != RouteReasons.noCloudService && reason != RouteReasons.keepEverythingLocal
-            let keepLocal: Bool = row["keep_local"] ?? false
             let kind: String? = row["kind"]
             let status: String = row["status"]
             return ReminderPlanner.Item(id: row["id"], title: row["title"], kind: kind.flatMap(MemoryKind.init(rawValue:)),
                                         status: MemoryStatus(rawValue: status) ?? .active, dueAt: row["due_at"],
-                                        dueHasTime: row["due_has_time"] ?? false, isPrivate: keepLocal || judgedSecret)
+                                        dueHasTime: row["due_has_time"] ?? false, isPrivate: isPrivate(row))
         }
+    }
+
+    /// Lit `keep_local`, `privacy_level` et `route_reason` de la source (voir `reminderItems`). Aussi pour les rappels de lieu.
+    static func isPrivate(_ row: Row) -> Bool {
+        let reason: String? = row["route_reason"]
+        let level: String? = row["privacy_level"]
+        let judgedSecret = level == PrivacyLevel.secret.rawValue
+            && reason != RouteReasons.noCloudService && reason != RouteReasons.keepEverythingLocal
+        let keepLocal: Bool = row["keep_local"] ?? false
+        return keepLocal || judgedSecret
     }
 }
 

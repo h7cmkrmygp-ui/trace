@@ -1,4 +1,5 @@
 import EngramCore
+import CoreLocation
 import Foundation
 import UserNotifications
 
@@ -11,6 +12,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         case reminder, digest, weekly
         /// « Te souviens-tu ? » (P13) : toucher ouvre la vieille idée.
         case resurface
+        /// Rappel de lieu (P14) : en arrivant à un lieu, ou en le quittant.
+        case place
 
         var category: String { "engram.\(rawValue)" }
     }
@@ -43,6 +46,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationCategory(identifier: Kind.digest.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.weekly.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.resurface.category, actions: [], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Kind.place.category, actions: [done], intentIdentifiers: []),
         ])
     }
 
@@ -84,6 +88,48 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: ours)
     }
 
+    /// Rappels de lieu (P14) : c'est iOS qui surveille les adresses et présente la notification en arrivant (ou en
+    /// partant), même Engram fermé ; l'autorisation « Lorsque l'app est active » suffit. Le rappel revient à chaque
+    /// arrivée tant que la note n'est pas faite. Seuls les rappels qui changent sont remplacés.
+    func applyPlaces(_ planned: [PlaceReminderPlanner.Planned]) async {
+        let pending = await center.pendingNotificationRequests()
+            .filter { $0.identifier.hasPrefix(PlaceReminderPlanner.identifierPrefix) }
+        var kept: Set<String> = []
+        for request in pending {
+            if let wanted = planned.first(where: { $0.identifier == request.identifier }), Self.matches(request, wanted) {
+                kept.insert(request.identifier)
+            }
+        }
+        center.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier).filter { !kept.contains($0) })
+        // Une note faite (ou sans rappel) : sa notification déjà reçue disparaît aussi.
+        let wanted = Set(planned.map(\.identifier))
+        center.removeDeliveredNotifications(withIdentifiers: pending.map(\.identifier).filter { !wanted.contains($0) })
+        for place in planned where !kept.contains(place.identifier) {
+            let content = UNMutableNotificationContent()
+            content.title = place.title
+            content.body = place.body
+            content.sound = .default
+            content.categoryIdentifier = Kind.place.category
+            content.threadIdentifier = "engram.places"
+            content.userInfo = ["memoryID": place.memoryID.uuidString, "kind": Kind.place.rawValue]
+            let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude),
+                                          radius: place.radius, identifier: place.identifier)
+            region.notifyOnEntry = place.event == .arrive
+            region.notifyOnExit = place.event == .leave
+            let trigger = UNLocationNotificationTrigger(region: region, repeats: true)
+            try? await center.add(UNNotificationRequest(identifier: place.identifier, content: content, trigger: trigger))
+        }
+    }
+
+    private static func matches(_ request: UNNotificationRequest, _ wanted: PlaceReminderPlanner.Planned) -> Bool {
+        guard let trigger = request.trigger as? UNLocationNotificationTrigger,
+              let region = trigger.region as? CLCircularRegion else { return false }
+        return request.content.title == wanted.title && request.content.body == wanted.body
+            && region.center.latitude == wanted.latitude && region.center.longitude == wanted.longitude
+            && region.radius == wanted.radius && region.notifyOnEntry == (wanted.event == .arrive)
+            && region.notifyOnExit == (wanted.event == .leave)
+    }
+
     /// Pastille de l'icône : ce qui est à faire aujourd'hui ou en retard.
     func setBadge(_ count: Int) async {
         try? await center.setBadgeCount(count)
@@ -108,7 +154,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         case .weekly: onOpenWeekly?()
         case .resurface:
             if let memoryID, action != UNNotificationDismissActionIdentifier { onOpen?(memoryID) }
-        case .reminder:
+        case .reminder, .place:
             guard let memoryID else { return }
             if action == UNNotificationDefaultActionIdentifier {
                 onOpen?(memoryID)

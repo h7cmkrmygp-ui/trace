@@ -1,4 +1,5 @@
 import EngramCore
+import EngramStore
 import SwiftUI
 
 /// Une note, comme dans Notes d'Apple : le titre et le texte se modifient sur place (cases à cocher comprises).
@@ -21,6 +22,9 @@ struct MemoryDetailView: View {
     @State private var noteMeasurements: [MetricMeasurement] = []
     /// Épinglée en haut des Notes (P11).
     @State private var isPinned = false
+    /// « En arrivant · Costco » (P14).
+    @State private var placeTrigger: PlaceTriggerInfo?
+    @State private var isSettingPlace = false
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
     /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
     @State private var allCategories: [UUID: EngramCategory] = [:]
@@ -100,6 +104,7 @@ struct MemoryDetailView: View {
         .sheet(isPresented: $isPickingCategories, onDismiss: reload) { CategoryPicker(memoryID: memoryID) }
         .sheet(isPresented: $isAddingEntity, onDismiss: reload) { AddEntitySheet(memoryID: memoryID) }
         .sheet(isPresented: $isShowingInfo, onDismiss: reload) { MemoryInfoSheet(memory: memory, source: source) }
+        .sheet(isPresented: $isSettingPlace, onDismiss: reload) { PlaceTriggerSheet(memoryID: memoryID) }
         .confirmationDialog("Supprimer définitivement ce souvenir ?", isPresented: $isConfirmingDeletion,
                             titleVisibility: .visible) {
             Button("Supprimer définitivement", role: .destructive) {
@@ -135,11 +140,37 @@ struct MemoryDetailView: View {
                 if isPinned {
                     chip("Épinglée", systemImage: "pin.fill", color: .orange)
                 }
+                if let placeTrigger {
+                    placeChip(placeTrigger)
+                }
                 if memory.status == .trashed {
                     chip("Corbeille", systemImage: "trash", color: .red)
                 }
             }
         }
+    }
+
+    /// « En arrivant · Costco » : toucher ouvre un menu (voir le lieu ou ajouter son adresse, changer le moment, retirer).
+    private func placeChip(_ info: PlaceTriggerInfo) -> some View {
+        let other: PlaceEvent = info.trigger.event == .arrive ? .leave : .arrive
+        let text = "\(info.trigger.event.title) · \(info.place.name)" + (info.location == nil ? " · adresse à ajouter" : "")
+        return Menu {
+            Button(info.location == nil ? "Ajouter l'adresse de \(info.place.name)" : "Voir \(info.place.name)",
+                   systemImage: "mappin.and.ellipse") {
+                model.push(NotesRoute.entity(info.place.id))
+            }
+            Button("\(other.title) plutôt", systemImage: other.symbol) {
+                model.perform { try model.entities.setPlaceTrigger(for: memoryID, placeID: info.place.id, event: other) }
+                reload()
+            }
+            Button("Retirer le rappel", systemImage: "location.slash", role: .destructive) {
+                model.perform { try model.entities.removePlaceTrigger(for: memoryID) }
+                reload()
+            }
+        } label: {
+            chip(text, systemImage: info.trigger.event.symbol, color: info.location == nil ? .orange : .teal)
+        }
+        .accessibilityLabel("Rappel de lieu : \(text)")
     }
 
     private func chip(_ text: String, systemImage: String, color: Color) -> some View {
@@ -340,6 +371,9 @@ struct MemoryDetailView: View {
                     }
                 }
                 Button("Modifier tes mots…", systemImage: "quote.opening") { isEditingWords = true }
+                Button(placeTrigger == nil ? "Rappel en arrivant à un lieu…" : "Changer le rappel de lieu…", systemImage: "location") {
+                    isSettingPlace = true
+                }
                 if let source, source.kind == .voice, source.audioPath != nil, !source.correctedByOwner {
                     Button("Retranscrire avec Whisper", systemImage: "waveform") {
                         isRetranscribing = true
@@ -430,6 +464,7 @@ struct MemoryDetailView: View {
             linkedEntities = try model.entities.entities(for: memoryID)
             noteMeasurements = try model.measurements.measurements(for: memoryID)
             isPinned = try model.memories.isPinned(memoryID)
+            placeTrigger = try model.entities.placeTrigger(for: memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

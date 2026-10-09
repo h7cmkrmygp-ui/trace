@@ -225,6 +225,7 @@ public struct EntityStore: Sendable {
             }
         }
         try db.execute(sql: "UPDATE entity_alias SET entity_id = ? WHERE entity_id = ?", arguments: [targetID, sourceID])
+        try movePlaceReminders(db, from: sourceID, to: targetID)
         _ = try source.delete(db)
         try EntityAlias(kind: source.kind, normalizedName: source.normalizedName, entityID: targetID).save(db)
         target.updatedAt = now

@@ -190,3 +190,11 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 91. **Le soir** : si tu as des idées de plus de 30 jours, une notification « Te souviens-tu ? » arrive à 19 h avec le titre d'une vieille idée ; la toucher ouvre la note. Le lendemain, c'est une autre idée. Jamais une tâche, jamais une note gardée sur l'iPhone.
 92. **Réglage** : Réglages › Rappels › « Te souviens-tu ? (une vieille idée à 19 h) » l'arrête ou le remet.
 93. **Le dimanche à 18 h** : « Ta semaine » nomme aussi les personnes de la semaine (« Avec … ») et l'évolution de ton poids et de ton sommeil, si tu en as noté.
+
+## O. P14 — Rappels de lieu
+
+94. **Dicté** : « Rappelle-moi d'acheter du lait quand j'arrive chez Costco ». La note porte la pastille « En arrivant · Costco · adresse à ajouter ».
+95. **L'adresse** : touche la pastille › « Ajouter l'adresse de Costco » (ou Notes › Lieux › Costco › « Ajouter l'adresse »). Cherche « Costco » et choisis le bon, ou « Ma position actuelle » si tu y es. iOS demande l'accès à la position une fois : « Lorsque l'app est active » suffit.
+96. **En arrivant** : rendu chez Costco, une notification « Costco » / « Acheter du lait » arrive, même si Engram est fermé. « Fait » la coche ; sinon elle reviendra à la prochaine visite.
+97. **En partant** : « Quand je pars du bureau, appeler Marc » prévient en quittant le bureau (une fois son adresse ajoutée).
+98. **À la main** : dans une note, … › « Rappel en arrivant à un lieu… » ; choisis un lieu ou écris-en un nouveau. Toucher la pastille : « En partant plutôt » ou « Retirer le rappel ».

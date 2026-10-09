@@ -119,6 +119,8 @@ public struct ThoughtFiler: Sendable {
                     // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
                     try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
                                                      capturedAt: source.capturedAt)
+                    // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
+                    try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
                     filedIDs.append(memory.id)
                 }
             } else {

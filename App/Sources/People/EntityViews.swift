@@ -118,14 +118,23 @@ struct EntityDetailView: View {
     @State private var newName = ""
     @State private var isMerging = false
     @State private var isConfirmingHide = false
+    /// P14 : l'adresse d'un lieu et les notes qui l'attendent.
+    @State private var location: PlaceLocation?
+    @State private var waiting: [Memory] = []
+    @State private var isChoosingAddress = false
 
     private var openTasks: [Memory] {
-        memories.filter { ($0.kind == .task || $0.kind == .appointment) && ($0.status == .active || $0.status == .unsorted) }
+        memories.filter {
+            !waitingIDs.contains($0.id) && ($0.kind == .task || $0.kind == .appointment)
+                && ($0.status == .active || $0.status == .unsorted)
+        }
     }
+
+    private var waitingIDs: Set<UUID> { Set(waiting.map(\.id)) }
 
     /// Les autres notes, regroupées par mois (« octobre 2026 »).
     private var months: [(title: String, memories: [Memory])] {
-        let open = Set(openTasks.map(\.id))
+        let open = Set(openTasks.map(\.id)).union(waitingIDs)
         var groups: [(title: String, memories: [Memory])] = []
         for memory in memories where !open.contains(memory.id) {
             let title = memory.capturedAt.formatted(.dateTime.month(.wide).year())
@@ -151,6 +160,20 @@ struct EntityDetailView: View {
                     }
                     .padding(.vertical, 6)
                     .listRowSeparator(.hidden)
+                }
+                if entity.kind == .place {
+                    addressSection(entity)
+                    if !waiting.isEmpty {
+                        Section {
+                            ForEach(waiting) { memory in
+                                NavigationLink(value: memory.id) { MemoryRow(memory: memory, tint: Color.teal) }
+                            }
+                        } header: {
+                            Text("Rappels ici")
+                        } footer: {
+                            if location == nil { Text("Ajoute l'adresse pour être prévenu en arrivant.") }
+                        }
+                    }
                 }
                 if !openTasks.isEmpty {
                     Section(entity.kind == .person ? "À faire avec \(entity.name)" : "À faire : \(entity.name)") {
@@ -214,6 +237,19 @@ struct EntityDetailView: View {
         } message: {
             Text("Sa page disparaît et Engram ne la recréera plus. Tes notes restent intactes.")
         }
+        .sheet(isPresented: $isChoosingAddress) {
+            PlaceAddressSheet(placeID: entityID, placeName: entity?.name ?? "", current: location)
+        }
+        .task {
+            do {
+                for try await value in model.entities.locationStream(for: entityID) { location = value }
+            } catch {}
+        }
+        .task {
+            do {
+                for try await list in model.entities.waitingRemindersStream(at: entityID) { waiting = list }
+            } catch {}
+        }
         .task {
             entity = try? model.entities.entity(id: entityID)
             do {
@@ -234,6 +270,34 @@ struct EntityDetailView: View {
             parts.append("dernière fois \(last.formatted(.relative(presentation: .named)))")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// « Adresse » : une petite carte et le rayon ; sans adresse, de quoi en ajouter une.
+    private func addressSection(_ entity: EngramEntity) -> some View {
+        Section {
+            if let location {
+                PlaceMap(latitude: location.latitude, longitude: location.longitude, radius: location.radius,
+                         name: entity.name)
+                    .frame(height: 170)
+                    .listRowInsets(EdgeInsets())
+                if let label = location.label {
+                    Label(label, systemImage: "mappin.and.ellipse")
+                }
+                LabeledContent("Rayon", value: PlaceRadius.text(location.radius))
+                Button("Changer l'adresse", systemImage: "pencil") { isChoosingAddress = true }
+                Button("Retirer l'adresse", systemImage: "mappin.slash", role: .destructive) {
+                    model.perform { try model.entities.removeLocation(entityID) }
+                }
+            } else {
+                Button("Ajouter l'adresse", systemImage: "mappin.circle.fill") { isChoosingAddress = true }
+            }
+        } header: {
+            Text("Adresse")
+        } footer: {
+            Text(location == nil
+                 ? "Avec une adresse, Engram te rappelle tes notes en arrivant ici (« quand j'arrive chez \(entity.name)… »)."
+                 : "L'adresse reste sur ton iPhone.")
+        }
     }
 
     private func rename() {

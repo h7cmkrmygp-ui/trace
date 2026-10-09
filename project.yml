@@ -64,6 +64,7 @@ targets:
           - audio
         NSMicrophoneUsageDescription: "Engram utilise le micro pour enregistrer les pensées que tu dictes. L'audio reste sur ton iPhone."
         NSCameraUsageDescription: "Engram lit le texte d'une photo (un papier, une étiquette) pour en faire une note. La photo n'est pas gardée et rien n'est envoyé."
+        NSLocationWhenInUseUsageDescription: "Engram te rappelle une note en arrivant à un lieu (ex. : acheter du lait chez Costco). Ta position reste sur ton iPhone ; c'est iOS qui surveille les lieux."
         NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
         NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."
         NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."

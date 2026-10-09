@@ -77,6 +77,13 @@ enum UITestSeed {
         if let haie = try memories.recallDocuments().first(where: { $0.title.hasPrefix("Tailler la haie") }) {
             try memories.setPinned(true, for: haie.id)
         }
+        // P14 : un rappel de lieu, et une adresse inventée (un point quelconque du centre-ville de Montréal).
+        if let piles = try file("Acheter des piles quand j'arrive chez Costco", kind: .task, path: ["Achats"],
+                                places: ["Costco"]),
+           let costco = try model.entities.placeTrigger(for: piles.id)?.place {
+            try model.entities.setLocation(costco.id, latitude: 45.5017, longitude: -73.5673, radius: 200,
+                                           label: "Adresse inventée")
+        }
 
         if case .saved(let unsorted) = try memories.saveTextNoteWithoutAnalysis("Pensée en vrac à classer plus tard") {
             try filer.markFallback(sourceID: unsorted.sourceID)
