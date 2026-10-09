@@ -25,6 +25,20 @@ struct AnalysisValidatorTests {
         }
     }
 
+    /// Bug signalé : une phrase à deux sujets n'était parfois pas classée du tout, car l'IA recopiait « puis » pour
+    /// « pis ». Un extrait presque mot pour mot est ramené aux vrais mots du texte ; un extrait inventé reste refusé.
+    @Test func aSlightlyMisquotedExcerptIsMatchedToTheRealWords() throws {
+        let text = "Faut que je call mon manager demain pour changer mon shift, pis après je vais au gym."
+        let analysis = ThoughtAnalysis(thoughts: [
+            thought(title: "Appeler mon gestionnaire", excerpt: "Faut que je call mon manager demain pour changer mon shift",
+                    category: "Travail", subcategory: nil),
+            thought(title: "Aller au gym", excerpt: "puis après, je vais au gym", category: "Sport", subcategory: nil),
+        ])
+        let valid = try AnalysisValidator.validate(analysis, against: text)
+        #expect(valid.map(\.excerpt) == ["Faut que je call mon manager demain pour changer mon shift", "pis après je vais au gym"])
+        #expect(valid[1].spanStart != nil)
+    }
+
     @Test func keepsValidThoughtsAndDropsInventedOnes() throws {
         let analysis = ThoughtAnalysis(thoughts: [
             thought(excerpt: "acheter des wipers"),

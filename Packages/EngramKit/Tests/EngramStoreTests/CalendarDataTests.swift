@@ -70,7 +70,7 @@ struct CalendarDataTests {
         ])
         var iterator = env.memories.memoriesStream(dueFrom: Self.toronto(2027, 1, 16), to: Self.toronto(2027, 1, 17)).makeAsyncIterator()
         let due = try #require(try await iterator.next())
-        #expect(due.map(\.title) == ["Dentiste demain"])
+        #expect(due.map(\.title) == ["Dentiste le 16 janvier"])
     }
 
     @Test func settingsStoreStringsAndBooleansWithDefaults() throws {
@@ -95,7 +95,7 @@ struct CalendarDataTests {
             valid("Rendez-vous un jour", kind: .appointment),
         ])
         let links = CalendarLinkStore(database: env.database, dates: env.dates)
-        #expect(Set(try links.unlinkedAppointments().map(\.title)) == ["Dentiste demain", "Garage le 29 janvier"])
+        #expect(Set(try links.unlinkedAppointments().map(\.title)) == ["Dentiste le 16 janvier", "Garage le 29 janvier"])
         try links.link(memoryID: memories[0].id, eventIdentifier: "evt-1", calendarIdentifier: "cal")
         #expect(try links.link(for: memories[0].id)?.eventIdentifier == "evt-1")
         #expect(try links.unlinkedAppointments().map(\.title) == ["Garage le 29 janvier"])

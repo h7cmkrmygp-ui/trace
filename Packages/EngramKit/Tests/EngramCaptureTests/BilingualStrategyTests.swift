@@ -75,9 +75,22 @@ struct BilingualStrategyTests {
     }
 
     @Test func thePromptMixesBothLanguagesAndIsPunctuated() {
-        #expect(WhisperPrompt.bilingual.contains("call"))
+        #expect(WhisperPrompt.bilingual.contains("pis"))
         #expect(WhisperPrompt.bilingual.contains("meeting"))
         #expect(WhisperPrompt.bilingual.contains(","))
         #expect(WhisperPrompt.bilingual.hasSuffix("."))
+    }
+
+    /// Bug signalé : « Faut que je call mon manager demain… » n'était pas transcrit. C'était mot pour mot l'amorce
+    /// de Whisper, prise pour un écho sur un silence et jetée.
+    @Test func theOwnersOwnSentenceIsNeverMistakenForAnEcho() {
+        let spoken = "Faut que je call mon manager demain pour changer mon shift, pis après je vais au gym."
+        #expect(!WhisperPrompt.isEcho(spoken))
+        let said = Hypothesis(language: "fr", text: spoken, averageLogProbability: -0.2)
+        #expect(HypothesisPicker.best([said]) == said)
+    }
+
+    @Test func transcriptsLoseTheirHesitations() {
+        #expect(Transcript(text: "Euh, faut que je  passe au garage", localeIdentifier: "fr").text == "Faut que je passe au garage")
     }
 }

@@ -147,6 +147,20 @@ struct CloudClientsTests {
         #expect(system.localizedCaseInsensitiveContains("never invent"))
     }
 
+    /// Demandes du propriétaire : deux sujets dans une même phrase, des titres en bon français sans « euh »,
+    /// la vraie date plutôt que « aujourd'hui », une vraie note rédigée (cases à cocher pour plusieurs étapes),
+    /// des sous-catégories plus précises.
+    @Test func theInstructionsAskForCleanNotesSeveralItemsPerSentenceAndPreciseCategories() {
+        let system = CloudPrompt.system
+        #expect(system.contains("pis après je vais au gym"))
+        #expect(system.localizedCaseInsensitiveContains("quart de travail"))
+        #expect(system.localizedCaseInsensitiveContains("euh"))
+        #expect(system.localizedCaseInsensitiveContains("aujourd'hui"))
+        #expect(system.contains("☐"))
+        #expect(system.contains("Finance › Assurances"))
+        #expect(CloudPrompt.version == "p8-cloud-v1")
+    }
+
     @Test func decoderToleratesFencesAndMissingFieldsButRejectsGarbage() throws {
         let fenced = "```json\n{\"notes\":[{\"title\":\"Idée\",\"excerpt\":\"une idée\",\"kind\":\"weird\",\"category\":\"Projets\"}]}\n```"
         let thought = try #require(try CloudDecoder.decode(fenced).thoughts.first)

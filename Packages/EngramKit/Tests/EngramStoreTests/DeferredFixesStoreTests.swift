@@ -51,7 +51,8 @@ struct DeferredFixesStoreTests {
         _ = try env.filer.file([valid("Garage aujourd'hui", kind: .appointment, dates: ["aujourd'hui"], path: ["Automobile"])],
                                sourceID: interim.sourceID)
         let links = CalendarLinkStore(database: env.database, dates: env.dates, calendar: Fixtures.calendar)
-        #expect(try links.unlinkedAppointments().map(\.title) == ["Garage aujourd'hui"])
+        // Le titre porte la vraie date (P8) : « aujourd'hui » n'aurait plus de sens le lendemain.
+        #expect(try links.unlinkedAppointments().map(\.title) == ["Garage le 15 janvier"])
     }
 
     /// Une note provisoire que le propriétaire a modifiée garde son texte, mais reçoit l'échéance dictée.

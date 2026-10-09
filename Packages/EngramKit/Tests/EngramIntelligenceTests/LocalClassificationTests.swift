@@ -39,14 +39,23 @@ struct LocalClassificationTests {
         #expect(cases.contains { $0.sentence.contains("kg") && $0.accepts(categoryPath: ["Santé"]) })
         // Deux sujets sans rapport donnent deux notes.
         #expect(cases.contains { $0.expectedNotes == 2 })
+        // Les phrases du propriétaire : deux sujets dans une phrase en franglais, une hésitation, un poids daté.
+        #expect(cases.contains { $0.expectedNotes == 2 && $0.sentence.contains("pis après je vais au gym") })
+        #expect(cases.contains { $0.expectedNotes == 1 && $0.sentence.contains("euh") })
+        #expect(cases.contains { $0.sentence.contains("162,5 livres") && $0.accepts(categoryPath: ["Santé"]) })
     }
 
     #if canImport(FoundationModels)
-    @Test func appleInstructionsNoLongerInviteSplittingSentences() {
-        #expect(AnalysisPrompt.version == "p4-v1")
+    @Test func appleInstructionsSplitBySubjectNotBySentence() {
+        #expect(AnalysisPrompt.version == "p8-v1")
         #expect(!AnalysisPrompt.instructions.localizedCaseInsensitiveContains("A single sentence can contain several thoughts"))
         #expect(AnalysisPrompt.instructions.localizedCaseInsensitiveContains("never split"))
+        #expect(AnalysisPrompt.instructions.contains("pis après je vais au gym"))
+        #expect(AnalysisPrompt.instructions.localizedCaseInsensitiveContains("quart de travail"))
         #expect(AnalysisPrompt.prompt(text: "Je pèse 75 kg", categories: ["Santé"], likely: ["Santé"]).contains("Santé"))
+        // La date du jour est donnée : le modèle n'écrit plus « aujourd'hui » dans un titre.
+        #expect(AnalysisPrompt.prompt(text: "x", categories: [], likely: [], today: "vendredi 15 janvier 2027")
+            .contains("vendredi 15 janvier 2027"))
     }
 
     @Test func theAppleJudgeNeverTurnsDoubtIntoNeutral() {

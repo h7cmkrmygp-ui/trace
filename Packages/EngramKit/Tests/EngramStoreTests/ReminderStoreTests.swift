@@ -29,7 +29,7 @@ struct ReminderStoreTests {
         _ = try env.memories.setStatus(.archived, for: try #require(filedDone.memories.first?.id), actor: .user)
 
         let items = try env.memories.reminderItems()
-        #expect(Set(items.map(\.title)) == ["Tailler la haie demain à 15 h", "Changer le code du casier demain à 15 h"])
+        #expect(Set(items.map(\.title)) == ["Tailler la haie le 16 janvier à 15 h", "Changer le code du casier le 16 janvier à 15 h"])
         #expect(items.first { $0.title.hasPrefix("Tailler") }?.isPrivate == false)
         #expect(items.first { $0.title.hasPrefix("Changer") }?.isPrivate == true)
         #expect(items.allSatisfy { $0.dueHasTime && $0.dueAt != nil })
