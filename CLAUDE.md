@@ -13,7 +13,7 @@
 ## Travailler sans Mac
 - Compilation, tests et `.ipa` : GitHub Actions (`.github/workflows/ci.yml`, runner `xcode-27`).
 - Pousser et attendre la CI : `bash scripts/ci.sh` (à lancer en arrière-plan).
-- Télécharger le dernier `.ipa` : `bash scripts/fetch-ipa.sh` → `build/ipa/Engram.ipa`.
+- Télécharger les derniers `.ipa` : `bash scripts/fetch-ipa.sh` → `build/ipa/Engram.ipa` (complète : widgets, partage) et `build/ipa/Engram-simple.ipa` (sans extensions, si AltStore refuse la complète).
 - `gh` peut être absent du PATH : `"/c/Program Files/GitHub CLI/gh.exe"`.
 - Le projet Xcode est généré par XcodeGen depuis `project.yml` : ne jamais committer `.xcodeproj`.
 
