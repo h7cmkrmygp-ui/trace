@@ -35,9 +35,9 @@ enum UITestSeed {
 
         @discardableResult
         func file(_ text: String, kind: MemoryKind, path: [String], description: String? = nil, dates: [String] = [],
-                  provider: String = "gemini", level: PrivacyLevel = .neutral) throws -> Memory? {
+                  summary: String? = nil, provider: String = "gemini", level: PrivacyLevel = .neutral) throws -> Memory? {
             guard case .saved(let interim) = try memories.saveTextNoteWithoutAnalysis(text) else { return nil }
-            let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
+            let thought = ValidThought(title: text, summary: summary, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
                                        kind: kind, tags: [], categoryPath: path, mentionedDates: dates,
                                        categoryDescription: description)
             let filed = try filer.file([thought], sourceID: interim.sourceID)
@@ -48,7 +48,8 @@ enum UITestSeed {
         }
 
         try file("Tailler la haie samedi", kind: .task, path: ["Maison"], description: "Entretien et projets de la maison",
-                 dates: ["samedi"])
+                 dates: ["samedi"],
+                 summary: "Tailler la haie du devant samedi matin.\n☐ Sortir le taille-haie\n☐ Ramasser les branches\n☑ Acheter des sacs")
         try file("Réparer la poignée de la porte", kind: .task, path: ["Maison", "Réparations"])
         try file("Acheter du lait et du pain", kind: .task, path: ["Achats"], description: "Courses et achats du quotidien")
         try file("Dentiste vendredi à 14 h", kind: .appointment, path: ["Santé"],

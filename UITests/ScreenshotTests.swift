@@ -29,6 +29,23 @@ final class ScreenshotTests: XCTestCase {
         snap(app, "19b-apres-classer-enregistrer-clair")
     }
 
+    /// Bug signalé : Notes › Réglages, puis l'onglet Cerveau, puis de retour sur Notes : Réglages restait affiché.
+    /// Revenir sur un onglet doit montrer sa page principale.
+    @MainActor func testReturningToATabShowsItsMainPage() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-engramUITestSeed", "-AppleLanguages", "(fr)", "-AppleLocale", "fr_CA"]
+        app.launch()
+        tapTab(app, "Notes")
+        XCTAssertTrue(tap(app.buttons["Plus"]), "Menu « Plus » introuvable")
+        XCTAssertTrue(tap(app.buttons["Réglages"]), "Réglages introuvables dans le menu")
+        XCTAssertTrue(app.navigationBars["Réglages"].waitForExistence(timeout: 4), "Réglages ne s'est pas ouvert")
+        tapTab(app, "Cerveau")
+        tapTab(app, "Notes")
+        XCTAssertTrue(app.navigationBars["Notes"].waitForExistence(timeout: 4), "Notes devrait revenir à sa page principale")
+        XCTAssertFalse(app.navigationBars["Réglages"].exists, "Réglages est resté ouvert")
+        snap(app, "23-retour-onglet-notes-clair")
+    }
+
     /// Bug signalé : « Ton cerveau est vide » s'affichait par-dessus des points. Mémoire vide : seulement le message.
     @MainActor func testEmptyMemory() {
         let app = XCUIApplication()
@@ -148,6 +165,16 @@ final class ScreenshotTests: XCTestCase {
 
         tapTab(app, "Cerveau")
         snap(app, "15-cerveau-\(mode)")
+        // Chercher dans le Cerveau : les notes trouvées s'allument et s'affichent dans le panneau du bas.
+        let brainSearch = app.searchFields.firstMatch
+        if brainSearch.waitForExistence(timeout: 3) {
+            brainSearch.tap()
+            brainSearch.typeText("haie")
+            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Tailler la haie")).firstMatch
+                .waitForExistence(timeout: 5), "Le panneau du Cerveau devrait montrer la note trouvée")
+            snap(app, "15b-cerveau-recherche-\(mode)")
+            for label in ["Annuler", "Cancel"] where tap(app.buttons[label]) { break }
+        }
 
         tapTab(app, "Calendrier")
         snap(app, "16-calendrier-\(mode)")
