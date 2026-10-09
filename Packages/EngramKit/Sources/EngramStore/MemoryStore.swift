@@ -6,15 +6,18 @@ import GRDB
 public struct MemoryStore: Sendable {
     public let database: AppDatabase
     public let dates: any DateProvider
+    /// Fuseau des journées (la prochaine fois d'une tâche qui revient, P16).
+    public let calendar: Calendar
 
     /// Deux captures identiques à moins de 10 minutes d'écart sont un doublon technique.
     public static let technicalDuplicateWindow: TimeInterval = 10 * 60
     /// Version d'analyse des souvenirs créés avant le moteur IA (plan P2), qui les ré-analysera.
     public static let interimAnalysisVersion = "interim-none"
 
-    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider()) {
+    public init(database: AppDatabase, dates: any DateProvider = SystemDateProvider(), calendar: Calendar = .current) {
         self.database = database
         self.dates = dates
+        self.calendar = calendar
     }
 
     public enum SourceInsertion: Sendable, Equatable {

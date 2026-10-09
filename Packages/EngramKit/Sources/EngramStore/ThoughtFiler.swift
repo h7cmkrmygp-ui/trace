@@ -38,7 +38,7 @@ public struct ThoughtFiler: Sendable {
     public func file(_ thoughts: [ValidThought], sourceID: UUID, keepInterimIfUncovered: Bool = false,
                      forceKeepInterim: Bool = false) throws -> FilingSummary {
         let now = dates.now()
-        let memoryStore = MemoryStore(database: database, dates: dates)
+        let memoryStore = MemoryStore(database: database, dates: dates, calendar: calendar)
         let categoryStore = CategoryStore(database: database, dates: dates)
         let entityStore = EntityStore(database: database, dates: dates)
         let listStore = ListStore(database: database, dates: dates)
