@@ -121,6 +121,19 @@ struct EntityStoreTests {
         #expect(renamed.name == "Marc-André")
     }
 
+    /// Le Cerveau relie chaque personne à ses notes vivantes, d'une catégorie à l'autre.
+    @Test func theBrainGetsEachPersonWithTheirLivingNotes() throws {
+        let env = try StoreTestEnvironment()
+        let a = try file(env, thought("Souper avec Julie", people: ["Julie"]))
+        let b = try file(env, thought("Cadeau pour Julie", people: ["Julie"]))
+        let done = try file(env, thought("Appeler Julie", people: ["Julie"]))
+        _ = try env.memories.setStatus(.trashed, for: done.id, actor: .user)
+        try file(env, thought("Rapporter les bouteilles au Costco", places: ["Costco"]))
+        let links = try entities(env).links(kind: .person)
+        #expect(links.map(\.entity.name) == ["Julie"])
+        #expect(Set(links.first?.memoryIDs ?? []) == [a.id, b.id])
+    }
+
     @Test func recallSeesTheNamesOfANote() throws {
         let env = try StoreTestEnvironment()
         let memory = try file(env, thought("Lui rapporter son livre", people: ["Lui"], places: []))

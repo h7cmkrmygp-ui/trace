@@ -35,11 +35,12 @@ enum UITestSeed {
 
         @discardableResult
         func file(_ text: String, kind: MemoryKind, path: [String], description: String? = nil, dates: [String] = [],
-                  summary: String? = nil, provider: String = "gemini", level: PrivacyLevel = .neutral) throws -> Memory? {
+                  summary: String? = nil, people: [String] = [], places: [String] = [],
+                  provider: String = "gemini", level: PrivacyLevel = .neutral) throws -> Memory? {
             guard case .saved(let interim) = try memories.saveTextNoteWithoutAnalysis(text) else { return nil }
             let thought = ValidThought(title: text, summary: summary, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
                                        kind: kind, tags: [], categoryPath: path, mentionedDates: dates,
-                                       categoryDescription: description)
+                                       categoryDescription: description, people: people, places: places)
             let filed = try filer.file([thought], sourceID: interim.sourceID)
             try memories.recordRoute(sourceID: interim.sourceID,
                                      route: AnalysisRoute(level: level, provider: provider,
@@ -58,6 +59,13 @@ enum UITestSeed {
         try file("Préparer la présentation du projet Atlas", kind: .task, path: ["Travail"],
                  description: "Projets, réunions et tâches du travail", provider: "groq", level: .personal)
         try file("Idée : une app de recettes", kind: .idea, path: ["Projets"], provider: "apple", level: .secret)
+        // P9 : des personnes et des lieux inventés.
+        try file("Souper chez Julie et Marc samedi", kind: .appointment, path: ["Famille"],
+                 description: "Proches, soupers et anniversaires", dates: ["samedi"], people: ["Julie", "Marc"],
+                 provider: "groq", level: .personal)
+        try file("Rapporter le livre de Julie", kind: .task, path: ["Famille"], people: ["Julie"],
+                 provider: "groq", level: .personal)
+        try file("Rapporter les bouteilles au Costco", kind: .task, path: ["Achats"], places: ["au Costco"])
 
         if case .saved(let unsorted) = try memories.saveTextNoteWithoutAnalysis("Pensée en vrac à classer plus tard") {
             try filer.markFallback(sourceID: unsorted.sourceID)

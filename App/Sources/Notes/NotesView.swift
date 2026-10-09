@@ -13,6 +13,10 @@ enum NotesRoute: Hashable {
     case settings
     case evaluation
     case benchmark
+    /// P9 : les personnes, les lieux, et la page de l'un d'eux.
+    case people
+    case places
+    case entity(UUID)
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -24,6 +28,9 @@ enum NotesRoute: Hashable {
         case .settings: SettingsView()
         case .evaluation: EvaluationView()
         case .benchmark: BenchmarkView()
+        case .people: EntityListView(kind: .person)
+        case .places: EntityListView(kind: .place)
+        case .entity(let id): EntityDetailView(entityID: id)
         }
     }
 }
@@ -38,6 +45,8 @@ struct NotesView: View {
     @State private var isWriting = false
     @State private var query = ""
     @State private var results: [Memory] = []
+    @State private var people: [EntityStore.Summary] = []
+    @State private var places: [EntityStore.Summary] = []
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     private var roots: [CategoryStore.CategorySummary] { summary?.categories.filter { $0.depth == 0 } ?? [] }
@@ -82,6 +91,20 @@ struct NotesView: View {
             .task {
                 do {
                     for try await list in model.memories.sourcesAwaitingReviewStream() { reviewCount = list.count }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await list in model.entities.summariesStream(kind: .person) { people = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await list in model.entities.summariesStream(kind: .place) { places = list }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
                 }
@@ -163,6 +186,17 @@ struct NotesView: View {
                                    tint: .category(item.category.name))
                     }
                 }
+                // Les personnes et les lieux dont parlent tes notes (P9).
+                if !people.isEmpty {
+                    NavigationLink(value: NotesRoute.people) {
+                        FolderCard(systemImage: "person.2.fill", title: "Personnes", subtitle: Self.names(people))
+                    }
+                }
+                if !places.isEmpty {
+                    NavigationLink(value: NotesRoute.places) {
+                        FolderCard(systemImage: "mappin.and.ellipse", title: "Lieux", subtitle: Self.names(places))
+                    }
+                }
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
@@ -184,6 +218,14 @@ struct NotesView: View {
         .overlay {
             if results.isEmpty { ContentUnavailableView.search(text: query) }
         }
+    }
+
+    /// « Julie, Marc et 3 autres ».
+    static func names(_ summaries: [EntityStore.Summary]) -> String {
+        let first = summaries.prefix(2).map(\.entity.name)
+        let others = summaries.count - first.count
+        guard others > 0 else { return ListFormatter.localizedString(byJoining: first) }
+        return first.joined(separator: ", ") + " et \(others) autre\(others > 1 ? "s" : "")"
     }
 
     /// « 1 note », « 3 notes à classer »…

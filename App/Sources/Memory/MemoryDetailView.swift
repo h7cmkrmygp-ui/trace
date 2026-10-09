@@ -14,6 +14,9 @@ struct MemoryDetailView: View {
     @State private var assigned: [EngramCategory] = []
     /// Notes sur le même sujet (au plus 3, seulement si elles ressemblent vraiment).
     @State private var related: [RecallHit] = []
+    /// Personnes et lieux de la note (P9).
+    @State private var linkedEntities: [EngramEntity] = []
+    @State private var isAddingEntity = false
     /// Toutes les catégories, pour retrouver la grande catégorie (et sa couleur) d'une sous-catégorie.
     @State private var allCategories: [UUID: EngramCategory] = [:]
     @State private var title = ""
@@ -64,6 +67,7 @@ struct MemoryDetailView: View {
                 }
                 spokenWords(memory)
                 categoriesSection
+                entitiesSection
                 if !related.isEmpty { relatedSection }
             }
             .padding(.horizontal, 20)
@@ -88,6 +92,7 @@ struct MemoryDetailView: View {
         .onChange(of: focus) { _, _ in save() }
         .sheet(isPresented: $isEditingWords, onDismiss: reload) { MemoryEditor(memory: memory) }
         .sheet(isPresented: $isPickingCategories, onDismiss: reload) { CategoryPicker(memoryID: memoryID) }
+        .sheet(isPresented: $isAddingEntity, onDismiss: reload) { AddEntitySheet(memoryID: memoryID) }
         .sheet(isPresented: $isShowingInfo, onDismiss: reload) { MemoryInfoSheet(memory: memory, source: source) }
         .confirmationDialog("Supprimer définitivement ce souvenir ?", isPresented: $isConfirmingDeletion,
                             titleVisibility: .visible) {
@@ -188,6 +193,47 @@ struct MemoryDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choisir les catégories")
+            }
+        }
+    }
+
+    /// « Personnes et lieux » : toucher une pastille ouvre sa page ; appui long pour la retirer de cette note.
+    private var entitiesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Personnes et lieux")
+            FlowLayout(spacing: 8) {
+                ForEach(linkedEntities) { entity in
+                    NavigationLink(value: NotesRoute.entity(entity.id)) {
+                        HStack(spacing: 6) {
+                            EntityAvatar(entity: entity, size: 24)
+                            Text(entity.name)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                        }
+                        .padding(.leading, 4)
+                        .padding(.trailing, 12)
+                        .padding(.vertical, 4)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Retirer de cette note", systemImage: "minus.circle", role: .destructive) {
+                            model.perform { try model.entities.removeEntity(entity.id, from: memoryID) }
+                            reload()
+                        }
+                    }
+                }
+                Button {
+                    isAddingEntity = true
+                } label: {
+                    Label("Ajouter", systemImage: "person.badge.plus")
+                        .font(.subheadline)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Ajouter une personne ou un lieu")
             }
         }
     }
@@ -336,6 +382,7 @@ struct MemoryDetailView: View {
             source = try model.memories.source(id: memory.sourceID)
             assigned = try model.categories.categories(for: memoryID)
             allCategories = Dictionary(uniqueKeysWithValues: try model.categories.activeCategories().map { ($0.id, $0) })
+            linkedEntities = try model.entities.entities(for: memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

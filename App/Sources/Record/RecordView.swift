@@ -61,6 +61,8 @@ struct RecordView: View {
             }
             .sensoryFeedback(.success, trigger: model.phase) { _, phase in phase == .result }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
+            // Pastilles d'une note (personnes, lieux) : leurs pages s'ouvrent aussi depuis cet onglet.
+            .navigationDestination(for: NotesRoute.self) { $0.destination }
             .onChange(of: model.recorder.level) { _, level in
                 levels.removeFirst()
                 levels.append(level)

@@ -53,6 +53,8 @@ final class AppModel {
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
     let memories: MemoryStore
+    /// Les personnes et les lieux de la mémoire (P9).
+    let entities: EntityStore
     let categories: CategoryStore
     let processor: ThoughtProcessor
     let settings: SettingStore
@@ -85,6 +87,7 @@ final class AppModel {
         self.database = database
         self.storageDirectory = storageDirectory
         memories = MemoryStore(database: database)
+        entities = EntityStore(database: database)
         categories = CategoryStore(database: database)
         settings = SettingStore(database: database)
         calendarLinks = CalendarLinkStore(database: database)
@@ -525,6 +528,14 @@ final class AppModel {
     func recall(_ question: String) async -> (answer: String, hits: [RecallHit]) {
         let result = await recallSearch(question)
         return (await recallAnswer(question, result: result), result.hits)
+    }
+
+    /// Relit les anciennes notes, sur l'iPhone, pour y trouver les personnes et les lieux. Renvoie le nombre de liens posés.
+    func recognizeNamesInOldNotes() async -> Int {
+        let store = entities
+        return await Task.detached(priority: .utility) {
+            (try? store.backfill(using: AppleEntityRecognizer())) ?? 0
+        }.value
     }
 
     /// Notes sur le même sujet qu'une note (au plus 3, jamais devinées).

@@ -204,6 +204,8 @@ struct RecallView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
+            // Pastilles d'une note (personnes, lieux) : leurs pages s'ouvrent aussi depuis cet onglet.
+            .navigationDestination(for: NotesRoute.self) { $0.destination }
             .onChange(of: model.recorder.state) { _, state in
                 // Silence après la question : on la traite tout de suite.
                 if state == .finished { Task { await model.finishListening(app: app) } }

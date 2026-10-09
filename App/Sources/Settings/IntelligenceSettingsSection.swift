@@ -16,6 +16,8 @@ struct IntelligenceSettingsSection: View {
     @State private var keepEverythingLocal = false
     @State private var counts: [String: Int] = [:]
     @State private var isWorking = false
+    @State private var isFindingNames = false
+    @State private var namesMessage: String?
     private let apple = AppleThoughtAnalyzer.availabilityDescription()
 
     var body: some View {
@@ -35,6 +37,26 @@ struct IntelligenceSettingsSection: View {
             NavigationLink(value: NotesRoute.evaluation) {
                 Label("Évaluer le classement sur l'iPhone", systemImage: "checklist")
             }
+            // P9 : les notes d'avant relues sur l'iPhone (reconnaissance des noms d'Apple), sans rien envoyer.
+            Button {
+                Task {
+                    isFindingNames = true
+                    let count = await model.recognizeNamesInOldNotes()
+                    isFindingNames = false
+                    namesMessage = count == 0 ? "Aucun nouveau nom trouvé."
+                        : "\(count) lien\(count > 1 ? "s" : "") ajouté\(count > 1 ? "s" : "") avec des personnes et des lieux."
+                }
+            } label: {
+                HStack {
+                    Label("Retrouver les personnes et les lieux de mes anciennes notes", systemImage: "person.2.badge.gearshape")
+                    if isFindingNames {
+                        Spacer()
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(isFindingNames)
+            if let namesMessage { Text(namesMessage).font(.footnote).foregroundStyle(.secondary) }
         } header: {
             Text("Intelligence")
         } footer: {

@@ -89,6 +89,22 @@ final class ScreenshotTests: XCTestCase {
             goBack(app)
         }
 
+        // P9 — personnes et lieux (inventés) : leurs dossiers sont en bas des Notes.
+        app.swipeUp()
+        if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Personnes")).firstMatch) {
+            snap(app, "24-personnes-\(mode)")
+            if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Julie")).firstMatch) {
+                XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Rapporter le livre"))
+                    .firstMatch.waitForExistence(timeout: 4), "La page de Julie devrait montrer ses notes")
+                snap(app, "25-personne-julie-\(mode)")
+                goBack(app)
+            }
+            goBack(app)
+        } else {
+            XCTFail("Dossier « Personnes » introuvable dans les Notes")
+        }
+        app.swipeDown()
+
         if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "À vérifier")).firstMatch) {
             snap(app, "04-a-verifier-\(mode)")
             if tap(app.cells.firstMatch) {

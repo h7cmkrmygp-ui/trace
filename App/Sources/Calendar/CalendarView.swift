@@ -116,6 +116,8 @@ struct CalendarView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { MemoryDetailView(memoryID: $0) }
+            // Pastilles d'une note (personnes, lieux) : leurs pages s'ouvrent aussi depuis cet onglet.
+            .navigationDestination(for: NotesRoute.self) { $0.destination }
             // Rendez-vous ajoutés depuis un autre onglet, ou accès changé dans les Réglages : on relit.
             .onChange(of: model.calendarRevision) { _, _ in loadEvents() }
             .onAppear {

@@ -94,6 +94,21 @@ public struct EntityStore: Sendable {
             """, arguments: [entityID])
     }
 
+    /// Une personne (ou un lieu) et ses notes vivantes, pour le Cerveau.
+    public struct Links: Sendable, Equatable, Identifiable {
+        public let entity: EngramEntity
+        public let memoryIDs: [UUID]
+        public var id: UUID { entity.id }
+    }
+
+    public func links(kind: EntityKind) throws -> [Links] {
+        []
+    }
+
+    public func linksStream(kind: EntityKind) -> AsyncThrowingStream<[Links], any Error> {
+        database.stream { db in [] }
+    }
+
     public func entity(id: UUID) throws -> EngramEntity? {
         try database.writer.read { db in try EngramEntity.fetchOne(db, key: id) }
     }
