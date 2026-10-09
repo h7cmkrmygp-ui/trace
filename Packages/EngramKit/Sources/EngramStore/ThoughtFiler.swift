@@ -144,7 +144,10 @@ public struct ThoughtFiler: Sendable {
                     // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
                     try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
                     // « l'anniversaire de Julie est le 12 mars » : la fête va sur la page de Julie (P20).
-                    try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt, now: now)
+                    // Une seule pensée : si son extrait a perdu le début de la phrase, la dictée entière est relue (P31).
+                    try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt,
+                                                   fallback: thoughts.count == 1 ? source.referenceText : nil,
+                                                   saidOn: source.capturedAt, calendar: calendar, now: now)
                     // « tous les lundis » : la tâche revient (P16).
                     try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
                                                      capturedAt: source.capturedAt, now: now)

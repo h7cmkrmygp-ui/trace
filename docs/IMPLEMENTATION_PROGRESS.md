@@ -426,3 +426,15 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p30-lieux-trouves-tout-seuls-de
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Icône « une pensée qui devient un souvenir » | ✅ | n/a | ✅ | construction de l'IPA | ⏳ | — | une onde de voix qui devient une constellation ; image 1024 × 1024 sans transparence, la même en mode sombre |
+
+## P31 — Les fêtes bien retenues, des catégories qui viennent du sens (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p31-fetes-et-categories-design.md` — signalé sur l'iPhone (une fête classée dans Santé › Poids, « C'est quand la fête à Amina ? » sans réponse).
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Plus de liste de catégories toute faite dans les consignes (Gemini, Groq, Apple) | n/a | ✅ | ✅ | ✅ (aucun exemple de catégorie, réutiliser seulement si le sujet y va vraiment, sinon en créer une, sous-catégorie facultative) | ⏳ | — | consignes `p31-cloud-v1`, `p31-v1` |
+| — | Ce qu'Engram a reconnu est dit à l'IA (fête, mesure, liste) | n/a | ✅ | ✅ | ✅ (Gemini, Groq et l'iPhone le reçoivent) | ⏳ | — | rien de plus que la note ne part |
+| — | Un suivi (Poids, Sommeil…) ne reçoit que sa mesure | n/a | ✅ | ✅ | ✅ (une fête ou une nuit de sommeil refusées dans Poids, « À classer » plutôt que mal rangée) | ⏳ | — | aussi pour les anciennes notes, une fois |
+| — | Fêtes dites comme au Québec | n/a | ✅ | ✅ | ✅ (« la fête à », jour en lettres, « fête ses 30 ans » → année de naissance, extrait incomplet relu) | ⏳ | — | anciennes notes relues une fois |
+| — | Retrouver et Siri répondent « C'est quand la fête à … ? » | n/a | ✅ | ✅ | ✅ (« fête » = « anniversaire », nom à une lettre près, date et âge) | ⏳ | — | depuis la page de la personne |

@@ -332,7 +332,40 @@ public struct CategoryStore: Sendable {
     /// (« l'anniversaire d'Amina » dans Poids). Une note rangée ou confirmée par le propriétaire n'est jamais touchée ;
     /// sans autre catégorie, la note revient « À classer ». Renvoie le nombre de notes retirées.
     public func removeMisfiledFromTrackers() throws -> Int {
-        0
+        let now = dates.now()
+        return try database.writer.write { db -> Int in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT mc.memory_id AS memory_id, mc.category_id AS category_id, c.name AS name,
+                       m.title AS title, m.content AS content, m.summary AS summary
+                FROM memory_category mc
+                JOIN category c ON c.id = mc.category_id
+                JOIN memory m ON m.id = mc.memory_id
+                WHERE mc.origin = 'ai' AND mc.confirmed = 0 AND mc.rejected = 0 AND c.status = 'active'
+                """)
+            var removed = 0
+            for row in rows {
+                let name: String = row["name"]
+                guard let metric = MeasurementFolders.metric(forFolder: name) else { continue }
+                let memoryID: UUID = row["memory_id"]
+                let categoryID: UUID = row["category_id"]
+                let title: String = row["title"]
+                let content: String = row["content"]
+                let summary: String? = row["summary"]
+                let text = [title, content, summary ?? ""].joined(separator: ". ")
+                guard !MeasurementFolders.belongs(text, in: name) else { continue }
+                // Une mesure déjà relevée dans cette note la garde dans son suivi.
+                let measured = try Bool.fetchOne(db, sql: """
+                    SELECT EXISTS(SELECT 1 FROM measurement WHERE memory_id = ? AND metric = ?)
+                    """, arguments: [memoryID, metric.rawValue]) ?? false
+                guard !measured,
+                      let assignment = try CategoryAssignment.fetchOne(db, key: ["memory_id": memoryID, "category_id": categoryID])
+                else { continue }
+                try AssignmentRules.remove(db, row: assignment, by: .ai, now: now)
+                try SortingStatus.refresh(db, memoryID: memoryID, now: now)
+                removed += 1
+            }
+            return removed
+        }
     }
 
     public func confirm(memoryID: UUID, categoryID: UUID) throws {

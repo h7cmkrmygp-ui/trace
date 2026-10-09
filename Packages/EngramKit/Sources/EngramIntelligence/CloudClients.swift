@@ -60,7 +60,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p9-cloud-v1"
+    public static let version = "p31-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -90,15 +90,23 @@ public enum CloudPrompt {
         Empty when the title already says everything.
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
-        - category: a broad life domain written in French, such as Santé, Travail, Finance, Maison, Famille, Automobile, \
-        Achats, Alimentation, Loisirs, Sport, Voyages, Études, Projets, Administratif. Reuse an existing category exactly \
-        when one fits; create a new one only when none fits. A body measurement (weight, sleep, blood pressure) belongs \
-        to Santé. A weight in pounds ("livres") is not money and not a book. Money spent, owed or earned belongs to Finance.
+        - category: the domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from the \
+        meaning of the item itself, as the owner would file it by hand. First read the existing categories given with \
+        the note. Reuse one, written exactly as given, only when the subject of the item truly belongs to it; a word in \
+        common is not enough. When none truly fits, create a new category: a broad domain in French that later notes \
+        on the same subject will join. There is no list of categories to choose from: only the owner's existing ones, \
+        or a new one.
+        - A birthday or a feast day of a person (« l'anniversaire de Julie », « la fête à Amina ») is a date to remember \
+        for that person: file it with the family or friends, never with health, a body measurement or money.
+        - A category or subcategory that tracks a measurement (weight, sleep, blood pressure, pulse, steps, blood sugar) \
+        only receives that measurement or what is directly about it. A weight in pounds ("livres") is not money and not \
+        a book. Money spent, owed or earned is about finances.
+        - When the prompt says what Engram already recognized in the note (read on the iPhone, without AI), trust it.
         - categoryDescription: when the category is new, one short French sentence describing what it will contain; otherwise empty.
-        - subcategory: a precise and lasting topic inside the category, in French, 1 to 3 words, that will gather several \
-        notes: Travail › Horaire, Finance › Assurances, Finance › Impôts, Santé › Poids, Santé › Rendez-vous, \
-        Maison › Entretien, Automobile › Corolla, Sport › Gym, Achats › Épicerie. Reuse an existing subcategory exactly \
-        when one fits. Leave it empty only when no lasting topic fits; never a one-off detail.
+        - subcategory: optional. A precise and lasting topic inside the category, in French, 1 to 3 words, that several \
+        notes will share (a person, a vehicle, an insurance, a recurring activity). Reuse an existing subcategory of \
+        that category, written exactly as given, only when the item truly belongs to it; create one when a lasting \
+        topic is clear; otherwise leave it empty. Never a one-off detail, never an English word.
         - tags: up to 3 short French tags.
         - dates: every date or time expression copied verbatim from the note, with its role: reminder (when to remind the owner), \
         deadline, event (when something happens), other. An item that follows another one in time (« pis après », \
@@ -119,9 +127,10 @@ public enum CloudPrompt {
         formatter.timeZone = context.timeZone
         formatter.dateFormat = "EEEE d MMMM yyyy"
         let existing = categories.isEmpty ? "aucune pour l'instant" : categories.joined(separator: " ; ")
+        let known = context.facts.isEmpty ? "" : "\nEngram a déjà reconnu dans cette note : \(context.facts.joined(separator: " ; "))"
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes : \(existing)
+            Catégories existantes : \(existing)\(known)
             Note à classer :
             <note>
             \(text)

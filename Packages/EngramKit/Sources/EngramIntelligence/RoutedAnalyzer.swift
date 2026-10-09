@@ -143,7 +143,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         case .secret: []
         }
         let shareable = PrivacyGate.shareableCategoryNames(existingCategories)
-        let cloudContext = CloudContext(now: context.capturedAt, timeZone: timeZone)
+        let cloudContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts)
         var temporarilyMissing = false
         var notes: [String] = []
         for provider in candidates {

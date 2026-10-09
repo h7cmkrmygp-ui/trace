@@ -19,7 +19,11 @@ public struct ParsedBirthday: Sendable, Equatable {
 
     /// L'année de naissance : dite, ou déduite de l'âge fêté à la prochaine fête suivant le jour de la note.
     public func birthYear(saidOn date: Date, calendar: Calendar) -> Int? {
-        year
+        if let year { return year }
+        guard let turning, let next = BirthdayPlanner.next(month: month, day: day, from: date, calendar: calendar) else {
+            return nil
+        }
+        return calendar.component(.year, from: next) - turning
     }
 }
 
@@ -43,7 +47,8 @@ public struct Birthday: Sendable, Equatable, Identifiable {
 
 /// Reconnaît, sur l'iPhone et sans IA : « l'anniversaire de Julie est le 12 mars », « Marc a sa fête le 3 juin »,
 /// « la fête de Léa, c'est le 1er août », « Sophie est née le 24 décembre 1990 », « Julie's birthday is March 12 ».
-/// « La fête de Noël », « l'anniversaire de mariage » n'en sont pas.
+/// P31 : aussi « la fête à Amina, c'est le treize octobre », « C'est la fête de Marc le premier mars »,
+/// « Amina fête ses 30 ans le 13 octobre ». « La fête de Noël », « l'anniversaire de mariage » n'en sont pas.
 public enum BirthdayParser {
     static let months: [String: Int] = [
         "janvier": 1, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6, "juillet": 7, "aout": 8, "septembre": 9,
@@ -54,12 +59,29 @@ public enum BirthdayParser {
     static let holidays: Set<String> = ["noel", "paques", "saint-jean", "saint-valentin", "halloween", "mardi gras",
                                         "la reine", "dollard", "travail", "action de grace", "christmas", "easter"]
     static let longest = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    /// Les jours dits en lettres (« le treize octobre », « le vingt-deux mai »).
+    static let dayWords: [String: Int] = {
+        let units = ["deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"]
+        var words: [String: Int] = ["premier": 1, "dix": 10, "onze": 11, "douze": 12, "treize": 13, "quatorze": 14,
+                                    "quinze": 15, "seize": 16, "dix sept": 17, "dix huit": 18, "dix neuf": 19, "vingt": 20,
+                                    "vingt et un": 21, "trente": 30, "trente et un": 31]
+        for (index, unit) in units.enumerated() {
+            words[unit] = index + 2
+            words["vingt " + unit] = index + 22
+        }
+        return words
+    }()
 
     static let name = #"(?<name>(?i:mon|ma|mes|notre)\s+\p{Ll}[\p{L}'’-]*|\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)"#
-    static let frenchDate = #"(?i:le)\s+(?<day>1er|\d{1,2})\s+(?<month>(?i:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[ée]cembre))(?:\s+(?<year>\d{4}))?"#
+    static let day = #"(?<day>1er|\d{1,2}|(?i:premier|trente(?:[\s-]et[\s-]un)?|vingt(?:[\s-](?:et[\s-]un|deux|trois|quatre|cinq|six|sept|huit|neuf))?|dix(?:[\s-](?:sept|huit|neuf))?|onze|douze|treize|quatorze|quinze|seize|deux|trois|quatre|cinq|six|sept|huit|neuf))"#
+    static let frenchDate = #"(?i:le)\s+"# + day + #"\s+(?<month>(?i:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[ée]cembre))(?:\s+(?<year>\d{4}))?"#
     static let patterns: [String] = [
-        #"(?i:l['’]anniversaire|la f[êe]te)\s+(?i:de\s+|d['’])"# + name + #"\s*,?\s+(?i:est|c['’]est|tombe|sera)\s+"# + frenchDate,
+        // « l'anniversaire de Julie est le 12 mars », « la fête à Amina, c'est le 13 octobre », « la fête de Marc le 1er mars ».
+        #"(?i:l['’]anniversaire|la f[êe]te)\s+(?i:de\s+|d['’]|[àa]\s+)"# + name
+            + #"\s*,?\s+(?:(?i:est|c['’]est|tombe|sera)\s+)?"# + frenchDate,
         name + #"\s+(?i:a sa f[êe]te|aura sa f[êe]te|f[êe]te son anniversaire)\s+"# + frenchDate,
+        // « Amina fête ses 30 ans le 13 octobre », « Marc aura 40 ans le 3 juin ».
+        name + #"\s+(?i:f[êe]te\s+ses|f[êe]tera\s+ses|aura|va\s+avoir|a)\s+(?<turning>\d{1,3})\s+(?i:ans)\s+"# + frenchDate,
         name + #"\s+(?i:est n[ée]e?)\s+"# + frenchDate,
         name + #"(?i:['’]s birthday is)\s+(?i:on\s+)?(?<month>(?i:january|february|march|april|may|june|july|august|september|october|november|december))\s+(?<day>\d{1,2})(?i:st|nd|rd|th)?(?:,?\s+(?<year>\d{4}))?"#,
     ]
@@ -77,11 +99,21 @@ public enum BirthdayParser {
                 let key = MeasurementParser.normalized(person)
                 guard EntityName.isAcceptable(person), !holidays.contains(key),
                       let month = months[MeasurementParser.normalized(monthText)],
-                      let day = dayText.lowercased() == "1er" ? 1 : Int(dayText), isValid(month: month, day: day) else { continue }
-                return ParsedBirthday(person: person, month: month, day: day, year: group("year").flatMap { Int($0) })
+                      let day = dayNumber(dayText), isValid(month: month, day: day) else { continue }
+                let turning = pattern.contains("?<turning>") ? group("turning").flatMap { Int($0) } : nil
+                return ParsedBirthday(person: person, month: month, day: day, year: group("year").flatMap { Int($0) },
+                                      turning: turning.flatMap { (1...130).contains($0) ? $0 : nil })
             }
         }
         return nil
+    }
+
+    /// « 13 », « 1er », « treize », « vingt-deux ».
+    static func dayNumber(_ text: String) -> Int? {
+        let key = MeasurementParser.normalized(text).replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ").joined(separator: " ")
+        if key == "1er" { return 1 }
+        return Int(key) ?? dayWords[key]
     }
 
     /// Le 31 février n'existe pas ; le 29 février, oui.

@@ -747,7 +747,17 @@ final class AppModel {
 
     /// La phrase de réponse, rédigée sur l'iPhone à partir des seules notes trouvées.
     func recallAnswer(_ question: String, result: RecallResult) async -> String {
-        await recallAnswerer.answer(question: question, result: result, now: Date(), calendar: Self.recallCalendar)
+        if let answer = birthdayAnswer(question) { return answer }
+        return await recallAnswerer.answer(question: question, result: result, now: Date(), calendar: Self.recallCalendar)
+    }
+
+    /// « C'est quand la fête à Amina ? » : la fête gardée sur la page de la personne (P31). nil si la question porte sur
+    /// autre chose ou si la fête de cette personne n'est pas connue (la recherche dans les notes répond alors).
+    func birthdayAnswer(_ question: String) -> String? {
+        guard let person = BirthdayQuestion.person(in: question),
+              let birthdays = try? entities.birthdays(),
+              let birthday = BirthdayQuestion.find(person, in: birthdays) else { return nil }
+        return BirthdayQuestion.answer(birthday, now: Date(), calendar: Self.recallCalendar)
     }
 
     /// Question et réponse en une fois (Siri).
@@ -909,6 +919,22 @@ final class AppModel {
             }.value
             if done { perform { try settings.set(iso.string(from: habitsStart), for: .habitsScannedAt) } }
         }
+        await fixOldFilingsOnce()
+    }
+
+    /// P31, une seule fois : les fêtes dites dans les anciennes notes vont sur la page des personnes, et les suivis
+    /// (« Poids »…) rendent les notes que l'IA y avait rangées sans rapport (elles reviennent « À classer »).
+    func fixOldFilingsOnce() async {
+        guard ((try? settings.string(.filingFixesAt)) ?? nil) == nil else { return }
+        let people = entities
+        let folders = categories
+        let done = await Task.detached(priority: .utility) {
+            (try? people.backfillBirthdays()) != nil && (try? folders.removeMisfiledFromTrackers()) != nil
+        }.value
+        guard done else { return }
+        perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .filingFixesAt) }
+        // Les fêtes retrouvées ont leurs rappels (la veille et le jour même).
+        await syncReminders()
     }
 
     /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).

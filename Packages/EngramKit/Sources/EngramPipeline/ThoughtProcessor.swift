@@ -51,7 +51,9 @@ public actor ThoughtProcessor {
                 return .fallback
             }
             let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
-            let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt)
+            // Ce qu'Engram reconnaît déjà (une fête, une mesure, une liste) est dit à l'IA avec la note (P31).
+            let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
+                                          facts: NoteFacts.describe(text))
             var attempt = 0
             while true {
                 attempt += 1

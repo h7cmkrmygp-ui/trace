@@ -39,9 +39,22 @@ public enum CategoryHints {
             .map(\.name)
     }
 
-    /// Les catégories vraiment proches du sens de la note (5 au plus), données en indice au modèle d'Apple.
-    public static func likely(text: String, categories: [String], embedder: any SentenceEmbedder) -> [String] {
-        Array(rank(text: text, categories: categories, embedder: embedder).prefix(5))
+    /// Ressemblance minimale (cosinus) d'une catégorie donnée en indice.
+    public static let minimumSimilarity = 0.5
+
+    /// Les catégories vraiment proches du sens de la note (`limit` au plus), données en indice au modèle d'Apple.
+    /// Sans le sens, aucune : l'ordre alphabétique des dossiers n'est pas un indice (P31).
+    public static func likely(text: String, categories: [String], embedder: any SentenceEmbedder, limit: Int = 5) -> [String] {
+        guard !categories.isEmpty, let target = embedder.vector(for: text) else { return [] }
+        let scored = categories.enumerated().compactMap { index, name -> (name: String, score: Double, index: Int)? in
+            guard let vector = embedder.vector(for: name) else { return nil }
+            let score = cosine(target, vector)
+            return score >= minimumSimilarity ? (name, score, index) : nil
+        }
+        return scored
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index }
+            .prefix(limit)
+            .map(\.name)
     }
 
     static func cosine(_ lhs: [Double], _ rhs: [Double]) -> Double {

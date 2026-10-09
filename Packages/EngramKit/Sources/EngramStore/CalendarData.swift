@@ -47,6 +47,8 @@ public struct SettingStore: Sendable {
         case autoLocatePlaces = "places.autoLocate"
         /// « 1 » (défaut) : « Garde ta série » à 20 h quand une série d'habitude n'est pas encore faite (P21).
         case habitNudges = "reminders.habitNudges"
+        /// Moment (ISO 8601) de la relecture unique des anciennes notes (P31) : fêtes manquantes, suivis mal remplis.
+        case filingFixesAt = "fixes.p31.doneAt"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }

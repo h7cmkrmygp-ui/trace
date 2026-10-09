@@ -24,11 +24,11 @@ struct GeneratedThought {
     var tags: [String]
     @Guide(description: "Date or time expressions copied from the note, e.g. « demain », « 24 novembre ». Put the reminder date first; for an appointment, put its own date and time first.")
     var mentionedDates: [String]
-    @Guide(description: "Broad life domain in French, 1 to 3 words (Santé, Travail, Finance, Maison, Famille, Automobile, Achats, Alimentation, Loisirs, Sport, Voyages, Études, Projets…). Reuse an existing category name exactly when one fits.")
+    @Guide(description: "The domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from its meaning. Reuse an existing category name exactly only when the item truly belongs to it; otherwise create a new one. A person's birthday is never health or money.")
     var category: String
     @Guide(description: "If the category is new: one short French sentence describing what it will contain. Otherwise empty.")
     var categoryDescription: String
-    @Guide(description: "Precise, lasting topic inside the category, in French, 1 to 3 words (Finance › Assurances, Travail › Horaire, Santé › Poids, Sport › Gym, Maison › Entretien, Automobile › Corolla). Reuse an existing subcategory exactly when one fits. Empty only when no lasting topic fits.")
+    @Guide(description: "Optional precise, lasting topic inside the category, in French, 1 to 3 words, that several notes will share. Reuse an existing subcategory exactly only when the item truly belongs to it. Empty otherwise.")
     var subcategory: String
     @Guide(description: "People this item involves, copied from the note: first names or names (« Julie »), or words for a specific person in the owner's life (« maman », « mon manager »). Never « je », « moi » or « quelqu'un ». Empty if nobody is named.", .maximumCount(4))
     var people: [String]
@@ -44,7 +44,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p9-v1"
+    static let version = "p31-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -63,11 +63,17 @@ enum AnalysisPrompt {
         real date instead of « aujourd'hui » or « demain ».
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
-        - category: a broad life domain written in French. Reuse an existing category exactly when one fits.
-        A body measurement, such as a weight in kg or in pounds (« livres »), belongs to Santé, never to Finance or Rendez-vous.
-        Money spent, owed or earned belongs to Finance.
+        - category: the domain of the owner's life this item belongs to, in French, decided from its meaning. Reuse an \
+        existing category, written exactly as given, only when the subject truly belongs to it; a word in common is not \
+        enough. When none truly fits, create a new category: a broad domain in French that later notes will join.
+        A birthday or a feast day of a person is a date to remember for that person: file it with the family or \
+        friends, never with health or money.
+        A folder that tracks a measurement (weight, sleep, blood pressure, pulse, steps, blood sugar) only receives that \
+        measurement. A weight in pounds (« livres ») is not money.
+        When the prompt says what Engram already recognized in the note, trust it.
         - categoryDescription: only when the category is new, one short French sentence describing it.
-        - subcategory: a precise, lasting topic inside the category that will gather several notes; reuse an existing one.
+        - subcategory: optional, a precise and lasting topic inside the category that several notes will share; reuse \
+        an existing one only when the item truly belongs to it, otherwise leave it empty.
         - mentionedDates: an item that follows another one in time (« pis après ») also gets that item's date expression.
         - people and places: the named people and the specific places of the item, copied from the note; never « je » or « moi ».
         Never invent facts, dates or names that are not in the note.
@@ -76,12 +82,14 @@ enum AnalysisPrompt {
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
                        facts: [String] = []) -> String {
         let existing = categories.isEmpty ? "(none yet)" : categories.map { "- \($0)" }.joined(separator: "\n")
-        let hint = likely.isEmpty ? "" : "\nMost likely existing categories for this note: \(likely.joined(separator: ", "))\n"
+        let hint = likely.isEmpty ? ""
+            : "\nExisting categories closest in meaning (a hint, not an obligation): \(likely.joined(separator: ", "))\n"
+        let known = facts.isEmpty ? "" : "\nEngram already recognized in this note: \(facts.joined(separator: "; "))\n"
         let date = today.map { "Today: \($0)\n" } ?? ""
         return """
             \(date)Existing categories ("Parent › Child" means a subcategory):
             \(existing)
-            \(hint)
+            \(hint)\(known)
             Note to file:
             \(text)
             """
@@ -119,7 +127,9 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
     public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
         let availability = SystemLanguageModel.default.availability
         guard case .available = availability else { throw AnalyzerError.unavailable(Self.describe(availability)) }
-        let likely = Array(CategoryHints.rank(text: text, categories: existingCategories, embedder: embedder).prefix(Self.hintCount))
+        // Seulement les catégories vraiment proches du sens (aucune si le sens est indisponible) : P31.
+        let likely = CategoryHints.likely(text: text, categories: existingCategories, embedder: embedder,
+                                          limit: Self.hintCount)
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "fr_CA")
         formatter.dateFormat = "EEEE d MMMM yyyy"
@@ -127,17 +137,18 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
         var thoughts: [AnalyzedThought] = []
         for chunk in TextChunker.chunks(of: text, maxLength: Self.maxChunkLength) {
             thoughts += try await analyze(chunk: chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                          depth: 0)
+                                          facts: context.facts, depth: 0)
         }
         return ThoughtAnalysis(thoughts: thoughts)
     }
 
-    func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?,
+    func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?, facts: [String] = [],
                  depth: Int) async throws -> [AnalyzedThought] {
         let session = LanguageModelSession(instructions: AnalysisPrompt.instructions)
         do {
             let response = try await session.respond(
-                to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories, likely: likely, today: today),
+                to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories, likely: likely, today: today,
+                                          facts: facts),
                 generating: GeneratedThoughts.self)
             return response.content.thoughts.map(Self.convert)
         } catch let error as LanguageModelError {
@@ -145,7 +156,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             switch error {
             case .contextSizeExceeded where depth < 3:
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 depth: depth)
+                                                 facts: facts, depth: depth)
             case .unsupportedLanguageOrLocale, .guardrailViolation, .refusal:
                 // Problème propre à cette note : repli pour elle seule (ne bloque pas les suivantes).
                 throw AnalyzerError.refused
@@ -162,20 +173,20 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             }
             if name.localizedCaseInsensitiveContains("exceededContextWindowSize"), depth < 3 {
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 depth: depth)
+                                                 facts: facts, depth: depth)
             }
             throw AnalyzerError.invalidOutput
         }
     }
 
     func analyzeInHalves(_ chunk: String, existingCategories: [String], likely: [String], today: String?,
-                         depth: Int) async throws -> [AnalyzedThought] {
+                         facts: [String] = [], depth: Int) async throws -> [AnalyzedThought] {
         let halves = TextChunker.halves(of: chunk)
         guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
         let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, likely: likely, today: today,
-                                      depth: depth + 1)
+                                      facts: facts, depth: depth + 1)
         let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, likely: likely, today: today,
-                                       depth: depth + 1)
+                                       facts: facts, depth: depth + 1)
         return first + second
     }
 

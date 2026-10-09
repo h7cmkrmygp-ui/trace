@@ -412,6 +412,8 @@ enum RecallSynonyms {
         ["telephone", "cell", "cellulaire", "phone"],
         ["film", "films", "serie", "movie", "netflix"],
         ["voyage", "vacances", "trip", "voyages"],
+        // « C'est quand la fête à Amina ? » trouve « l'anniversaire d'Amina » (P31).
+        ["fete", "anniversaire", "anniv", "birthday", "bday"],
     ]
 
     static func related(to keyword: String) -> [String] {

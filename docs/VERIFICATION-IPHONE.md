@@ -294,3 +294,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 144. **N'importe quel Costco** : arrive à un des Costco proches : la notification arrive.
 145. **Un lieu à toi** : « quand j'arrive à la maison » ne cherche rien ; sur la page Maison, « Ajouter l'adresse » › « Ma position actuelle » quand tu y es.
 146. **Réglage** : Réglages › Rappels › « Trouver l'adresse des lieux tout seul ».
+
+## AF. P31 — Les fêtes bien retenues, des catégories qui viennent du sens
+
+147. **Une fête dictée** : dis « Retiens la fête à Léa, c'est le treize mars ». La note ne va **jamais** dans Santé ni dans Poids ; la page Personnes › Léa montre « 13 mars ».
+148. **Retrouver** : demande « C'est quand déjà la fête à Léa ? » : « La fête de Léa, c'est le 13 mars, dans … jours. » Pareil avec Siri : « Dis Siri, demande à Engram » › « C'est quand la fête à Léa ? ».
+149. **Les anciennes notes** : après la mise à jour, ouvre une personne dont la fête était dite dans une vieille note : la date y est. Une note de fête qui était rangée dans « Poids » est revenue dans « À classer ».
+150. **Des catégories à toi** : dicte une note sur un sujet nouveau (ex. « idée de cadeau pour la fête de Léa ») : l'IA réutilise une de tes catégories si le sujet y va vraiment, sinon elle en crée une nouvelle ; aucune sous-catégorie inventée pour rien.
