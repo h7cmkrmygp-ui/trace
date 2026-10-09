@@ -81,9 +81,12 @@ struct TrackersView: View {
     @State private var metrics: [Metric] = []
     @State private var points: [Metric: [MetricPoint]] = [:]
     @State private var goals: [Metric: TrackerGoal] = [:]
+    /// P17 : les habitudes.
+    @State private var habits: [HabitSummary] = []
 
     var body: some View {
         ScrollView {
+            if !metrics.isEmpty && !habits.isEmpty { sectionTitle("Mesures") }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
                 ForEach(metrics) { metric in
                     NavigationLink(value: NotesRoute.metric(metric)) {
@@ -94,14 +97,31 @@ struct TrackersView: View {
                 }
             }
             .padding(16)
-            Text("Dis une mesure dans une note (« je pèse 162 livres », « j'ai dormi 7 h 30 », « tension 120 sur 80 ») : elle s'ajoute ici toute seule, sans rien envoyer.")
+            if !habits.isEmpty {
+                sectionTitle("Habitudes")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+                    ForEach(habits) { summary in
+                        NavigationLink(value: NotesRoute.habit(summary.habit)) { HabitCard(summary: summary) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
+            }
+            Text("Dis une mesure ou une habitude dans une note (« je pèse 162 livres », « j'ai dormi 7 h 30 », « j'ai médité 10 minutes », « j'ai fait mon workout ») : elle s'ajoute ici toute seule, sans rien envoyer.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
         }
+        .task {
+            do {
+                for try await list in model.measurements.habitSummariesStream(today: Date()) { habits = list }
+            } catch {
+                model.errorMessage = AppModel.describe(error)
+            }
+        }
         .overlay {
-            if metrics.isEmpty {
+            if metrics.isEmpty && habits.isEmpty {
                 ContentUnavailableView("Aucun suivi pour l'instant", systemImage: "chart.xyaxis.line",
                                        description: Text("Dis « je pèse 162 livres » ou « j'ai dormi 7 h » dans une note."))
             }
@@ -124,6 +144,17 @@ struct TrackersView: View {
                 model.errorMessage = AppModel.describe(error)
             }
         }
+    }
+}
+
+extension TrackersView {
+    func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.title3.weight(.bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

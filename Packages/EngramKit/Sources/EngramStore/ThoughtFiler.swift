@@ -125,6 +125,9 @@ public struct ThoughtFiler: Sendable {
                     // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
                     try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt, capturedAt: source.capturedAt,
                                                 now: now)
+                    // « j'ai médité 10 minutes » : l'habitude du jour (P17).
+                    try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
+                                                      capturedAt: source.capturedAt, now: now)
                     // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
                     try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
                                                      capturedAt: source.capturedAt)

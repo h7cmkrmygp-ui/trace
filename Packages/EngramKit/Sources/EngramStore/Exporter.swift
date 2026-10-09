@@ -33,6 +33,8 @@ public struct ExportDocument: Codable, Sendable {
     public var listAdditions: [ListAddition]
     /// Le rythme des tâches qui reviennent (P16).
     public var recurrences: [MemoryRecurrence]
+    /// Les habitudes faites (P17).
+    public var habitEntries: [HabitEntry]
 
     enum CodingKeys: String, CodingKey {
         case app, sources, memories, categories, tags, entities, measurements
@@ -43,6 +45,7 @@ public struct ExportDocument: Codable, Sendable {
         case lists
         case listAdditions = "list_additions"
         case recurrences
+        case habitEntries = "habit_entries"
         case entityAliases = "entity_aliases"
         case entityAssignments = "entity_assignments"
         case formatVersion = "format_version"
@@ -98,7 +101,8 @@ public struct Exporter: Sendable {
                 placeTriggers: try PlaceTrigger.order(Column("created_at")).fetchAll(db),
                 lists: try ListRecord.order(Column("created_at")).fetchAll(db),
                 listAdditions: try ListAddition.order(Column("added_at")).fetchAll(db),
-                recurrences: try MemoryRecurrence.order(Column("created_at")).fetchAll(db))
+                recurrences: try MemoryRecurrence.order(Column("created_at")).fetchAll(db),
+                habitEntries: try HabitEntry.order(Column("done_at")).fetchAll(db))
         }
         let fileManager = FileManager.default
         let folder = parentDirectory.appendingPathComponent("Engram-Export-\(Self.stamp(exportedAt))", isDirectory: true)

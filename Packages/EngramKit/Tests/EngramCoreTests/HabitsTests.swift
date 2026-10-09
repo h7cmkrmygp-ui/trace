@@ -53,14 +53,14 @@ struct HabitsTests {
         #expect(HabitStats.streak(days + [Self.day(1, 14)], today: Self.day(1, 14), calendar: cal) == 3)
     }
 
-    @Test func theWeekAndTheGridShowTheRhythm() {
+    @Test func theWeekAndTheGridShowTheRhythm() throws {
         let cal = Self.calendar
         // Vendredi 15 janvier 2027 ; la semaine commence le dimanche 10.
         let days: [Date] = [Self.day(1, 3), Self.day(1, 10), Self.day(1, 11), Self.day(1, 15)]
         #expect(HabitStats.thisWeek(days, today: Self.day(1, 15), calendar: cal) == 3)
         let grid = HabitStats.grid(days, today: Self.day(1, 15), weeks: 2, calendar: cal)
-        #expect(grid.count == 2)
-        #expect(grid[1].count == 7)
+        try #require(grid.count == 2)
+        try #require(grid[1].count == 7)
         // Dernière colonne : dimanche 10 (fait), lundi 11 (fait), … vendredi 15 (fait), samedi 16 (à venir).
         #expect(grid[1] == [true, true, false, false, false, true, nil])
         // Colonne d'avant : seulement le dimanche 3.

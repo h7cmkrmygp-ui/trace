@@ -77,6 +77,9 @@ enum UITestSeed {
         if let haie = try memories.recallDocuments().first(where: { $0.title.hasPrefix("Tailler la haie") }) {
             try memories.setPinned(true, for: haie.id)
         }
+        // P17 : une habitude inventée, deux jours d'affilée.
+        try file("Hier j'ai médité 15 minutes", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
+        try file("J'ai médité 10 minutes ce matin", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
         // P16 : une tâche qui revient (inventée).
         try file("Sortir les poubelles tous les lundis", kind: .task, path: ["Maison"])
         // P15 : une liste d'épicerie inventée, complétée par une deuxième dictée.

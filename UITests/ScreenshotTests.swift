@@ -136,6 +136,14 @@ final class ScreenshotTests: XCTestCase {
             } else {
                 XCTFail("Carte « Poids » introuvable dans les Suivis")
             }
+            // P17 — une habitude inventée, avec sa série et sa grille.
+            app.swipeUp()
+            if tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Méditation")).firstMatch) {
+                snap(app, "32-habitude-meditation-\(mode)")
+                goBack(app)
+            } else {
+                XCTFail("Carte « Méditation » introuvable dans les Suivis")
+            }
             goBack(app)
         } else {
             XCTFail("Dossier « Suivis » introuvable dans les Notes")

@@ -24,6 +24,8 @@ enum NotesRoute: Hashable {
     case journal
     /// P15 : les listes (épicerie, cadeaux…).
     case lists
+    /// P17 : une habitude.
+    case habit(Habit)
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -42,6 +44,7 @@ enum NotesRoute: Hashable {
         case .metric(let metric): MetricDetailView(metric: metric)
         case .journal: JournalView()
         case .lists: ListsView()
+        case .habit(let habit): HabitDetailView(habit: habit)
         }
     }
 }
@@ -62,6 +65,8 @@ struct NotesView: View {
     @State private var lists: [ListStore.Summary] = []
     /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
     @State private var trackersSummary = ""
+    /// P17 : « Méditation 5 jours ».
+    @State private var habitsSummary = ""
     /// P11 : les notes épinglées.
     @State private var pinned: [Memory] = []
     @AppStorage("engram.weightUnit") private var weightUnit = "lb"
@@ -151,6 +156,18 @@ struct NotesView: View {
                                                                             unit: metric.unit(weightUnit: weightUnit))
                         }
                         .joined(separator: " · ")
+                    }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            // P17 : la série de l'habitude la plus récente (« Méditation 5 jours »).
+            .task {
+                do {
+                    for try await summaries in model.measurements.habitSummariesStream(today: Date()) {
+                        habitsSummary = summaries.first.map {
+                            $0.streak >= 2 ? "\($0.habit.title) \($0.streak) jours" : $0.habit.title
+                        } ?? ""
                     }
                 } catch {
                     model.errorMessage = AppModel.describe(error)
@@ -256,10 +273,11 @@ struct NotesView: View {
                         FolderCard(systemImage: "mappin.and.ellipse", title: "Lieux", subtitle: Self.names(places))
                     }
                 }
-                // Les suivis (P10) : poids, sommeil, tension… dits dans les notes.
-                if !trackersSummary.isEmpty {
+                // Les suivis (P10) : poids, sommeil, tension… et les habitudes (P17), dits dans les notes.
+                if !trackersSummary.isEmpty || !habitsSummary.isEmpty {
                     NavigationLink(value: NotesRoute.trackers) {
-                        FolderCard(systemImage: "chart.xyaxis.line", title: "Suivis", subtitle: trackersSummary)
+                        FolderCard(systemImage: "chart.xyaxis.line", title: "Suivis",
+                                   subtitle: [trackersSummary, habitsSummary].filter { !$0.isEmpty }.joined(separator: " · "))
                     }
                 }
             }

@@ -760,6 +760,14 @@ final class AppModel {
             (try? measurementStore.backfill(since: lastScan.map { $0.addingTimeInterval(-1) })) != nil
         }.value
         if scanned { perform { try settings.set(iso.string(from: scanStart), for: .measurementsScannedAt) } }
+        // Habitudes (P17) : une seule relecture complète des anciennes notes ; ensuite, la relecture des mesures suffit.
+        if ((try? settings.string(.habitsScannedAt)) ?? nil) == nil {
+            let habitsStart = Date()
+            let done = await Task.detached(priority: .utility) {
+                (try? measurementStore.backfillHabits(since: nil)) != nil
+            }.value
+            if done { perform { try settings.set(iso.string(from: habitsStart), for: .habitsScannedAt) } }
+        }
     }
 
     /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).

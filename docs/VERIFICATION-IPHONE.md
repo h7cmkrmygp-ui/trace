@@ -213,3 +213,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 105. **Fait** : … › « Fait : à la prochaine fois » (ou « Fait » sur la notification) : la tâche reste dans « À faire », pour le lundi suivant ; la pastille dit « · faite 1 fois ».
 106. **Autres rythmes** : « Payer le loyer le 1er de chaque mois », « le recyclage aux deux semaines le jeudi », « prendre mes vitamines chaque matin » (8 h).
 107. **À la main** : dans une tâche, … › « Répéter… » › Chaque semaine › coche mardi et jeudi › Enregistrer. « Jamais » arrête la répétition.
+
+## R. P17 — Habitudes
+
+108. **Dicté** : « J'ai médité 10 minutes ». Notes › Suivis › « Habitudes » montre « Méditation », « Fait aujourd'hui ».
+109. **Une série** : le lendemain, « j'ai médité 15 minutes » : la carte dit « 2 jours d'affilée » avec la flamme ; la carte « Suivis » des Notes dit « Méditation 2 jours ».
+110. **La page** : touche « Méditation » : série, meilleure série, cette semaine, la grille des 16 dernières semaines, et chaque fois (« 10 min »).
+111. **Autres** : « j'ai fait mon workout », « j'ai couru 5 km », « j'ai bu 2 litres d'eau », « hier j'ai fait du yoga » (compte pour hier). « J'ai pas médité » ne compte pas.

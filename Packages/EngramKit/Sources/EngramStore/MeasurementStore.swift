@@ -134,6 +134,8 @@ public struct MeasurementStore: Sendable {
     /// écrites. Renvoie le nombre de mesures ajoutées. Tout se passe sur l'iPhone.
     public func backfill(since: Date? = nil) throws -> Int {
         let now = dates.now()
+        // Les habitudes (P17) sont relues en même temps ; le nombre renvoyé reste celui des mesures.
+        try backfillHabits(since: since)
         let (notes, measured) = try database.writer.read { db in
             (try Memory.fetchAll(db, sql: """
                 SELECT m.* FROM memory m

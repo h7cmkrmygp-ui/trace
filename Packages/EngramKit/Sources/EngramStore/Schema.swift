@@ -37,8 +37,26 @@ enum Schema {
         migrator.registerMigration("v10_recurrence") { db in
             try db.execute(sql: v10Recurrence)
         }
+        migrator.registerMigration("v11_habits") { db in
+            try db.execute(sql: v11Habits)
+        }
         return migrator
     }
+
+    /// v11 (P17) : les habitudes faites, relevées dans les notes (recalculables depuis le texte).
+    static let v11Habits = """
+        CREATE TABLE habit_entry (
+          id BLOB PRIMARY KEY NOT NULL,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          habit TEXT NOT NULL CHECK (length(habit) > 0),
+          quantity REAL,
+          unit TEXT,
+          done_at DATETIME NOT NULL,
+          created_at DATETIME NOT NULL
+        );
+        CREATE INDEX habit_entry_memory ON habit_entry(memory_id);
+        CREATE INDEX habit_entry_habit ON habit_entry(habit, done_at);
+        """
 
     /// v10 (P16) : le rythme des tâches qui reviennent (une règle par note, en JSON).
     static let v10Recurrence = """

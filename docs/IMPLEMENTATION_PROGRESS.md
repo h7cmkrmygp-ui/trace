@@ -293,3 +293,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p16-taches-qui-reviennent-desig
 | — | La prochaine fois (migration v10) | n/a | ✅ | ✅ | ✅ (semaine, deux jours dans la semaine, aux deux semaines, 31 → 28 février, année) | ⏳ | — | sans date dite, la tâche prend la prochaine fois |
 | — | « Fait » passe à la prochaine fois | ✅ | n/a | ✅ | ✅ (compte, version, « Jamais » qui archive de nouveau, export) | ⏳ | — | menu, glissement et notification ; les rappels suivent |
 | — | Pastille « Tous les lundis », « Répéter… » | ✅ | n/a | ✅ | compile | ⏳ | — | Jamais, jour, semaine (jours), deux semaines, mois (jour précis), année |
+
+## P17 — Habitudes (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p17-habitudes-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Habitudes reconnues | n/a | ✅ | ✅ | ✅ (7 habitudes, quantités, hier, anglais ; projets, refus et faux amis) | ⏳ | — | sur l'iPhone, sans IA |
+| — | Séries, semaine, grille (migration v11) | ✅ | ✅ | ✅ | ✅ (série vivante jusqu'au lendemain, meilleure série, semaine, grille de 16 semaines, corbeille, anciennes notes, export) | ⏳ | — | une relecture complète des anciennes notes, une seule fois |
+| — | Cartes « Habitudes » et page d'une habitude | ✅ | n/a | ✅ | compile + captures | ⏳ | — | dans Notes › Suivis |
