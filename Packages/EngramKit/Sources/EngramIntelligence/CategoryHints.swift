@@ -39,6 +39,11 @@ public enum CategoryHints {
             .map(\.name)
     }
 
+    /// Les catégories vraiment proches du sens de la note (5 au plus), données en indice au modèle d'Apple.
+    public static func likely(text: String, categories: [String], embedder: any SentenceEmbedder) -> [String] {
+        Array(rank(text: text, categories: categories, embedder: embedder).prefix(5))
+    }
+
     static func cosine(_ lhs: [Double], _ rhs: [Double]) -> Double {
         guard lhs.count == rhs.count, !lhs.isEmpty else { return -2 }
         var dot = 0.0

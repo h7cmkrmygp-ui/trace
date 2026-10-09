@@ -157,8 +157,8 @@ struct CloudClientsTests {
         #expect(system.localizedCaseInsensitiveContains("euh"))
         #expect(system.localizedCaseInsensitiveContains("aujourd'hui"))
         #expect(system.contains("☐"))
-        #expect(system.contains("Finance › Assurances"))
-        #expect(CloudPrompt.version == "p9-cloud-v1")
+        #expect(system.localizedCaseInsensitiveContains("subcategory"))
+        #expect(CloudPrompt.version == "p31-cloud-v1")
     }
 
     /// P9 : les services renvoient aussi les personnes et les lieux de chaque élément ; le schéma les exige.

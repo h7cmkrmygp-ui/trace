@@ -70,10 +70,13 @@ public struct AnalysisContext: Sendable, Equatable {
     /// « Garder sur l'iPhone ».
     public var keepLocal: Bool
     public var capturedAt: Date
+    /// Ce qu'Engram a déjà reconnu dans la note (P31, `NoteFacts`), dit à l'IA avec elle.
+    public var facts: [String]
 
-    public init(keepLocal: Bool = false, capturedAt: Date = Date()) {
+    public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = []) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
+        self.facts = facts
     }
 }
 
