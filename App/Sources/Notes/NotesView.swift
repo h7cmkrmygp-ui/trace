@@ -30,6 +30,8 @@ enum NotesRoute: Hashable {
     case weekly
     /// P23 : les doublons possibles.
     case duplicates
+    /// P24 : « Ce jour-là ».
+    case onThisDay
 
     @MainActor @ViewBuilder var destination: some View {
         switch self {
@@ -51,6 +53,7 @@ enum NotesRoute: Hashable {
         case .habit(let habit): HabitDetailView(habit: habit)
         case .weekly: WeeklyReviewView()
         case .duplicates: DuplicatesView()
+        case .onThisDay: OnThisDayView()
         }
     }
 }
@@ -71,6 +74,8 @@ struct NotesView: View {
     @State private var lists: [ListStore.Summary] = []
     /// P23 : les doublons possibles à vérifier.
     @State private var duplicateCount = 0
+    /// P24 : les notes du même jour, il y a un mois, un an…
+    @State private var onThisDay: [OnThisDay.Group] = []
     /// P10 : « Poids 162,5 lb · Sommeil 7 h 30 » (vide sans mesure).
     @State private var trackersSummary = ""
     /// P17 : « Méditation 5 jours ».
@@ -182,7 +187,10 @@ struct NotesView: View {
                 }
             }
             // P23 : les doublons possibles, recomptés à chaque retour sur les Notes.
-            .onAppear { duplicateCount = (try? model.memories.duplicatePairs().count) ?? 0 }
+            .onAppear {
+                duplicateCount = (try? model.memories.duplicatePairs().count) ?? 0
+                onThisDay = model.onThisDay()
+            }
             // Résumé du matin ou widget « Aujourd'hui » touché : « À faire » s'ouvre.
             .task(id: model.openTodoRequest) {
                 guard model.consumeTodoRequest() else { return }
@@ -266,6 +274,13 @@ struct NotesView: View {
                 if unsortedCount > 0 {
                     NavigationLink(value: NotesRoute.list(title: "À classer", statuses: [.unsorted])) {
                         FolderCard(systemImage: "tray", title: "À classer", subtitle: Self.count(unsortedCount, "note", "à classer"))
+                    }
+                }
+                // Ce que tu notais le même jour, il y a un mois ou un an (P24).
+                if let group = onThisDay.first, let note = group.notes.first {
+                    NavigationLink(value: NotesRoute.onThisDay) {
+                        FolderCard(systemImage: "clock.arrow.circlepath", title: "Ce jour-là",
+                                   subtitle: group.label + " : " + note.title, tint: .teal)
                     }
                 }
                 // La même pensée dite deux fois (P23).

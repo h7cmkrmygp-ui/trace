@@ -259,3 +259,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 130. **Deux fois la même pensée** : dis « Appeler l'assurance pour la voiture », puis plus tard « Il faut appeler l'assurance pour la voiture ». Notes : la carte « Doublons possibles » apparaît.
 131. **Réunir** : touche la carte › « Réunir les deux notes » : une seule note reste, avec ses dossiers ; l'autre est dans la Corbeille.
 132. **Écarter** : « Ce n'est pas un doublon » : la paire ne revient plus.
+
+## Y. P24 — « Ce jour-là »
+
+133. **La carte** : un mois après une note, la carte « Ce jour-là » apparaît dans les Notes (« Il y a un mois : … ») ; la toucher montre les notes de ce jour-là.

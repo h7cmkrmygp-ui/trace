@@ -134,6 +134,14 @@ final class AppModel {
         return true
     }
 
+    /// « Ce jour-là » (P24) : les notes du même jour, il y a un mois, six mois, un an… (jamais une note privée).
+    func onThisDay(now: Date = Date()) -> [OnThisDay.Group] {
+        let notes = ((try? memories.recallDocuments()) ?? []).map {
+            OnThisDay.Note(id: $0.id, title: $0.title, capturedAt: $0.capturedAt, isPrivate: $0.isPrivate)
+        }
+        return OnThisDay.groups(notes, today: now, calendar: Self.recallCalendar)
+    }
+
     /// « Garde ta série » touché : les Suivis s'ouvrent (P21).
     func openTrackers() {
         selectedTab = .notes
