@@ -62,3 +62,8 @@ public enum ListSpeech {
         return first.lowercased() + text.dropFirst()
     }
 }
+
+extension ListSpeech {
+    /// P29 — « Liste de Costco : piles et papier de toilette » (le rappel en arrivant au magasin).
+    public static func waitingTitle(_ title: String, open: [String]) -> String { title }
+}
