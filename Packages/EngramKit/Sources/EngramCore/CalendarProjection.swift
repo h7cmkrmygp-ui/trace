@@ -40,11 +40,38 @@ public enum CalendarProjection {
         public var id: UUID { personID }
     }
 
+    /// Les fois à venir dans [début, fin[, après l'échéance actuelle (déjà montrée parmi les échéances). Au plus 62 par
+    /// tâche (une tâche de chaque jour, sur un mois).
     public static func occurrences(_ items: [Recurring], from start: Date, to end: Date, calendar: Calendar) -> [Occurrence] {
-        []
+        var found: [Occurrence] = []
+        for item in items {
+            var cursor = max(item.due, start.addingTimeInterval(-1))
+            var count = 0
+            while count < 62,
+                  let next = Recurrence.next(after: cursor, rule: item.rule, anchor: item.anchor, calendar: calendar),
+                  next < end {
+                if next >= start {
+                    found.append(Occurrence(memoryID: item.memoryID, title: item.title, date: next, hasTime: item.hasTime))
+                }
+                cursor = next
+                count += 1
+            }
+        }
+        return found.sorted { $0.date < $1.date }
     }
 
+    /// Les fêtes qui tombent dans [début, fin[, avec l'âge fêté si l'année est connue.
     public static func birthdays(_ birthdays: [Birthday], from start: Date, to end: Date, calendar: Calendar) -> [BirthdayDay] {
-        []
+        birthdays.compactMap { birthday in
+            guard let date = BirthdayPlanner.next(month: birthday.month, day: birthday.day, from: start, calendar: calendar),
+                  date < end else { return nil }
+            let age = BirthdayPlanner.age(turningOn: date, born: birthday.year, calendar: calendar)
+            let name = BirthdayPlanner.inSentence(birthday.name)
+            let first = MeasurementParser.normalized(String(name.prefix(1)))
+            let feast = "aeiouyh".contains(first) && !first.isEmpty ? "Fête d'\(name)" : "Fête de \(name)"
+            return BirthdayDay(personID: birthday.personID, date: date, age: age,
+                               title: age.map { "\(feast) (\($0) ans)" } ?? feast)
+        }
+        .sorted { $0.date < $1.date }
     }
 }

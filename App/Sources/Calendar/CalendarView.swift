@@ -1,5 +1,6 @@
 import EngramCalendar
 import EngramCore
+import EngramStore
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,26 @@ struct CalendarView: View {
     @State private var dueItems: [Memory] = []
     @State private var events: [CalendarEventInfo] = []
     @State private var access: CalendarAccess = .notDetermined
+    /// P22 : les tâches qui reviennent et les fêtes.
+    @State private var recurring: [CalendarProjection.Recurring] = []
+    @State private var birthdays: [Birthday] = []
+
+    /// Les prochaines fois des tâches qui reviennent, dans le mois affiché.
+    private var occurrences: [CalendarProjection.Occurrence] {
+        CalendarProjection.occurrences(recurring, from: monthRange.start, to: monthRange.end, calendar: calendar)
+    }
+
+    private var monthBirthdays: [CalendarProjection.BirthdayDay] {
+        CalendarProjection.birthdays(birthdays, from: monthRange.start, to: monthRange.end, calendar: calendar)
+    }
+
+    private var dayOccurrences: [CalendarProjection.Occurrence] {
+        occurrences.filter { calendar.isDate($0.date, inSameDayAs: selectedDay) }
+    }
+
+    private var dayBirthdays: [CalendarProjection.BirthdayDay] {
+        monthBirthdays.filter { calendar.isDate($0.date, inSameDayAs: selectedDay) }
+    }
 
     static var calendar: Calendar {
         var calendar = Calendar.current
@@ -27,7 +48,8 @@ struct CalendarView: View {
     }
 
     private var markedDays: Set<Date> {
-        Set(dueItems.compactMap { $0.dueAt.map { calendar.startOfDay(for: $0) } } + events.flatMap(days(of:)))
+        Set(dueItems.compactMap { $0.dueAt.map { calendar.startOfDay(for: $0) } } + events.flatMap(days(of:))
+            + occurrences.map { calendar.startOfDay(for: $0.date) } + monthBirthdays.map { calendar.startOfDay(for: $0.date) })
     }
 
     private var dayItems: [Memory] {
@@ -65,8 +87,18 @@ struct CalendarView: View {
                 }
                 .listRowSeparator(.hidden)
                 Section {
-                    if dayItems.isEmpty && dayEvents.isEmpty {
+                    if dayItems.isEmpty && dayEvents.isEmpty && dayOccurrences.isEmpty && dayBirthdays.isEmpty {
                         Text("Rien de prévu.").foregroundStyle(.secondary)
+                    }
+                    // Les fêtes (P20) : toucher ouvre la page de la personne.
+                    ForEach(dayBirthdays) { birthday in
+                        NavigationLink(value: NotesRoute.entity(birthday.personID)) {
+                            Label {
+                                Text(birthday.title)
+                            } icon: {
+                                Image(systemName: "gift.fill").foregroundStyle(.pink)
+                            }
+                        }
                     }
                     ForEach(dayItems) { memory in
                         NavigationLink(value: memory.id) { DueRow(memory: memory) }
@@ -76,6 +108,23 @@ struct CalendarView: View {
                                 }
                                 .tint(.gray)
                             }
+                    }
+                    // Les prochaines fois d'une tâche qui revient (P16) : prévues, pas encore à cocher.
+                    ForEach(dayOccurrences) { occurrence in
+                        NavigationLink(value: occurrence.memoryID) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(occurrence.title)
+                                    Text(occurrence.hasTime
+                                         ? "Revient à \(occurrence.date.formatted(.dateTime.hour().minute()))"
+                                         : "Revient ce jour-là")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "repeat").foregroundStyle(.purple)
+                            }
+                        }
                     }
                     ForEach(dayEvents) { EventRow(event: $0) }
                 } header: {
@@ -123,6 +172,20 @@ struct CalendarView: View {
             .onAppear {
                 access = model.calendarService.access
                 loadEvents()
+            }
+            .task {
+                do {
+                    for try await list in model.memories.recurringTasksStream() { recurring = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
+            }
+            .task {
+                do {
+                    for try await list in model.entities.birthdaysStream() { birthdays = list }
+                } catch {
+                    model.errorMessage = AppModel.describe(error)
+                }
             }
             .task(id: month) {
                 access = model.calendarService.access

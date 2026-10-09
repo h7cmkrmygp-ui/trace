@@ -248,3 +248,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 125. **À la main** : page Méditation › « Objectif » : change le nombre de fois, ou « Retirer l'objectif ».
 126. **Le soir** : après deux jours de méditation d'affilée, si tu n'as pas encore médité aujourd'hui, une notification « Garde ta série » arrive à 20 h. Dis « j'ai médité » avant : elle ne viendra pas.
 127. **Réglage** : Réglages › Rappels › « Garde ta série (habitudes, 20 h) ».
+
+## W. P22 — Calendrier plus complet
+
+128. **Tâche qui revient** : avec « Sortir les poubelles tous les lundis », le Calendrier marque chaque lundi du mois ; touche un lundi à venir : « Revient ce jour-là ».
+129. **Fêtes** : avec la fête de Julie le 12 mars, mars marque le 12 : « Fête de Julie ».

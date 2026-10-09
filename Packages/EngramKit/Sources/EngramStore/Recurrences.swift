@@ -106,7 +106,23 @@ extension MemoryStore {
     }
 }
 
-/// P22 — les tâches qui reviennent, pour le Calendrier.
+/// P22 — les tâches qui reviennent, pour le Calendrier : vivantes et datées, la plus proche d'abord.
 extension MemoryStore {
-    public func recurringTasks() throws -> [CalendarProjection.Recurring] { [] }
+    public func recurringTasks() throws -> [CalendarProjection.Recurring] {
+        try database.writer.read { db in try Self.recurringTasks(db) }
+    }
+
+    public func recurringTasksStream() -> AsyncThrowingStream<[CalendarProjection.Recurring], any Error> {
+        database.stream { db in try Self.recurringTasks(db) }
+    }
+
+    static func recurringTasks(_ db: Database) throws -> [CalendarProjection.Recurring] {
+        try MemoryRecurrence.fetchAll(db).compactMap { recurrence -> CalendarProjection.Recurring? in
+            guard let memory = try Memory.fetchOne(db, key: recurrence.memoryID),
+                  memory.status == .active || memory.status == .unsorted, let due = memory.dueAt else { return nil }
+            return CalendarProjection.Recurring(memoryID: memory.id, title: memory.title, rule: recurrence.rule,
+                                                anchor: recurrence.anchorAt, due: due, hasTime: memory.dueHasTime)
+        }
+        .sorted { $0.due < $1.due }
+    }
 }

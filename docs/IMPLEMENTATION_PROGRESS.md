@@ -343,3 +343,12 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p21-garde-ta-serie-design.md`
 |---|---|---|---|---|---|---|---|---|
 | — | Objectif d'habitude par semaine (migration v13) | ✅ | ✅ | ✅ | ✅ (dit de 5 façons, pièges, le plus récent l'emporte, fixé ou retiré à la main, export) | ⏳ | — | « 3/5 cette semaine » sur la carte |
 | — | « Garde ta série » à 20 h | n/a | ✅ | ✅ | ✅ (série vivante pas faite, déjà faite, trop tard, une journée, plusieurs habitudes) | ⏳ | — | réglage dans Rappels ; sans nom si verrouillé |
+
+## P22 — Calendrier plus complet (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p22-calendrier-complet-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Prochaines fois des tâches qui reviennent | ✅ | ✅ | ✅ | ✅ (après l'échéance, jamais avant, mois suivant, tâche jetée) | ⏳ | — | dans le Calendrier |
+| — | Fêtes dans le Calendrier | ✅ | ✅ | ✅ | ✅ (âge, 29 février) | ⏳ | — | toucher ouvre la personne |
