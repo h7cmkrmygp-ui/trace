@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var remindersAllowed = true
     @State private var morningOn = true
     @State private var weeklyOn = true
+    @State private var resurfacingOn = true
 
     var body: some View {
         Form {
@@ -76,6 +77,12 @@ struct SettingsView: View {
                             model.perform { try model.settings.set(value, for: .digestWeekly) }
                             Task { await model.syncReminders() }
                         }
+                    Toggle("Te souviens-tu ? (une vieille idée à 19 h)", isOn: $resurfacingOn)
+                        .tint(.green)
+                        .onChange(of: resurfacingOn) { _, value in
+                            model.perform { try model.settings.set(value, for: .resurfacing) }
+                            Task { await model.syncReminders() }
+                        }
                 }
             } header: {
                 Text("Rappels")
@@ -118,6 +125,7 @@ struct SettingsView: View {
             remindersOn = model.remindersEnabled
             morningOn = model.morningDigestEnabled
             weeklyOn = model.weeklyDigestEnabled
+            resurfacingOn = model.resurfacingEnabled
             let allowed = await model.reminders.isAllowed()
             let undecided = await model.reminders.isUndecided()
             remindersAllowed = allowed || undecided

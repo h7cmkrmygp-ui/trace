@@ -39,6 +39,8 @@ public struct SettingStore: Sendable {
         /// Moment (ISO 8601) de la dernière relecture des mesures (P10). Rangé dans la base : une sauvegarde restaurée
         /// sans lui fait tout relire.
         case measurementsScannedAt = "trackers.scannedAt"
+        /// « 1 » (défaut) : « Te souviens-tu ? », une vieille idée chaque soir à 19 h (P13).
+        case resurfacing = "reminders.resurfacing"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }

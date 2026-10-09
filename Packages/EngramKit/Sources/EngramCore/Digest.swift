@@ -71,8 +71,18 @@ public enum DigestPlanner {
                                              matchingPolicy: .nextTime) else { return nil }
         let notes = stats.notes == 1 ? "1 note" : "\(stats.notes) notes"
         let done = stats.done == 1 ? "1 chose faite" : "\(stats.done) choses faites"
+        var body = "\(notes) · \(done) · \(stats.open) à faire"
+        // P13 : les personnes de la semaine et l'évolution des suivis.
+        if !stats.people.isEmpty { body += "\nAvec " + joined(stats.people) }
+        if !stats.highlights.isEmpty { body += "\n" + stats.highlights.joined(separator: " · ") }
         return PlannedReminder(identifier: weeklyIdentifier, memoryID: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
-                               date: moment, title: "Ta semaine", body: "\(notes) · \(done) · \(stats.open) à faire")
+                               date: moment, title: "Ta semaine", body: body)
+    }
+
+    /// « Julie », « Julie et Marc », « Julie, Marc et Léa ».
+    static func joined(_ names: [String]) -> String {
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " et " + names[names.count - 1]
     }
 
     static func isOpen(_ item: ReminderPlanner.Item) -> Bool {

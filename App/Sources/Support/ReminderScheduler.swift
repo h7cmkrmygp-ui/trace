@@ -9,6 +9,8 @@ import UserNotifications
 final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
     enum Kind: String {
         case reminder, digest, weekly
+        /// « Te souviens-tu ? » (P13) : toucher ouvre la vieille idée.
+        case resurface
 
         var category: String { "engram.\(rawValue)" }
     }
@@ -40,6 +42,7 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationCategory(identifier: Kind.reminder.category, actions: [done, later, tomorrow], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.digest.category, actions: [], intentIdentifiers: []),
             UNNotificationCategory(identifier: Kind.weekly.category, actions: [], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Kind.resurface.category, actions: [], intentIdentifiers: []),
         ])
     }
 
@@ -74,7 +77,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func removeAll() async {
-        let prefixes = [ReminderPlanner.identifierPrefix, DigestPlanner.morningPrefix, DigestPlanner.weeklyIdentifier]
+        let prefixes = [ReminderPlanner.identifierPrefix, DigestPlanner.morningPrefix, DigestPlanner.weeklyIdentifier,
+                        Resurfacing.identifier]
         let ours = await center.pendingNotificationRequests().map(\.identifier)
             .filter { identifier in prefixes.contains { identifier.hasPrefix($0) } }
         center.removePendingNotificationRequests(withIdentifiers: ours)
@@ -102,6 +106,8 @@ final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate {
         switch kind {
         case .digest: onOpenTodo?()
         case .weekly: onOpenWeekly?()
+        case .resurface:
+            if let memoryID, action != UNNotificationDismissActionIdentifier { onOpen?(memoryID) }
         case .reminder:
             guard let memoryID else { return }
             if action == UNNotificationDefaultActionIdentifier {

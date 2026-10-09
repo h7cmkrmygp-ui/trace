@@ -184,3 +184,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 89. **Photo** : écran Enregistrer › bouton photo (en haut à gauche) › « Prendre une photo » d'un papier ou d'une étiquette (iOS demande l'accès à l'appareil photo une fois). Le texte lu apparaît dans « Texte de la photo » : corrige-le au besoin, puis « Classer ».
 90. **Depuis tes photos** : « Choisir une photo » (une capture d'écran, un reçu) : même chose. La photo n'est pas gardée, seulement son texte ; rien n'est envoyé pour la lire.
+
+## N. P13 — « Te souviens-tu ? » et résumé du dimanche
+
+91. **Le soir** : si tu as des idées de plus de 30 jours, une notification « Te souviens-tu ? » arrive à 19 h avec le titre d'une vieille idée ; la toucher ouvre la note. Le lendemain, c'est une autre idée. Jamais une tâche, jamais une note gardée sur l'iPhone.
+92. **Réglage** : Réglages › Rappels › « Te souviens-tu ? (une vieille idée à 19 h) » l'arrête ou le remet.
+93. **Le dimanche à 18 h** : « Ta semaine » nomme aussi les personnes de la semaine (« Avec … ») et l'évolution de ton poids et de ton sommeil, si tu en as noté.

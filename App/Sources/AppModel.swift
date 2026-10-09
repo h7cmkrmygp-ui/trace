@@ -211,6 +211,40 @@ final class AppModel {
     var morningDigestEnabled: Bool { (try? settings.bool(.digestMorning, default: true)) ?? true }
     var weeklyDigestEnabled: Bool { (try? settings.bool(.digestWeekly, default: true)) ?? true }
 
+    /// « Te souviens-tu ? » (P13) : une vieille idée chaque soir à 19 h.
+    var resurfacingEnabled: Bool { (try? settings.bool(.resurfacing, default: true)) ?? true }
+
+    /// Les idées qui peuvent revenir le soir : notes vivantes (la règle des 30 jours et des notes privées est dans
+    /// `Resurfacing`).
+    func resurfacingCandidates() -> [Resurfacing.Candidate] {
+        ((try? memories.recallDocuments()) ?? [])
+            .filter { $0.status == .active || $0.status == .unsorted }
+            .map { Resurfacing.Candidate(id: $0.id, title: $0.title, kind: $0.kind, capturedAt: $0.capturedAt, isPrivate: $0.isPrivate) }
+    }
+
+    /// Le résumé du dimanche (P13) : les personnes nommées cette semaine (jamais si Engram est verrouillé) et
+    /// l'évolution du poids et du sommeil.
+    func weekDetails(from start: Date, to end: Date) -> (people: [String], highlights: [String]) {
+        let people = lock.isEnabled ? [] : ((try? entities.summaries(kind: .person)) ?? [])
+            .filter { ($0.lastMentionedAt ?? .distantPast) >= start }
+            .prefix(3)
+            .map(\.entity.name)
+        var highlights: [String] = []
+        let weightUnit = UserDefaults.standard.string(forKey: "engram.weightUnit") ?? "lb"
+        let week = { (points: [MetricPoint]) in points.filter { $0.date >= start && $0.date < end } }
+        if let weights = try? week(measurements.points(metric: .weight, weightUnit: weightUnit)), weights.count >= 2,
+           let first = weights.first, let last = weights.last {
+            let change = ((last.value - first.value) * 10).rounded() / 10
+            let sign = change > 0 ? "+" : (change < 0 ? "−" : "±")
+            highlights.append("Poids \(sign)\(MetricUnits.decimal(abs(change))) \(weightUnit)")
+        }
+        if let nights = try? week(measurements.points(metric: .sleep, weightUnit: weightUnit)), !nights.isEmpty {
+            let average = nights.map(\.value).reduce(0, +) / Double(nights.count)
+            highlights.append("Sommeil \(MetricUnits.format(average, second: nil, metric: .sleep, unit: "h")) en moyenne")
+        }
+        return (Array(people), highlights)
+    }
+
     /// Rappels, résumés du matin et de la semaine, pastille de l'icône et widgets : tout est recalculé ensemble.
     func syncReminders(_ items: [ReminderPlanner.Item]? = nil) async {
         var current = items ?? ((try? memories.reminderItems()) ?? [])
@@ -236,9 +270,19 @@ final class AppModel {
             requests += DigestPlanner.mornings(current, now: now, calendar: calendar).map { (reminder: $0, kind: .digest) }
         }
         if weeklyDigestEnabled, let week = calendar.dateInterval(of: .weekOfYear, for: now),
-           let stats = try? memories.weekStats(from: week.start, to: week.end),
-           let weekly = DigestPlanner.weekly(stats, now: now, calendar: calendar) {
-            requests.append((reminder: weekly, kind: .weekly))
+           let counts = try? memories.weekStats(from: week.start, to: week.end) {
+            let details = weekDetails(from: week.start, to: week.end)
+            let stats = WeekStats(notes: counts.notes, done: counts.done, open: counts.open, people: details.people,
+                                  highlights: details.highlights)
+            if let weekly = DigestPlanner.weekly(stats, now: now, calendar: calendar) {
+                requests.append((reminder: weekly, kind: .weekly))
+            }
+        }
+        // « Te souviens-tu ? » : sans titre si Engram est verrouillé.
+        if resurfacingEnabled,
+           let evening = Resurfacing.reminder(from: resurfacingCandidates(), now: now, calendar: calendar,
+                                              hideTitle: lock.isEnabled) {
+            requests.append((reminder: evening, kind: .resurface))
         }
         await reminders.apply(requests, calendar: calendar)
         await reminders.setBadge(DigestPlanner.badgeCount(current, now: now, calendar: calendar))

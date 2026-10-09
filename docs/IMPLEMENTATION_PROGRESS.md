@@ -254,3 +254,10 @@ Tests automatiques après la P10 : **393** (Core 142, Store 143, Pipeline 13, In
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Texte d'une photo, lu sur l'iPhone | ✅ | n/a | ✅ | ✅ (mise au propre : phrases recollées, césures, listes, bruit) | ⏳ | — | Vision d'Apple, français et anglais ; appareil photo ou photothèque ; vérifié avant le classement ; la photo n'est pas gardée |
+
+## P13 — « Te souviens-tu ? » et résumé du dimanche (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Te souviens-tu ? » à 19 h | ✅ | n/a | ✅ | ✅ (19 h, demain après 19 h, une différente chaque soir, jamais une tâche ni une note privée) | ⏳ | — | idées de plus de 30 jours ; toucher ouvre la note ; sans titre si Engram est verrouillé ; réglage dans Rappels |
+| — | Résumé du dimanche plus riche | n/a | n/a | ✅ | ✅ (personnes, évolution des suivis) | ⏳ | — | « Avec Julie et Marc », « Poids −1,2 lb · Sommeil 7 h 10 en moyenne » ; aucun nom si Engram est verrouillé |
