@@ -230,10 +230,13 @@ public enum PlaceReminderPlanner {
         public let placeName: String
         public let event: PlaceEvent
         public let location: Coordinates?
+        /// Les autres succursales trouvées toutes seules (P30) : n'importe laquelle prévient.
+        public let branches: [Coordinates]
         public let createdAt: Date
 
         public init(memoryID: UUID, title: String, status: MemoryStatus, isPrivate: Bool, placeID: UUID, placeName: String,
-                    event: PlaceEvent, location: Coordinates?, createdAt: Date) {
+                    event: PlaceEvent, location: Coordinates?, branches: [Coordinates] = [], createdAt: Date) {
+            self.branches = branches
             self.memoryID = memoryID
             self.title = title
             self.status = status
