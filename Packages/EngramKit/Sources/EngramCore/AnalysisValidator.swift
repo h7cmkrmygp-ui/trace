@@ -5,6 +5,8 @@ public enum AnalysisValidator {
     public static let maxTags = 3
     public static let maxTagLength = 30
     public static let maxCategoryLength = 40
+    /// Personnes, et lieux, gardés au plus par pensée.
+    public static let maxNames = 4
 
     /// Pensées valides, dans l'ordre. Lève `invalidOutput` s'il n'en reste aucune.
     public static func validate(_ analysis: ThoughtAnalysis, against text: String) throws -> [ValidThought] {
@@ -54,7 +56,10 @@ public enum AnalysisValidator {
                 .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) },
             categoryDescription: thought.categoryDescription
                 .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
-                .flatMap { $0.isEmpty ? nil : $0 })
+                .flatMap { $0.isEmpty ? nil : $0 },
+            // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus).
+            people: EntityName.clean(thought.people, in: text, limit: maxNames),
+            places: EntityName.clean(thought.places, in: text, limit: maxNames))
     }
 
     /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Corolla » dans un seul champ :

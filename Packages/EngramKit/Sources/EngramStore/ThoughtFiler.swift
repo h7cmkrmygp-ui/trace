@@ -40,6 +40,7 @@ public struct ThoughtFiler: Sendable {
         let now = dates.now()
         let memoryStore = MemoryStore(database: database, dates: dates)
         let categoryStore = CategoryStore(database: database, dates: dates)
+        let entityStore = EntityStore(database: database, dates: dates)
         return try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             // Déjà classée (traitement en double) : rien ne change.
@@ -87,6 +88,8 @@ public struct ThoughtFiler: Sendable {
                     guard let tag = try? categoryStore.upsertTag(db, name: name, origin: .ai, now: now) else { continue }
                     _ = try categoryStore.tag(db, memoryID: memoryID, tagID: tag.id, origin: .ai, confidence: nil, now: now)
                 }
+                // Les personnes et les lieux de la pensée (P9).
+                try entityStore.linkNames(db, people: thought.people, places: thought.places, to: memoryID, now: now)
             }
 
             if kept.isEmpty {

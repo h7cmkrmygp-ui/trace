@@ -19,6 +19,7 @@ protocol AssignmentRow: FetchableRecord, PersistableRecord {
 
 extension CategoryAssignment: AssignmentRow {}
 extension TagAssignment: AssignmentRow {}
+extension EntityAssignment: AssignmentRow {}
 
 /// Règle « le propriétaire décide » : l'IA n'écrase jamais un choix du propriétaire.
 enum AssignmentRules {

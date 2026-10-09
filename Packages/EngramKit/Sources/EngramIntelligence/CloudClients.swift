@@ -57,7 +57,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p8-cloud-v1"
+    public static let version = "p9-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -100,6 +100,12 @@ public enum CloudPrompt {
         - dates: every date or time expression copied verbatim from the note, with its role: reminder (when to remind the owner), \
         deadline, event (when something happens), other. An item that follows another one in time (« pis après », \
         « ensuite ») also gets the date expression of that earlier item.
+        - people: the people this item involves, as named in the note: first names or names (« Julie », « Marc Tremblay »), \
+        or words for a specific person in the owner's life (« maman », « mon frère », « mon manager »). Never « je », \
+        « moi », « on » or « quelqu'un ». Empty when nobody is named.
+        - places: the specific places this item involves, as named in the note (« Costco », « le gym », « le bureau », \
+        « Québec », « chez le dentiste »). Never a vague place (« dehors », « quelque part ») or the owner's own home. \
+        Empty when none.
 
         Never invent facts, dates, names or amounts that are not in the note.
         """
@@ -141,6 +147,8 @@ enum CloudSchema {
             ("subcategory", string(style)),
             ("tags", array(style, of: string(style))),
             ("dates", array(style, of: date)),
+            ("people", array(style, of: string(style))),
+            ("places", array(style, of: string(style))),
         ])
         return object(style, [("notes", array(style, of: note))])
     }
@@ -184,6 +192,8 @@ public enum CloudDecoder {
         let subcategory: String?
         let tags: [String]?
         let dates: [Mention]?
+        let people: [String]?
+        let places: [String]?
     }
 
     struct Mention: Decodable {
@@ -222,7 +232,8 @@ public enum CloudDecoder {
                                kind: kind,
                                tags: Array((note.tags ?? []).prefix(3)), mentionedDates: dates,
                                category: clean(note.category) ?? "", subcategory: clean(note.subcategory),
-                               categoryDescription: clean(note.categoryDescription))
+                               categoryDescription: clean(note.categoryDescription),
+                               people: note.people ?? [], places: note.places ?? [])
     }
 }
 

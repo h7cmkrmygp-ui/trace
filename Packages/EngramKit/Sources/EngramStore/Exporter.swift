@@ -16,9 +16,15 @@ public struct ExportDocument: Codable, Sendable {
     public var tagAssignments: [TagAssignment]
     /// Événements du calendrier de l'iPhone créés par Engram (identifiants seulement).
     public var calendarLinks: [CalendarLink]
+    /// Personnes et lieux (P9), leurs anciens noms et leurs liens avec les notes.
+    public var entities: [EngramEntity]
+    public var entityAliases: [EntityAlias]
+    public var entityAssignments: [EntityAssignment]
 
     enum CodingKeys: String, CodingKey {
-        case app, sources, memories, categories, tags
+        case app, sources, memories, categories, tags, entities
+        case entityAliases = "entity_aliases"
+        case entityAssignments = "entity_assignments"
         case formatVersion = "format_version"
         case exportedAt = "exported_at"
         case memoryVersions = "memory_versions"
@@ -61,7 +67,10 @@ public struct Exporter: Sendable {
                 tags: try EngramTag.order(Column("name")).fetchAll(db),
                 categoryAssignments: try CategoryAssignment.fetchAll(db),
                 tagAssignments: try TagAssignment.fetchAll(db),
-                calendarLinks: try CalendarLink.fetchAll(db))
+                calendarLinks: try CalendarLink.fetchAll(db),
+                entities: try EngramEntity.order(Column("kind"), Column("name")).fetchAll(db),
+                entityAliases: try EntityAlias.fetchAll(db),
+                entityAssignments: try EntityAssignment.fetchAll(db))
         }
         let fileManager = FileManager.default
         let folder = parentDirectory.appendingPathComponent("Engram-Export-\(Self.stamp(exportedAt))", isDirectory: true)

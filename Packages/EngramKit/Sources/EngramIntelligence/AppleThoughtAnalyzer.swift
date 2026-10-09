@@ -30,6 +30,10 @@ struct GeneratedThought {
     var categoryDescription: String
     @Guide(description: "Precise, lasting topic inside the category, in French, 1 to 3 words (Finance › Assurances, Travail › Horaire, Santé › Poids, Sport › Gym, Maison › Entretien, Automobile › Corolla). Reuse an existing subcategory exactly when one fits. Empty only when no lasting topic fits.")
     var subcategory: String
+    @Guide(description: "People this item involves, copied from the note: first names or names (« Julie »), or words for a specific person in the owner's life (« maman », « mon manager »). Never « je », « moi » or « quelqu'un ». Empty if nobody is named.", .maximumCount(4))
+    var people: [String]
+    @Guide(description: "Specific places this item involves, copied from the note (« Costco », « le gym », « le bureau »). Never a vague place. Empty if none.", .maximumCount(4))
+    var places: [String]
 }
 
 @Generable
@@ -40,7 +44,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p8-v1"
+    static let version = "p9-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -65,6 +69,7 @@ enum AnalysisPrompt {
         - categoryDescription: only when the category is new, one short French sentence describing it.
         - subcategory: a precise, lasting topic inside the category that will gather several notes; reuse an existing one.
         - mentionedDates: an item that follows another one in time (« pis après ») also gets that item's date expression.
+        - people and places: the named people and the specific places of the item, copied from the note; never « je » or « moi ».
         Never invent facts, dates or names that are not in the note.
         """
 
@@ -187,7 +192,9 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             mentionedDates: generated.mentionedDates,
             category: generated.category,
             subcategory: clean(generated.subcategory),
-            categoryDescription: clean(generated.categoryDescription))
+            categoryDescription: clean(generated.categoryDescription),
+            people: generated.people,
+            places: generated.places)
     }
 
     static func kind(_ generated: GeneratedKind) -> MemoryKind {

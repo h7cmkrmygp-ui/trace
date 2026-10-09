@@ -18,8 +18,45 @@ enum Schema {
         migrator.registerMigration("v4_owner_corrections") { db in
             try db.execute(sql: v4OwnerCorrections)
         }
+        migrator.registerMigration("v5_people_places") { db in
+            try db.execute(sql: v5PeoplePlaces)
+            try createChangeLogTriggers(db, for: [("entity", "id"), ("memory_entity", "memory_id")])
+        }
         return migrator
     }
+
+    /// v5 (P9) : les personnes et les lieux, leurs anciens noms, et leurs liens avec les notes.
+    static let v5PeoplePlaces = """
+        CREATE TABLE entity (
+          id BLOB PRIMARY KEY NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('person','place')),
+          name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+          normalized_name TEXT NOT NULL CHECK (length(normalized_name) > 0),
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','hidden')),
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL,
+          UNIQUE (kind, normalized_name)
+        );
+        CREATE TABLE entity_alias (
+          kind TEXT NOT NULL CHECK (kind IN ('person','place')),
+          normalized_name TEXT NOT NULL CHECK (length(normalized_name) > 0),
+          entity_id BLOB NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          PRIMARY KEY (kind, normalized_name)
+        );
+        CREATE INDEX entity_alias_entity ON entity_alias(entity_id);
+        CREATE TABLE memory_entity (
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          entity_id BLOB NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+          origin TEXT NOT NULL CHECK (origin IN ('ai','user')),
+          confirmed INTEGER NOT NULL DEFAULT 0 CHECK (confirmed IN (0,1)),
+          rejected INTEGER NOT NULL DEFAULT 0 CHECK (rejected IN (0,1)),
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL,
+          PRIMARY KEY (memory_id, entity_id),
+          CHECK (NOT (confirmed = 1 AND rejected = 1))
+        );
+        CREATE INDEX memory_entity_entity ON memory_entity(entity_id);
+        """
 
     /// v4 (P4) : distinguer une correction du propriétaire d'une retranscription automatique.
     static let v4OwnerCorrections = """
@@ -58,8 +95,8 @@ enum Schema {
         ("memory_category", "memory_id"), ("memory_tag", "memory_id"),
     ]
 
-    static func createChangeLogTriggers(_ db: Database) throws {
-        for (table, idColumn) in trackedTables {
+    static func createChangeLogTriggers(_ db: Database, for tables: [(table: String, idColumn: String)] = trackedTables) throws {
+        for (table, idColumn) in tables {
             for (op, row) in [("insert", "new"), ("update", "new"), ("delete", "old")] {
                 try db.execute(sql: """
                     CREATE TRIGGER \(table)_log_\(op) AFTER \(op.uppercased()) ON \(table) BEGIN

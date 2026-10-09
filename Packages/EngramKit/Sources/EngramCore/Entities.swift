@@ -110,21 +110,69 @@ public protocol EntityRecognizer: Sendable {
 public enum EntityName {
     public static let maxLength = 40
 
+    /// Petits mots du début qui ne changent pas la personne ou le lieu (« au gym », « chez le dentiste »).
+    static let articles: Set<String> = ["le", "la", "les", "l", "un", "une", "au", "aux", "a", "chez", "du", "de", "des", "d"]
+    /// Possessifs : enlevés de la clé ; gardés dans le nom affiché d'une personne (« Mon manager »).
+    static let possessives: Set<String> = [
+        "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses", "notre", "nos", "votre", "vos", "leur", "leurs",
+    ]
+    /// Jamais une personne ni un lieu.
+    static let pronouns: Set<String> = [
+        "je", "j", "moi", "me", "m", "tu", "toi", "te", "il", "elle", "lui", "on", "nous", "vous", "ils", "elles", "eux",
+        "quelqu un", "quelqu une", "personne", "chacun", "chacune", "tout le monde", "gens", "monde", "dehors",
+        "quelque part", "ici", "la bas", "partout",
+    ]
+
+    /// « Mon manager », « le manager » → « manager » ; « au gym » → « gym » ; « L'Épicerie » → « epicerie ».
     public static func key(_ raw: String) -> String {
-        ""
+        var words = TextNormalizer.words(of: raw)
+        while words.count > 1, let first = words.first, articles.contains(first) || possessives.contains(first) {
+            words.removeFirst()
+        }
+        return words.joined(separator: " ")
     }
 
+    /// « le gym » → « Gym », « chez le dentiste » → « Dentiste » ; une personne garde son possessif (« Mon manager »).
     public static func display(_ raw: String, kind: EntityKind) -> String {
-        raw
+        var text = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let removable = kind == .place ? articles.union(possessives) : articles
+        while true {
+            let lower = text.lowercased()
+            // Élision collée au nom : « l'épicerie », « d'Alma ».
+            if let elision = ["l'", "l’", "d'", "d’"].first(where: { lower.hasPrefix($0) }), text.count > elision.count {
+                text = String(text.dropFirst(elision.count))
+                continue
+            }
+            guard let space = text.firstIndex(of: " ") else { break }
+            let first = String(text[..<space]).folding(options: [.caseInsensitive, .diacriticInsensitive],
+                                                       locale: Locale(identifier: "fr_CA")).lowercased()
+            guard removable.contains(first) else { break }
+            text = String(text[text.index(after: space)...])
+        }
+        guard let first = text.first else { return text }
+        return first.uppercased() + text.dropFirst()
     }
 
     /// Un nom utilisable : pas vide, pas trop long, pas un pronom (« je », « moi », « quelqu'un »).
     public static func isAcceptable(_ raw: String) -> Bool {
-        true
+        let collapsed = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !collapsed.isEmpty, collapsed.count <= maxLength else { return false }
+        let normalized = Self.key(collapsed)
+        return normalized.count >= 2 && !pronouns.contains(normalized)
     }
 
     /// Les noms proposés qui figurent dans le texte, une fois chacun, au plus `limit`.
     public static func clean(_ names: [String], in text: String, limit: Int) -> [String] {
-        names
+        var seen = Set<String>()
+        var kept: [String] = []
+        for raw in names {
+            guard kept.count < limit else { break }
+            let name = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            guard isAcceptable(name), TextNormalizer.containsPhrase(name, in: text), seen.insert(Self.key(name)).inserted else {
+                continue
+            }
+            kept.append(name)
+        }
+        return kept
     }
 }

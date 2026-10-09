@@ -137,6 +137,14 @@ extension MemoryStore {
                 let memoryID: UUID = row["memory_id"]
                 tags[memoryID, default: []].append(row["name"])
             }
+            // Les personnes et les lieux d'une note comptent comme ses mots forts (« qu'est-ce que je dois dire à Julie ? »).
+            for row in try Row.fetchAll(db, sql: """
+                SELECT me.memory_id AS memory_id, e.name AS name FROM memory_entity me
+                JOIN entity e ON e.id = me.entity_id WHERE me.rejected = 0 AND e.status = 'active'
+                """) {
+                let memoryID: UUID = row["memory_id"]
+                tags[memoryID, default: []].append(row["name"])
+            }
             // Privées : « Garder sur l'iPhone », ou jugées secrètes (être classée sur l'iPhone faute de service ne compte pas).
             let privateSources = Set(try UUID.fetchAll(db, sql: """
                 SELECT id FROM source

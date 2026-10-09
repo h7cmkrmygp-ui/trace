@@ -40,3 +40,20 @@ extension Origin: DatabaseValueConvertible {}
 extension AssignmentOrigin: DatabaseValueConvertible {}
 extension ChangeActor: DatabaseValueConvertible {}
 extension CategoryStatus: DatabaseValueConvertible {}
+
+// P9 — personnes et lieux.
+
+extension EngramEntity: FetchableRecord, PersistableRecord {
+    public static var databaseTableName: String { "entity" }
+}
+
+extension EntityAlias: FetchableRecord, PersistableRecord {
+    public static var databaseTableName: String { "entity_alias" }
+}
+
+extension EntityAssignment: FetchableRecord, PersistableRecord {
+    public static var databaseTableName: String { "memory_entity" }
+}
+
+extension EntityKind: DatabaseValueConvertible {}
+extension EntityStatus: DatabaseValueConvertible {}
