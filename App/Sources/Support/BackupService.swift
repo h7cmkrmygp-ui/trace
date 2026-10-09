@@ -20,8 +20,8 @@ final class BackupService {
         }
     }
 
-    static let keep = 4
-    static let filePrefix = "Engram-Sauvegarde-"
+    nonisolated static let keep = 4
+    nonisolated static let filePrefix = "Engram-Sauvegarde-"
     @ObservationIgnored private let defaults = UserDefaults.standard
     private static let folderKey = "engram.backupFolder"
     private static let lastKey = "engram.lastBackup"
