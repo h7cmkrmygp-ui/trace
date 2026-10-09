@@ -209,3 +209,5 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p8-corrections-finales-design.m
 | — | Vraie note (titre, texte, cases à cocher) | ✅ | n/a | ✅ | ✅ (texte ↔ cases) | ⏳ | — | modifiée sur place, enregistrée en quittant un champ ; détails techniques dans « Détails » |
 | — | Cerveau sobre et utile | ✅ | n/a | ✅ | compile + captures | ⏳ | — | panneau des notes du neurone touché ou des résultats ; titres de près |
 | — | Raccourci « Trouver dans Engram pour un assistant » | n/a | ✅ | ✅ | ✅ (notes privées exclues) | ⏳ | — | pour ChatGPT ou Claude, à ta demande ; MCP en ligne mis de côté (serveur et copie de la mémoire hors de l'iPhone) |
+
+Tests automatiques : **352** (Core 122, Store 124, Pipeline 12, Intelligence 62 dont 2 mesures du modèle d'Apple lancées à la main, Capture 32).

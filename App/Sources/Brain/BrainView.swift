@@ -205,7 +205,7 @@ struct BrainView: View {
                         .background(Color(.tertiarySystemFill), in: Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Fermer")
+                .accessibilityLabel("Fermer le panneau")
             }
             .padding(.bottom, 4)
             if panelNotes.isEmpty {

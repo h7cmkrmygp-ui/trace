@@ -173,7 +173,9 @@ final class ScreenshotTests: XCTestCase {
             XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Tailler la haie")).firstMatch
                 .waitForExistence(timeout: 5), "Le panneau du Cerveau devrait montrer la note trouvée")
             snap(app, "15b-cerveau-recherche-\(mode)")
-            for label in ["Annuler", "Cancel"] where tap(app.buttons[label]) { break }
+            // Refermer la recherche : sinon le clavier cache la barre d'onglets (iOS 27 : bouton « Fermer »).
+            for label in ["Fermer", "Annuler", "Close", "Cancel"] where tap(app.buttons[label]) { break }
+            XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 3), "La barre d'onglets devrait revenir")
         }
 
         tapTab(app, "Calendrier")
