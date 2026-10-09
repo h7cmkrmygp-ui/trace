@@ -248,3 +248,9 @@ Tests automatiques après la P10 : **393** (Core 142, Store 143, Pipeline 13, In
 | — | Notes épinglées | ✅ | n/a | ✅ | ✅ (ordre, corbeille) | ⏳ | — | migration v7 ; carte « Épinglées » en haut des Notes |
 | — | Journal jour par jour | ✅ | n/a | ✅ | ✅ (noms des jours, regroupement) | ⏳ | — | « Aujourd'hui », « Hier », « Mercredi 13 janvier », l'année si elle change |
 | — | Objectifs des suivis | ✅ | ✅ | ✅ | ✅ (dits dans une note, le plus récent l'emporte, progression dans les deux sens) | ⏳ | — | ligne pointillée sur le graphique, barre de progression |
+
+## P12 — Photo → note (branche `p2-je-parle`)
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Texte d'une photo, lu sur l'iPhone | ✅ | n/a | ✅ | ✅ (mise au propre : phrases recollées, césures, listes, bruit) | ⏳ | — | Vision d'Apple, français et anglais ; appareil photo ou photothèque ; vérifié avant le classement ; la photo n'est pas gardée |

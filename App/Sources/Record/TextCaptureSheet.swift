@@ -2,10 +2,19 @@ import SwiftUI
 
 /// Saisie au clavier : même traitement qu'une pensée dictée.
 struct TextCaptureSheet: View {
+    /// Titre de la feuille (« Écrire », « Texte de la photo »).
+    let title: String
     /// Texte et choix « Garder sur l'iPhone ».
     let onSubmit: (String, Bool) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var text = ""
+    @State private var text: String
+
+    /// `initialText` : un texte à vérifier avant de classer (celui lu sur une photo).
+    init(title: String = "Écrire", initialText: String = "", onSubmit: @escaping (String, Bool) -> Void) {
+        self.title = title
+        self.onSubmit = onSubmit
+        _text = State(initialValue: initialText)
+    }
     @State private var keepLocal = false
     @FocusState private var isFocused: Bool
 
@@ -23,7 +32,7 @@ struct TextCaptureSheet: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Écrire")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

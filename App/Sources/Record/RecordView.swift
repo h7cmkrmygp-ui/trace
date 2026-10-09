@@ -1,7 +1,9 @@
 import EngramCapture
 import EngramCore
 import EngramStore
+import PhotosUI
 import SwiftUI
+import UIKit
 
 /// Écran principal : un grand cercle, toucher pour parler, toucher pour arrêter.
 struct RecordView: View {
@@ -12,8 +14,25 @@ struct RecordView: View {
     @State private var levels: [Float] = Array(repeating: 0, count: 24)
     /// Whisper est choisi mais son modèle n'est pas encore sur l'iPhone.
     @State private var needsWhisperDownload = false
+    /// P12 : photo → note.
+    @State private var isPickingPhoto = false
+    @State private var isTakingPhoto = false
+    @State private var photoItem: PhotosPickerItem?
+    @State private var photoDraft: PhotoDraft?
+    @State private var isReadingPhoto = false
 
     private var isRecording: Bool { model.recorder.state != .idle }
+
+    /// Lit le texte de la photo, puis l'ouvre pour vérification avant le classement.
+    private func read(_ image: UIImage) async {
+        isReadingPhoto = true
+        defer { isReadingPhoto = false }
+        if let text = await PhotoReading.text(in: image) {
+            photoDraft = PhotoDraft(text: text)
+        } else {
+            app.errorMessage = "Aucun texte n'a été trouvé sur cette photo."
+        }
+    }
 
     var body: some View {
         @Bindable var app = app
@@ -43,13 +62,47 @@ struct RecordView: View {
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Écrire", systemImage: "keyboard") { isTyping = true }
                         .disabled(isRecording || model.isBusy)
+                    // P12 : le texte d'une photo devient une note (lu sur l'iPhone).
+                    Menu {
+                        Button("Prendre une photo", systemImage: "camera") { isTakingPhoto = true }
+                            .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
+                        Button("Choisir une photo", systemImage: "photo.on.rectangle") { isPickingPhoto = true }
+                    } label: {
+                        Label("Photo", systemImage: "camera.viewfinder")
+                    }
+                    .disabled(isRecording || model.isBusy || isReadingPhoto)
                 }
             }
             .sheet(isPresented: $isTyping) {
                 TextCaptureSheet { text, keepLocal in Task { await model.submit(text: text, keepLocal: keepLocal, app: app) } }
+            }
+            .photosPicker(isPresented: $isPickingPhoto, selection: $photoItem, matching: .images)
+            .onChange(of: photoItem) { _, item in
+                guard let item else { return }
+                photoItem = nil
+                Task {
+                    guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
+                    await read(image)
+                }
+            }
+            .fullScreenCover(isPresented: $isTakingPhoto) {
+                CameraPicker { image in Task { await read(image) } }
+                    .ignoresSafeArea()
+            }
+            .sheet(item: $photoDraft) { draft in
+                TextCaptureSheet(title: "Texte de la photo", initialText: draft.text) { text, keepLocal in
+                    Task { await model.submit(text: text, keepLocal: keepLocal, app: app) }
+                }
+            }
+            .overlay {
+                if isReadingPhoto {
+                    ProgressView("Lecture de la photo…")
+                        .padding(20)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
             }
             // « Vérifie ta note » (si l'option est active) : une feuille au-dessus du clavier, avec sa propre copie du
             // texte. Fermée d'un geste, la dictée reste dans « À vérifier ».

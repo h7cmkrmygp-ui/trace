@@ -179,3 +179,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 86. **Journal** : Notes › « Plus » (…) › Journal : toutes tes notes, jour par jour (« Aujourd'hui », « Hier », « Mercredi 13 janvier »).
 87. **Objectif dit** : « Mon objectif : 155 livres » (ou « objectif 10 000 pas », « objectif 8 h de sommeil ») : la carte du suivi dit « Objectif 155 lb · encore … », et le graphique montre une ligne pointillée. « Objectif poids 155 livres » n'est pas pris pour une pesée.
 88. **Objectif à la main** : dans un suivi, « Fixer un objectif » ou « Changer l'objectif » ; la barre montre le chemin parcouru depuis que l'objectif a été fixé.
+
+## M. P12 — Photo → note
+
+89. **Photo** : écran Enregistrer › bouton photo (en haut à gauche) › « Prendre une photo » d'un papier ou d'une étiquette (iOS demande l'accès à l'appareil photo une fois). Le texte lu apparaît dans « Texte de la photo » : corrige-le au besoin, puis « Classer ».
+90. **Depuis tes photos** : « Choisir une photo » (une capture d'écran, un reçu) : même chose. La photo n'est pas gardée, seulement son texte ; rien n'est envoyé pour la lire.
