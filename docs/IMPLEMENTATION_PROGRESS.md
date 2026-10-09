@@ -162,3 +162,21 @@ Ajouts de P5 faits ensuite :
 - « dans 10 minutes », « dans 2 heures » donnent une échéance précise (rappels relatifs).
 - Retrouver comprend « récentes », « dernières », et affine par une question de suite (« Et la semaine passée ? », « de ce sujet »).
 - Descriptions des dossiers lisibles en très grand texte ; transitions discrètes (désactivées avec « Réduire les animations »).
+
+## P6 — Cerveau vivant, tâches qui avancent, widgets (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-08-engram-p6-cerveau-rappels-widgets-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| F25 | Cerveau vivant | ✅ | n/a | ✅ | ✅ (captures, mouvements) | ⏳ | — | neurones colorés qui respirent, notes en orbite, signaux sur les synapses, silhouette, poussière de lueurs, catégories à centrer ; immobile avec « Réduire les animations » |
+| — | Couleurs de catégorie partout | ✅ | n/a | ✅ | ✅ (couleur stable) | ⏳ | — | Cerveau, Notes, Retrouver, détail d'une note |
+| — | Sphère d'enregistrement | ✅ | n/a | ✅ | compile | ⏳ | — | verre, lumière qui tourne ; ondes rouges pendant l'enregistrement |
+| — | Rappels « Fait », « Dans 1 h », « Demain » | n/a | ✅ | ✅ | ✅ (reports) | ⏳ | — | le report est gardé sur l'iPhone |
+| — | Résumé du matin, pastille, résumé de la semaine | n/a | ✅ | ✅ | ✅ (calcul) | ⏳ | — | 8 h (jour et retards) ; dimanche 18 h ; jamais de titre secret |
+| — | Widgets « Aujourd'hui » et « Enregistrer », Centre de contrôle | ✅ | n/a | ✅ | compile | ⏳ | — | titres masqués écran verrouillé ; recalcule « aujourd'hui » seul les jours suivants |
+| — | Partager vers Engram | ✅ | ✅ | ✅ | ✅ (boîte de dépôt) | ⏳ | — | texte ou lien, classé à l'ouverture suivante |
+| — | Conversation de Retrouver gardée | ✅ | n/a | ✅ | compile | ⏳ | — | 30 derniers échanges, effacée par « Nouvelle recherche » |
+| INFRA | Deux IPA | n/a | n/a | ✅ | ✅ | ⏳ | — | `Engram.ipa` (extensions, droits en signature ad hoc) et `Engram-simple.ipa` (comme avant) |
+
+Tests automatiques : **317** (Core 100, Store 120, Pipeline 12, Intelligence 61 dont 2 mesures du modèle d'Apple lancées à la main, Capture 24).

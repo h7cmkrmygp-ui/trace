@@ -114,3 +114,19 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
     - « Dis Siri, demande à Engram » puis « qu'est-ce que j'ai à faire aujourd'hui » : Siri répond (iPhone déverrouillé).
 44. **Bouton Action** : Réglages de l'iPhone › Bouton Action › Raccourci › Engram › « Enregistrer une pensée ». Un appui : Engram s'ouvre et enregistre déjà.
 45. **Détail d'une tâche** : le type et l'échéance s'affichent sous le texte ; « … › Marquer comme fait » la range dans les Archives.
+
+## G. P6 — Cerveau vivant, tâches qui avancent, widgets
+
+46. **Installation** : installe `Engram.ipa` (avec widgets). Si AltStore refuse, installe `Engram-simple.ipa` (sans widgets ni partage) et dis-moi l'erreur affichée.
+47. **Cerveau** : les catégories sont des neurones de couleur qui respirent, les notes tournent autour, des signaux passent sur les connexions.
+    - Touche une catégorie dans la rangée du haut : le Cerveau la centre et l'agrandit ; touche-la encore pour l'ouvrir.
+    - Réglages de l'iPhone › Accessibilité › Mouvement › « Réduire les animations » : tout reste immobile.
+48. **Couleurs** : chaque dossier des Notes a la couleur de son neurone ; les résultats de Retrouver aussi.
+49. **Rappel avec boutons** : dicte « Rappelle-moi d'arroser les plantes dans 10 minutes ». À la notification, appuie longtemps : « Fait », « Dans 1 h », « Demain ». Essaie « Dans 1 h » : le rappel revient une heure plus tard.
+50. **Résumé du matin** : avec une tâche datée de demain, une notification « Aujourd'hui » arrive demain à 8 h. La toucher ouvre « À faire ».
+51. **Pastille** : l'icône d'Engram affiche le nombre de choses à faire aujourd'hui ou en retard.
+52. **Résumé de la semaine** : dimanche à 18 h, « Ta semaine » ; le toucher ouvre Retrouver avec le résumé.
+53. **Widgets** : appui long sur l'écran d'accueil › « + » › Engram : « Aujourd'hui » et « Enregistrer ». Le bouton Enregistrer ouvre Engram qui écoute déjà.
+    - Centre de contrôle › « + » › Engram › « Enregistrer une pensée ».
+54. **Partager** : dans Safari, Partager › Engram › « Ajouter ». À la réouverture d'Engram, la note est là, classée.
+55. **Conversation gardée** : pose une question dans Retrouver, ferme l'app, rouvre-la : la conversation est toujours là ; « Nouvelle recherche » l'efface.
