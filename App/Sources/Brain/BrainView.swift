@@ -509,8 +509,8 @@ struct BrainView: View {
         guard !nodes.isEmpty else { return base }
         let maxX = nodes.map { abs($0.x) + $0.radius }.max() ?? 0
         let maxY = nodes.map { abs($0.y) + $0.radius }.max() ?? 0
-        // Marge assez large pour le nom d'une sous-catégorie placé à côté de son neurone.
-        let fitX = maxX > 0 ? (size.width / 2 - 100) / maxX : base
+        // Marge pour les noms (ceux des sous-catégories n'apparaissent que de près) : le réseau occupe bien l'écran.
+        let fitX = maxX > 0 ? (size.width / 2 - 60) / maxX : base
         let fitY = maxY > 0 ? (size.height / 2 - 50) / maxY : base
         let fit = max(0.05, min(base * 1.6, fitX, fitY))
         if abs(fit - lastFit) > 0.0001 { Task { @MainActor in lastFit = fit } }
