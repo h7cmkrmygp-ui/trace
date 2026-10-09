@@ -137,11 +137,18 @@ extension MemoryStore {
                 let memoryID: UUID = row["memory_id"]
                 tags[memoryID, default: []].append(row["name"])
             }
+            // Privées : « Garder sur l'iPhone », ou jugées secrètes (être classée sur l'iPhone faute de service ne compte pas).
+            let privateSources = Set(try UUID.fetchAll(db, sql: """
+                SELECT id FROM source
+                WHERE keep_local = 1
+                   OR (privacy_level = ? AND (route_reason IS NULL OR route_reason NOT IN (?, ?)))
+                """, arguments: [PrivacyLevel.secret.rawValue, RouteReasons.noCloudService, RouteReasons.keepEverythingLocal]))
             return memories.map { memory in
                 RecallDocument(id: memory.id, title: memory.title,
                                text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
                                kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
-                               categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted())
+                               categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted(),
+                               isPrivate: privateSources.contains(memory.sourceID))
             }
         }
     }

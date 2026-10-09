@@ -118,7 +118,7 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 ## G. P6 — Cerveau vivant, tâches qui avancent, widgets
 
 46. **Installation** : installe `Engram.ipa` (avec widgets). Si AltStore refuse, installe `Engram-simple.ipa` (sans widgets ni partage) et dis-moi l'erreur affichée.
-47. **Cerveau** : les catégories sont des neurones de couleur qui respirent, les notes tournent autour, des signaux passent sur les connexions.
+47. **Cerveau** (redessiné en P8, voir le point 66) : les catégories sont des neurones de couleur, les notes de petits points autour, reliés au centre par de fines connexions.
     - Touche une catégorie dans la rangée du haut : le Cerveau la centre et l'agrandit ; touche-la encore pour l'ouvrir.
     - Réglages de l'iPhone › Accessibilité › Mouvement › « Réduire les animations » : tout reste immobile.
 48. **Couleurs** : chaque dossier des Notes a la couleur de son neurone ; les résultats de Retrouver aussi.
@@ -139,3 +139,17 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
     - Avec un mauvais mot de passe : « Impossible d'ouvrir cette sauvegarde », rien ne change.
 59. **Chaque semaine** : active l'option ; la sauvegarde se refait seule une fois par semaine à l'ouverture d'Engram.
 60. **Face ID** : active « Verrouiller avec Face ID ». Quitte l'app et reviens : Face ID est demandé. Dans le sélecteur d'apps, le contenu est masqué. Les widgets n'affichent plus les titres.
+
+## I. P8 — Bruit, franglais, navigation, Cerveau, vraie note
+
+61. **Arrêt automatique avec du bruit** : mets de la musique (ou un ventilateur, ou la télé) à volume normal, dicte une phrase, puis tais-toi : l'enregistrement s'arrête seul environ 4 s plus tard. Une pause de 2 s au milieu ne coupe pas. Si le bruit est aussi fort que ta voix, il ne s'arrête pas seul (touche le bouton).
+62. **Ta phrase d'exemple** : « Faut que je call mon manager demain pour changer mon shift, pis après je vais au gym. » → elle est transcrite (avant, elle était jetée) et donne deux notes : « Appeler mon gestionnaire… quart de travail » et « Aller au gym », pour demain.
+63. **Hésitations** : « Rappelle-moi de euh… appeler l'assurance demain ok » → une tâche « Appeler l'assurance », rappel demain ; « Ce que tu as dit » ne contient plus le « euh ».
+64. **Vraie date** : « Je pèse 162,5 livres aujourd'hui » → un titre avec la date du jour (« … le 9 octobre »), rangé en Santé.
+65. **Navigation** : Notes › … › Réglages, puis l'onglet Cerveau, puis Notes : la page Notes s'affiche, pas Réglages. Pareil pour les autres onglets.
+66. **Cerveau** : plus calme (ni particules ni signaux). Toucher un neurone le centre et ouvre en bas ses notes récentes ; « Tout voir » ouvre la catégorie ; toucher ailleurs referme. Pincer pour zoomer : les titres des notes apparaissent. Chercher un mot : les notes trouvées s'allument et s'affichent en bas.
+67. **Une vraie note** : ouvre une note ; touche le titre ou le texte pour les modifier. « Liste à cocher » (au-dessus du clavier) ajoute une case ; Retour dans une case en crée une autre ; cocher la barre. Reviens en arrière et rouvre : tout est gardé, sans bouton « Enregistrer ».
+68. **Fiche plus légère** : sous le texte, « Ce que tu as dit » (replié), « Rangée dans » (pastilles et « Changer »), « Notes liées ». Le classement, la source et les versions sont dans … › Détails (« Restaurer » une version y marche).
+69. **Catégories plus précises** : les nouvelles notes vont dans des sous-catégories durables (Finance › Assurances, Travail › Horaire…). Les anciennes notes ne sont pas reclassées.
+70. **Raccourci pour un assistant** : crée le raccourci décrit dans `docs/ASSISTANTS-MCP.md` et pose une question : le texte des notes trouvées arrive dans ChatGPT (ou le presse-papiers). Une note « Garder sur l'iPhone » n'y est jamais.
+71. **Depuis ChatGPT ou Claude** : sélectionne une réponse › Partager › Engram : elle devient une note classée.

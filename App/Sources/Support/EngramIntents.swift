@@ -1,4 +1,5 @@
 import AppIntents
+import EngramCore
 import Foundation
 
 // Siri, raccourcis et bouton Action : capturer une pensée ou interroger sa mémoire sans chercher l'app.
@@ -49,6 +50,33 @@ struct AskEngramIntent: AppIntent {
         }
         let reply = await model.recall(question)
         return .result(dialog: "\(reply.answer)")
+    }
+}
+
+/// Pour un assistant (ChatGPT, Claude…) : les notes qui répondent à une question, en texte, à passer à l'étape suivante
+/// d'un raccourci. Rien ne part tout seul : c'est le raccourci du propriétaire qui décide où va ce texte. Les notes
+/// gardées sur l'iPhone (ou jugées secrètes) n'y sont jamais, et rien n'est donné si « Tout garder sur l'iPhone » est actif.
+struct FindForAssistantIntent: AppIntent {
+    static let title: LocalizedStringResource = "Trouver dans Engram pour un assistant"
+    static let description = IntentDescription("Renvoie en texte les notes qui répondent à ta question, pour les donner à ChatGPT ou à Claude dans un raccourci. Les notes gardées sur l'iPhone ne sont jamais incluses.")
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+
+    @Parameter(title: "Question", requestValueDialog: "Qu'est-ce que tu cherches ?")
+    var question: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        guard case .success(let model) = AppModel.shared else {
+            return .result(value: "", dialog: "Engram ne peut pas ouvrir ta mémoire pour l'instant.")
+        }
+        guard !((try? model.settings.bool(.keepEverythingLocal, default: false)) ?? false) else {
+            return .result(value: "", dialog: "« Tout garder sur l'iPhone » est activé : Engram ne donne rien aux assistants.")
+        }
+        let result = await model.recallSearch(question)
+        let text = AssistantExport.text(question: question, hits: result.hits, calendar: AppModel.recallCalendar, now: Date())
+        let count = min(5, result.hits.filter { !$0.document.isPrivate }.count)
+        let summary = count == 0 ? "Aucune note partageable trouvée." : "\(count) note\(count > 1 ? "s" : "") trouvée\(count > 1 ? "s" : "")."
+        return .result(value: text, dialog: "\(summary)")
     }
 }
 
