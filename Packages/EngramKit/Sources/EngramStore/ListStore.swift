@@ -119,3 +119,8 @@ public struct ListStore: Sendable {
         return (memory, true)
     }
 }
+
+/// P25 — ce que lit le widget « Liste ».
+extension ListStore {
+    public func widgetSources() throws -> [ListsSnapshot.Source] { [] }
+}
