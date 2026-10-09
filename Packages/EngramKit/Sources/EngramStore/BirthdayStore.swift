@@ -65,20 +65,48 @@ extension EntityStore {
     }
 
     /// « L'anniversaire de Julie est le 12 mars » au classement : Julie est reliée à la note et sa fête est posée.
-    func recordBirthday(_ db: Database, memoryID: UUID, text: String, now: Date) throws {
-        guard let parsed = BirthdayParser.parse(text),
-              let person = try resolve(db, name: parsed.person, kind: .person, now: now) else { return }
-        _ = try link(db, memoryID: memoryID, entityID: person.id, origin: .ai, now: now)
+    /// - Parameters:
+    ///   - fallback: texte relu si `text` ne dit pas la fête (l'extrait de l'IA a pu perdre le début de la phrase, P31).
+    ///   - saidOn: jour de la note (« fête ses 30 ans » donne l'année de naissance).
+    ///   - keepKnown: une personne qui a déjà sa fête la garde (relecture des anciennes notes).
+    /// - Returns: vrai si une fête a été posée.
+    @discardableResult
+    func recordBirthday(_ db: Database, memoryID: UUID, text: String, fallback: String? = nil, saidOn: Date? = nil,
+                        calendar: Calendar = .current, keepKnown: Bool = false, now: Date) throws -> Bool {
+        guard let parsed = BirthdayParser.parse(text) ?? fallback.flatMap(BirthdayParser.parse),
+              let person = try resolve(db, name: parsed.person, kind: .person, now: now) else { return false }
         let known = try PersonBirthday.fetchOne(db, key: person.id)
-        try PersonBirthday(entityID: person.id, month: parsed.month, day: parsed.day, year: parsed.year ?? (
-            known?.month == parsed.month && known?.day == parsed.day ? known?.year : nil), memoryID: memoryID,
+        if keepKnown, known != nil { return false }
+        _ = try link(db, memoryID: memoryID, entityID: person.id, origin: .ai, now: now)
+        let year = parsed.birthYear(saidOn: saidOn ?? now, calendar: calendar)
+            ?? (known?.month == parsed.month && known?.day == parsed.day ? known?.year : nil)
+        try PersonBirthday(entityID: person.id, month: parsed.month, day: parsed.day, year: year, memoryID: memoryID,
                            updatedAt: now).save(db)
+        return true
     }
 
     /// P31 — relit les anciennes notes pour y trouver les fêtes jamais retenues (une personne qui a déjà sa fête, posée à
-    /// la main ou dite, la garde). Renvoie le nombre de fêtes posées.
+    /// la main ou dite, la garde). Des plus récentes aux plus anciennes : la dernière fête dite l'emporte.
+    /// Renvoie le nombre de fêtes posées.
     public func backfillBirthdays() throws -> Int {
-        0
+        let now = dates.now()
+        return try database.writer.write { db -> Int in
+            let notes = try Memory.fetchAll(db, sql: """
+                SELECT m.* FROM memory m WHERE \(Self.countedNotes) ORDER BY m.captured_at DESC
+                """)
+            var posed = 0
+            for memory in notes {
+                // Le texte de la note, sa version rédigée, son titre ; puis la dictée entière si elle n'a donné qu'une note.
+                var texts = [memory.content, memory.summary, memory.title].compactMap { $0 }
+                let siblings = try Memory.filter(Column("source_id") == memory.sourceID).fetchCount(db)
+                if siblings == 1, let whole = try Source.fetchOne(db, key: memory.sourceID)?.referenceText { texts.append(whole) }
+                guard let text = texts.first(where: { BirthdayParser.parse($0) != nil }) else { continue }
+                if try recordBirthday(db, memoryID: memory.id, text: text, saidOn: memory.capturedAt, keepKnown: true, now: now) {
+                    posed += 1
+                }
+            }
+            return posed
+        }
     }
 
     /// Fusion : la personne gardée prend la fête de l'autre si elle n'en a pas.

@@ -28,7 +28,9 @@ public enum AnalysisValidator {
 
         let summary = thought.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let path = categoryPath(category: thought.category, subcategory: thought.subcategory)
+        var path = categoryPath(category: thought.category, subcategory: thought.subcategory)
+        // Un suivi (« Santé › Poids ») ne reçoit que sa mesure : sinon la note reste « À classer » plutôt que mal rangée (P31).
+        if !MeasurementFolders.accepts(path, text: excerpt) { path = [] }
 
         var seen = Set<String>()
         var tags: [String] = []
