@@ -667,8 +667,15 @@ final class AppModel {
         await describeCategoriesIfNeeded()
         await backups.backupIfDue(model: self)
         // Suivis : les notes jamais relues, et celles modifiées, sur l'iPhone (P10).
+        // Seules les notes nouvelles ou modifiées depuis la dernière relecture sont relues.
         let measurementStore = measurements
-        _ = await Task.detached(priority: .utility) { try? measurementStore.backfill() }.value
+        let iso = ISO8601DateFormatter()
+        let lastScan = ((try? settings.string(.measurementsScannedAt)) ?? nil).flatMap { iso.date(from: $0) }
+        let scanStart = Date()
+        let scanned = await Task.detached(priority: .utility) {
+            (try? measurementStore.backfill(since: lastScan.map { $0.addingTimeInterval(-1) })) != nil
+        }.value
+        if scanned { perform { try settings.set(iso.string(from: scanStart), for: .measurementsScannedAt) } }
     }
 
     /// Catégories créées avant les descriptions : l'IA d'Apple leur en écrit une, sur l'iPhone (3 au plus par retour).

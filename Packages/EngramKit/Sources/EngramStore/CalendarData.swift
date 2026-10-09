@@ -36,6 +36,9 @@ public struct SettingStore: Sendable {
         case healthStaysLocal = "privacy.healthStaysLocal"
         /// « 1 » : aucune note n'est envoyée à un service en ligne (tout est classé par l'IA d'Apple).
         case keepEverythingLocal = "privacy.keepEverythingLocal"
+        /// Moment (ISO 8601) de la dernière relecture des mesures (P10). Rangé dans la base : une sauvegarde restaurée
+        /// sans lui fait tout relire.
+        case measurementsScannedAt = "trackers.scannedAt"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }

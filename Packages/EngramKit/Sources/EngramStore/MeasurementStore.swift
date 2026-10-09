@@ -129,22 +129,27 @@ public struct MeasurementStore: Sendable {
         return found.count
     }
 
-    /// Au lancement : les notes jamais relues, et celles modifiées depuis leur dernier relevé. Renvoie le nombre de
-    /// mesures ajoutées. Tout se passe sur l'iPhone.
+    /// Au lancement et au retour dans l'app : les notes nouvelles ou modifiées depuis `since` (toutes si nil) dont les
+    /// mesures ne sont pas à jour. Le texte est lu hors du verrou de la base ; seules les notes qui changent sont
+    /// écrites. Renvoie le nombre de mesures ajoutées. Tout se passe sur l'iPhone.
     public func backfill(since: Date? = nil) throws -> Int {
         let now = dates.now()
-        return try database.writer.write { db in
-            let notes = try Memory.fetchAll(db, sql: """
+        let (notes, measured) = try database.writer.read { db in
+            (try Memory.fetchAll(db, sql: """
                 SELECT m.* FROM memory m
-                WHERE \(Self.countedNotes)
+                WHERE \(Self.countedNotes) AND (? IS NULL OR m.updated_at > ?)
                   AND NOT EXISTS (SELECT 1 FROM measurement ms WHERE ms.memory_id = m.id AND ms.created_at >= m.updated_at)
-                """)
-            var added = 0
-            // Une note sans mesure est relue à chaque lancement : c'est rapide, et rien ne quitte l'iPhone.
-            for memory in notes {
-                added += try record(db, memoryID: memory.id, text: memory.content, capturedAt: memory.capturedAt, now: now)
+                """, arguments: [since, since]),
+             Set(try UUID.fetchAll(db, sql: "SELECT DISTINCT memory_id FROM measurement")))
+        }
+        // La reconnaissance (des expressions régulières) se fait sans bloquer la base ; une note sans mesure, ni
+        // avant ni maintenant, n'est pas écrite.
+        let changed = notes.filter { !MeasurementParser.parse($0.content).isEmpty || measured.contains($0.id) }
+        guard !changed.isEmpty else { return 0 }
+        return try database.writer.write { db in
+            try changed.reduce(0) { total, memory in
+                total + (try record(db, memoryID: memory.id, text: memory.content, capturedAt: memory.capturedAt, now: now))
             }
-            return added
         }
     }
 }
