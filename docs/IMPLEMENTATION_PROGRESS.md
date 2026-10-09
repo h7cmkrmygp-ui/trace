@@ -205,9 +205,9 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p8-corrections-finales-design.m
 | — | Deux sujets par phrase, titres en bon français | n/a | ✅ | ✅ (consignes p8) | ✅ (consignes, extraits presque mot pour mot) | ⏳ | — | « call » → « appeler », « shift » → « quart de travail » ; « pis après » hérite de la date |
 | — | Vraie date dans les titres | n/a | ✅ | ✅ | ✅ | ⏳ | — | « aujourd'hui » → « le 9 octobre » ; tes mots exacts restent |
 | — | Sous-catégories plus précises | n/a | n/a | ✅ (consignes) | ✅ (consignes) | ⏳ | — | Finance › Assurances, Travail › Horaire… ; anciennes notes non reclassées |
-| BUG | Onglet qui garde la sous-page | n/a | n/a | ✅ | ⏳ (test d'interface) | ⏳ | — | piles de navigation vidées en quittant l'onglet |
+| BUG | Onglet qui garde la sous-page | n/a | n/a | ✅ | ✅ (test d'interface sur simulateur) | ⏳ | — | piles de navigation vidées en quittant l'onglet |
 | — | Vraie note (titre, texte, cases à cocher) | ✅ | n/a | ✅ | ✅ (texte ↔ cases) | ⏳ | — | modifiée sur place, enregistrée en quittant un champ ; détails techniques dans « Détails » |
-| — | Cerveau sobre et utile | ✅ | n/a | ✅ | compile + captures | ⏳ | — | panneau des notes du neurone touché ou des résultats ; titres de près |
+| — | Cerveau sobre et utile | ✅ | n/a | ✅ | ✅ (captures, recherche sur simulateur) | ⏳ | — | panneau des notes du neurone touché ou des résultats ; titres de près |
 | — | Raccourci « Trouver dans Engram pour un assistant » | n/a | ✅ | ✅ | ✅ (notes privées exclues) | ⏳ | — | pour ChatGPT ou Claude, à ta demande ; MCP en ligne mis de côté (serveur et copie de la mémoire hors de l'iPhone) |
 
 Tests automatiques : **352** (Core 122, Store 124, Pipeline 12, Intelligence 62 dont 2 mesures du modèle d'Apple lancées à la main, Capture 32).
