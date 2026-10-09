@@ -16,7 +16,8 @@ struct RecordView: View {
     private var isRecording: Bool { model.recorder.state != .idle }
 
     var body: some View {
-        NavigationStack {
+        @Bindable var app = app
+        NavigationStack(path: $app.recordPath) {
             VStack(spacing: 24) {
                 if needsWhisperDownload && !isRecording { whisperBanner }
                 Spacer(minLength: 16)

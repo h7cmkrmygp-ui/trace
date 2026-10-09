@@ -15,6 +15,8 @@ struct RootView: View {
             // Retrouver : le bouton loupe à part de la barre d'onglets (rôle « recherche » d'iOS).
             Tab("Retrouver", systemImage: "magnifyingglass", value: AppTab.recall, role: .search) { RecallView() }
         }
+        // Revenir sur un onglet le montre toujours sur sa page principale, jamais sur la dernière sous-page.
+        .onChange(of: model.selectedTab) { previous, _ in model.leave(previous) }
         .errorAlert($model.errorMessage)
         .onOpenURL { model.open($0) }
         // Verrou Face ID : écran verrouillé, et contenu masqué dans le sélecteur d'apps.

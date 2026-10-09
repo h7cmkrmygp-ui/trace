@@ -6,6 +6,7 @@ import EngramPipeline
 import EngramStore
 import Foundation
 import Observation
+import SwiftUI
 import UIKit
 import WidgetKit
 
@@ -23,6 +24,12 @@ final class AppModel {
 
     /// Onglet affiché.
     var selectedTab: AppTab = .record
+    /// Écrans ouverts dans chaque onglet. Quitter un onglet vide sa pile : on y revient sur sa page principale.
+    var notesPath = NavigationPath()
+    var brainPath = NavigationPath()
+    var calendarPath = NavigationPath()
+    var recordPath = NavigationPath()
+    var recallPath = NavigationPath()
     /// Augmente à chaque demande d'enregistrement venue de Siri ou du bouton Action.
     private(set) var recordingRequest = 0
     @ObservationIgnored private var servedRecordingRequest = 0
@@ -139,6 +146,17 @@ final class AppModel {
     }
 
     // MARK: - Navigation (Siri, rappels)
+
+    /// L'onglet quitté revient à sa page principale (Réglages, une note ouverte… sont refermés).
+    func leave(_ tab: AppTab) {
+        switch tab {
+        case .notes: if !notesPath.isEmpty { notesPath = NavigationPath() }
+        case .brain: if !brainPath.isEmpty { brainPath = NavigationPath() }
+        case .calendar: if !calendarPath.isEmpty { calendarPath = NavigationPath() }
+        case .record: if !recordPath.isEmpty { recordPath = NavigationPath() }
+        case .recall: if !recallPath.isEmpty { recallPath = NavigationPath() }
+        }
+    }
 
     /// Siri ou le bouton Action : l'écran Enregistrer s'ouvre et l'enregistrement commence.
     func requestRecording() {

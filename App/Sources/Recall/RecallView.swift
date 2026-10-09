@@ -176,7 +176,8 @@ struct RecallView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        @Bindable var app = app
+        NavigationStack(path: $app.recallPath) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {

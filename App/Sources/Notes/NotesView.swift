@@ -32,7 +32,6 @@ enum NotesRoute: Hashable {
 /// Archives, Corbeille et Réglages sont rangés dans le menu en haut.
 struct NotesView: View {
     @Environment(AppModel.self) private var model
-    @State private var path = NavigationPath()
     @State private var summary: CategoryStore.LibrarySummary?
     @State private var todo: [Memory] = []
     @State private var reviewCount = 0
@@ -46,7 +45,8 @@ struct NotesView: View {
     private var isEmpty: Bool { summary != nil && roots.isEmpty && todo.isEmpty && unsortedCount == 0 && reviewCount == 0 }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        @Bindable var model = model
+        NavigationStack(path: $model.notesPath) {
             Group {
                 if isSearching { searchResults } else { folders }
             }
@@ -89,15 +89,17 @@ struct NotesView: View {
             // Résumé du matin ou widget « Aujourd'hui » touché : « À faire » s'ouvre.
             .task(id: model.openTodoRequest) {
                 guard model.consumeTodoRequest() else { return }
-                path = NavigationPath()
+                var path = NavigationPath()
                 path.append(NotesRoute.todo)
+                model.notesPath = path
             }
             // Toucher sur un rappel : la note s'ouvre (même si l'onglet n'était pas encore affiché).
             .task(id: model.openMemoryRequest) {
                 guard let id = model.openMemoryRequest else { return }
                 model.openMemoryRequest = nil
-                path = NavigationPath()
+                var path = NavigationPath()
                 path.append(id)
+                model.notesPath = path
             }
             .task(id: query) {
                 try? await Task.sleep(for: .milliseconds(200))
@@ -113,18 +115,18 @@ struct NotesView: View {
     private var menu: some View {
         Menu {
             Button {
-                path.append(NotesRoute.list(title: "Archives", statuses: [.archived]))
+                model.notesPath.append(NotesRoute.list(title: "Archives", statuses: [.archived]))
             } label: {
                 Label("Archives (\(summary?.archivedCount ?? 0))", systemImage: "archivebox")
             }
             Button {
-                path.append(NotesRoute.list(title: "Corbeille", statuses: [.trashed]))
+                model.notesPath.append(NotesRoute.list(title: "Corbeille", statuses: [.trashed]))
             } label: {
                 Label("Corbeille (\(summary?.trashedCount ?? 0))", systemImage: "trash")
             }
             Divider()
             Button {
-                path.append(NotesRoute.settings)
+                model.notesPath.append(NotesRoute.settings)
             } label: {
                 Label("Réglages", systemImage: "gearshape")
             }

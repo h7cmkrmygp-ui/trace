@@ -57,7 +57,8 @@ struct CalendarView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        @Bindable var model = model
+        NavigationStack(path: $model.calendarPath) {
             List {
                 Section {
                     MonthGrid(month: month, selectedDay: $selectedDay, markedDays: markedDays, calendar: calendar)
