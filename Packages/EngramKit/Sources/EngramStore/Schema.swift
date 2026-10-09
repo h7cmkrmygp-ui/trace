@@ -22,8 +22,27 @@ enum Schema {
             try db.execute(sql: v5PeoplePlaces)
             try createChangeLogTriggers(db, for: [("entity", "id"), ("memory_entity", "memory_id")])
         }
+        migrator.registerMigration("v6_measurements") { db in
+            try db.execute(sql: v6Measurements)
+        }
         return migrator
     }
+
+    /// v6 (P10) : les mesures des notes (poids, sommeil, tension, pouls, pas, glycémie). Recalculables depuis le texte.
+    static let v6Measurements = """
+        CREATE TABLE measurement (
+          id BLOB PRIMARY KEY NOT NULL,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          metric TEXT NOT NULL CHECK (metric IN ('weight','sleep','blood_pressure','heart_rate','steps','glucose')),
+          value REAL NOT NULL,
+          second_value REAL,
+          unit TEXT NOT NULL CHECK (length(unit) > 0),
+          measured_at DATETIME NOT NULL,
+          created_at DATETIME NOT NULL
+        );
+        CREATE INDEX measurement_memory ON measurement(memory_id);
+        CREATE INDEX measurement_metric ON measurement(metric, measured_at);
+        """
 
     /// v5 (P9) : les personnes et les lieux, leurs anciens noms, et leurs liens avec les notes.
     static let v5PeoplePlaces = """

@@ -41,6 +41,7 @@ public struct ThoughtFiler: Sendable {
         let memoryStore = MemoryStore(database: database, dates: dates)
         let categoryStore = CategoryStore(database: database, dates: dates)
         let entityStore = EntityStore(database: database, dates: dates)
+        let measurementStore = MeasurementStore(database: database, dates: dates, calendar: calendar)
         return try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             // Déjà classée (traitement en double) : rien ne change.
@@ -112,6 +113,9 @@ public struct ThoughtFiler: Sendable {
                         dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
                     try classify(memory.id, with: thought)
+                    // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
+                    try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt, capturedAt: source.capturedAt,
+                                                now: now)
                     filedIDs.append(memory.id)
                 }
             } else {

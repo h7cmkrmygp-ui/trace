@@ -57,3 +57,11 @@ extension EntityAssignment: FetchableRecord, PersistableRecord {
 
 extension EntityKind: DatabaseValueConvertible {}
 extension EntityStatus: DatabaseValueConvertible {}
+
+// P10 — suivis.
+
+extension MetricMeasurement: FetchableRecord, PersistableRecord {
+    public static var databaseTableName: String { "measurement" }
+}
+
+extension Metric: DatabaseValueConvertible {}
