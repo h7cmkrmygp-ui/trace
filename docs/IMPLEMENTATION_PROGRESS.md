@@ -239,4 +239,4 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p10-suivis-design.md`
 | — | Suivis et graphiques | ✅ | n/a | ✅ | compile + captures | ⏳ | — | cartes, courbes, Mois/3 mois/Année/Tout, min/moy/max, livres ou kilos |
 | — | Pastilles « Suivi » dans une note | ✅ | n/a | ✅ | compile | ⏳ | — | ouvrent le graphique |
 
-Tests automatiques après la P10 : **392** (Core 142, Store 142, Pipeline 13, Intelligence 63, Capture 32).
+Tests automatiques après la P10 : **393** (Core 142, Store 143, Pipeline 13, Intelligence 63, Capture 32). Relecture des mesures : seulement les notes nouvelles ou modifiées depuis la dernière fois.
