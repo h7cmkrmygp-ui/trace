@@ -108,6 +108,12 @@ public enum BirthdayParser {
         return nil
     }
 
+    /// P33 — la phrase dit seulement une fête (« Retiens l'anniversaire de Inès c'est le 13 octobre ») : rien d'autre à
+    /// faire. « Acheter un cadeau pour la fête de Julie le 12 mars » est une tâche.
+    public static func isOnlyABirthday(_ text: String) -> Bool {
+        false
+    }
+
     /// « 13 », « 1er », « treize », « vingt-deux ».
     static func dayNumber(_ text: String) -> Int? {
         let key = MeasurementParser.normalized(text).replacingOccurrences(of: "-", with: " ")

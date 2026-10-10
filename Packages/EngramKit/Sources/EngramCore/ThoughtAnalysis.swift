@@ -131,11 +131,14 @@ public struct ValidThought: Sendable, Hashable {
     public var places: [String]
     /// P32 — la raison donnée par l'IA pour ce chemin (nil si Engram a refusé le chemin).
     public var categoryReason: String?
+    /// P33 — la pensée dit seulement la fête de cette personne : elle va dans « Anniversaires », sans échéance.
+    public var birthdayOf: String?
 
     public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
                 tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
-                people: [String] = [], places: [String] = [], categoryReason: String? = nil) {
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil, birthdayOf: String? = nil) {
         self.categoryReason = categoryReason
+        self.birthdayOf = birthdayOf
         self.people = people
         self.places = places
         self.title = title
