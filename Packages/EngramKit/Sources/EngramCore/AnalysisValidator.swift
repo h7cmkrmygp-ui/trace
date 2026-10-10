@@ -5,6 +5,8 @@ public enum AnalysisValidator {
     public static let maxTags = 3
     public static let maxTagLength = 30
     public static let maxCategoryLength = 40
+    /// Longueur maximale de la raison du choix de catégorie (P32).
+    public static let maxReasonLength = 200
     /// Personnes, et lieux, gardés au plus par pensée.
     public static let maxNames = 4
 

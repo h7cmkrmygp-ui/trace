@@ -2,6 +2,18 @@ import EngramCore
 import Foundation
 import GRDB
 
+/// P32 — un dossier d'une note et la phrase où l'IA explique pourquoi elle l'y a rangée.
+public struct FilingReason: Sendable, Equatable, Hashable {
+    /// « Famille › Anniversaires ».
+    public let path: String
+    public let reason: String
+
+    public init(path: String, reason: String) {
+        self.path = path
+        self.reason = reason
+    }
+}
+
 /// Catégories, tags et liens avec les souvenirs.
 public struct CategoryStore: Sendable {
     public let database: AppDatabase
@@ -305,6 +317,16 @@ public struct CategoryStore: Sendable {
         return active
             .map { CategoryPaths.display(CategoryPaths.components(of: $0, in: byID)) }
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// P32 — ce que contient chaque catégorie active qui a une description (chemin complet → description), donné à l'IA.
+    public func categoryDescriptions() throws -> [String: String] {
+        [:]
+    }
+
+    /// P32 — pourquoi l'IA a rangé la note dans chacun de ses dossiers (seulement les dossiers encore là).
+    public func filingReasons(for memoryID: UUID) throws -> [FilingReason] {
+        []
     }
 
     /// Archive une fois pour toutes les catégories de départ (P1) qui n'ont aucun souvenir ni sous-catégorie.
