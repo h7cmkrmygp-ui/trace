@@ -2,7 +2,8 @@
 
 **Signalé sur l'iPhone par le propriétaire** :
 
-- « Retiens l'anniversaire de Inès c'est le 13 octobre » s'est retrouvé dans **Santé › Poids**.
+- Une fête dictée (ici avec un prénom inventé : « Retiens l'anniversaire de Inès c'est le 13 octobre ») s'est retrouvée
+  dans **Santé › Poids**.
 - Il veut des catégories qui ne sont pas « pré-écrites » : l'IA doit chercher dans les catégories existantes, réutiliser
   celle qui convient vraiment, et sinon en créer une nouvelle.
 - Dans Retrouver, « C'est quand déjà la fête à Inès ? » répondait « Je ne trouve rien là-dessus dans ta mémoire. »

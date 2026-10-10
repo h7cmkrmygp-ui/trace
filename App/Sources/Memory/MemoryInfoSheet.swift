@@ -1,4 +1,5 @@
 import EngramCore
+import EngramStore
 import SwiftUI
 
 /// Détails d'une note, rangés à part pour garder la note légère : où elle a été classée, le texte d'origine avant
@@ -9,6 +10,8 @@ struct MemoryInfoSheet: View {
     let memory: Memory
     let source: Source?
     @State private var versions: [MemoryVersion] = []
+    /// Pourquoi l'IA a rangé la note dans ses dossiers (P32).
+    @State private var reasons: [FilingReason] = []
 
     var body: some View {
         NavigationStack {
@@ -26,6 +29,22 @@ struct MemoryInfoSheet: View {
                         if let reason = source.routeReason, !reason.isEmpty {
                             Text(reason).font(.footnote).foregroundStyle(.secondary)
                         }
+                    }
+                }
+                if !reasons.isEmpty {
+                    Section {
+                        ForEach(reasons, id: \.self) { item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label(item.path, systemImage: "folder")
+                                Text(item.reason)
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text("Pourquoi ce dossier")
+                    } footer: {
+                        Text("Dans les mots de l'IA qui a classé la note. Si tu la changes de dossier, c'est ton choix qui compte.")
                     }
                 }
                 if let original = source?.originalText, original != memory.content {
@@ -68,6 +87,7 @@ struct MemoryInfoSheet: View {
             }
             .onAppear {
                 model.perform { versions = try model.memories.versions(of: memory.id) }
+                model.perform { reasons = try model.categories.filingReasons(for: memory.id) }
             }
         }
     }

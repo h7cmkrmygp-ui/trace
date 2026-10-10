@@ -110,9 +110,9 @@ struct BirthdayAndFilingFixesTests {
     }
 
     @Test func aBirthdayQuestionIsAnsweredFromThePersonsPage() {
-        let inès = Birthday(personID: UUID(), name: "Inès", month: 10, day: 13, year: nil)
+        let ines = Birthday(personID: UUID(), name: "Inès", month: 10, day: 13, year: nil)
         let now = Self.date(2026, 10, 9)
-        #expect(BirthdayQuestion.answer(inès, now: now, calendar: Self.calendar)
+        #expect(BirthdayQuestion.answer(ines, now: now, calendar: Self.calendar)
             == "La fête d'Inès, c'est le 13 octobre, dans 4 jours.")
         let marc = Birthday(personID: UUID(), name: "Marc", month: 10, day: 10, year: 1990)
         #expect(BirthdayQuestion.answer(marc, now: now, calendar: Self.calendar)

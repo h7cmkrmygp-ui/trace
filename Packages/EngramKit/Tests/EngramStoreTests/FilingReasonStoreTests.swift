@@ -6,7 +6,7 @@ import Testing
 @testable import EngramStore
 
 /// P32 — la raison du choix de l'IA est gardée avec la note ; l'IA sait ce que contient chaque catégorie ;
-/// « Assurance » retrouve « Assurances ».
+/// « Assurance » retrouve « Assurances » (déjà vrai : accents, majuscules et pluriel sont ignorés).
 struct FilingReasonStoreTests {
     static let text = "Retiens la fête à Léa, c'est le 13 mars"
 

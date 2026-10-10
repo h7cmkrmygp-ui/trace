@@ -21,9 +21,10 @@ public struct EvaluationCase: Sendable, Hashable {
     }
 }
 
-/// 46 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées, dont six qui reprennent
+/// 49 phrases inventées (aucune donnée réelle), en français, en anglais ou mélangées, dont neuf qui reprennent
 /// les erreurs constatées sur l'iPhone : un rappel coupé en deux notes, un poids classé en Finance, deux sujets fusionnés,
-/// deux sujets dans une même phrase en franglais, une hésitation, un poids daté « aujourd'hui ».
+/// deux sujets dans une même phrase en franglais, une hésitation, un poids daté « aujourd'hui », deux fêtes (une a été
+/// classée dans Santé › Poids) et une assurance.
 public enum EvaluationSet {
     static let auto = ["Automobile", "Auto", "Voiture", "Véhicule", "Véhicules"]
     static let finance = ["Finance", "Finances", "Argent", "Placements", "Investissements", "Budget"]
@@ -33,6 +34,7 @@ public enum EvaluationSet {
     static let shopping = ["Achats", "Courses", "Épicerie", "Magasinage", "Shopping"]
     static let travel = ["Voyages", "Voyage", "Vacances"]
     static let family = ["Famille", "Proches", "Personnel"]
+    static let birthdays = ["Amis", "Anniversaires", "Anniversaire", "Fêtes", "Personnes", "Relations", "Dates importantes"]
     static let studies = ["Études", "École", "Cours", "Apprentissage", "Formation"]
     static let projects = ["Projets", "Idées", "Technologie", "Développement", "Application"]
 
@@ -87,5 +89,10 @@ public enum EvaluationSet {
         EvaluationCase(sentence: "Rappelle-moi de euh appeler l'assurance demain ok",
                        acceptedRoots: finance + auto + home + ["Assurances", "Assurance", "Administratif"], expectedNotes: 1),
         EvaluationCase(sentence: "Je pèse 162,5 livres aujourd'hui", acceptedRoots: health, expectedNotes: 1),
+        // P31-P32 : une fête rangée dans Santé › Poids, une assurance rangée dans « Automobile › car part ».
+        EvaluationCase(sentence: "Retiens la fête à Léa, c'est le 13 mars", acceptedRoots: family + birthdays, expectedNotes: 1),
+        EvaluationCase(sentence: "L'anniversaire de mon frère est le 2 juin", acceptedRoots: family + birthdays, expectedNotes: 1),
+        EvaluationCase(sentence: "Réévaluer l'assurance de la maison avant le renouvellement",
+                       acceptedRoots: finance + home + ["Assurances", "Assurance", "Administratif"]),
     ]
 }

@@ -52,8 +52,16 @@ enum Schema {
         migrator.registerMigration("v15_place_finder") { db in
             try db.execute(sql: v15PlaceFinder)
         }
+        migrator.registerMigration("v16_filing_reason") { db in
+            try db.execute(sql: v16FilingReason)
+        }
         return migrator
     }
+
+    /// v16 (P32) : la phrase où l'IA explique pourquoi elle a rangé la note dans ce dossier.
+    static let v16FilingReason = """
+        ALTER TABLE memory_category ADD COLUMN reason TEXT CHECK (reason IS NULL OR length(reason) <= 300);
+        """
 
     /// v15 (P30) : les autres succursales d'un lieu trouvées toutes seules, et la dernière recherche de chaque lieu.
     static let v15PlaceFinder = """

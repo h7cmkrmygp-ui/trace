@@ -77,8 +77,10 @@ public struct ThoughtFiler: Sendable {
                         try categoryStore.describeIfMissing(db, categoryID: root.id, description: description, now: now)
                     }
                     if let target = chain.last {
+                        // La phrase où l'IA explique son choix est gardée avec le lien (P32).
                         let outcome = try categoryStore.assign(db, memoryID: memoryID, categoryID: target.id,
-                                                               origin: .ai, confidence: nil, now: now)
+                                                               origin: .ai, confidence: nil, reason: thought.categoryReason,
+                                                               now: now)
                         if outcome != .skippedRejectedByUser {
                             let display = CategoryPaths.display(chain.map(\.name))
                             pathByMemory[memoryID] = display

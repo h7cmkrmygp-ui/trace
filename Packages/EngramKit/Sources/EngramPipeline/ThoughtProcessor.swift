@@ -52,8 +52,10 @@ public actor ThoughtProcessor {
             }
             let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
             // Ce qu'Engram reconnaît déjà (une fête, une mesure, une liste) est dit à l'IA avec la note (P31).
+            // Ce que contient chaque catégorie, pour que l'IA juge par le sens et pas par le nom (P32).
+            let descriptions = try categories.categoryDescriptions().filter { paths.contains($0.key) }
             let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
-                                          facts: NoteFacts.describe(text))
+                                          facts: NoteFacts.describe(text), categoryDescriptions: descriptions)
             var attempt = 0
             while true {
                 attempt += 1
