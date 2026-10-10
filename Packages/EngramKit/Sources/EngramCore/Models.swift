@@ -366,13 +366,16 @@ public struct CategoryAssignment: Codable, Sendable, Hashable {
     public var confidence: Double?
     public var confirmed: Bool
     public var rejected: Bool
+    /// P32 — pourquoi l'IA a choisi ce dossier, en une phrase (nil pour un choix du propriétaire).
+    public var reason: String?
     public var createdAt: Date
     public var updatedAt: Date
 
     public init(memoryID: UUID, categoryID: UUID, origin: AssignmentOrigin, confidence: Double? = nil,
-                confirmed: Bool, rejected: Bool = false, now: Date) {
+                confirmed: Bool, rejected: Bool = false, reason: String? = nil, now: Date) {
         self.memoryID = memoryID
         self.categoryID = categoryID
+        self.reason = reason
         self.origin = origin
         self.confidence = confidence
         self.confirmed = confirmed
@@ -382,7 +385,7 @@ public struct CategoryAssignment: Codable, Sendable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case origin, confidence, confirmed, rejected
+        case origin, confidence, confirmed, rejected, reason
         case memoryID = "memory_id"
         case categoryID = "category_id"
         case createdAt = "created_at"

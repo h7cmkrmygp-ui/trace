@@ -1,7 +1,7 @@
 import Foundation
 
 /// P31 — un dossier de suivi (« Poids », « Sommeil »…) ne reçoit que sa mesure, ou une note qui en parle (« prendre
-/// rendez-vous pour mon poids »). « L'anniversaire d'Amina » n'y va jamais.
+/// rendez-vous pour mon poids »). « L'anniversaire d'Inès » n'y va jamais.
 public enum MeasurementFolders {
     /// Noms de dossiers qui suivent une mesure (sans accents ni majuscules).
     static let folders: [Metric: Set<String>] = [

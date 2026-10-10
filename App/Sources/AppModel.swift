@@ -751,7 +751,7 @@ final class AppModel {
         return await recallAnswerer.answer(question: question, result: result, now: Date(), calendar: Self.recallCalendar)
     }
 
-    /// « C'est quand la fête à Amina ? » : la fête gardée sur la page de la personne (P31). nil si la question porte sur
+    /// « C'est quand la fête à Inès ? » : la fête gardée sur la page de la personne (P31). nil si la question porte sur
     /// autre chose ou si la fête de cette personne n'est pas connue (la recherche dans les notes répond alors).
     func birthdayAnswer(_ question: String) -> String? {
         guard let person = BirthdayQuestion.person(in: question),

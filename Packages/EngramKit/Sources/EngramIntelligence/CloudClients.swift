@@ -63,7 +63,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p31-cloud-v1"
+    public static let version = "p32-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -93,13 +93,17 @@ public enum CloudPrompt {
         Empty when the title already says everything.
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
+        - categoryReason: written BEFORE choosing the category, one short French sentence for the owner: what this item \
+        is really about, then either which existing category it truly belongs to and why (« Une date à retenir pour \
+        Inès : elle va avec la famille. »), or why none of the existing categories fits and a new one is needed. \
+        Judge an existing category by what it contains (its description, when given), not only by its name.
         - category: the domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from the \
-        meaning of the item itself, as the owner would file it by hand. First read the existing categories given with \
-        the note. Reuse one, written exactly as given, only when the subject of the item truly belongs to it; a word in \
-        common is not enough. When none truly fits, create a new category: a broad domain in French that later notes \
-        on the same subject will join. There is no list of categories to choose from: only the owner's existing ones, \
-        or a new one.
-        - A birthday or a feast day of a person (« l'anniversaire de Julie », « la fête à Amina ») is a date to remember \
+        meaning of the item itself, as the owner would file it by hand, and consistent with categoryReason. First read \
+        the existing categories given with the note. Reuse one, written exactly as given, only when the subject of the \
+        item truly belongs to it; a word in common is not enough. When none truly fits, create a new category: a broad \
+        domain in French that later notes on the same subject will join. There is no list of categories to choose from: \
+        only the owner's existing ones, or a new one.
+        - A birthday or a feast day of a person (« l'anniversaire de Julie », « la fête à Inès ») is a date to remember \
         for that person: file it with the family or friends, never with health, a body measurement or money.
         - A category or subcategory that tracks a measurement (weight, sleep, blood pressure, pulse, steps, blood sugar) \
         only receives that measurement or what is directly about it. A weight in pounds ("livres") is not money and not \
@@ -129,11 +133,15 @@ public enum CloudPrompt {
         formatter.locale = Locale(identifier: "fr_CA")
         formatter.timeZone = context.timeZone
         formatter.dateFormat = "EEEE d MMMM yyyy"
-        let existing = categories.isEmpty ? "aucune pour l'instant" : categories.joined(separator: " ; ")
+        // Une catégorie par ligne, avec ce qu'elle contient quand Engram le sait (P32).
+        let existing = categories.isEmpty ? " aucune pour l'instant"
+            : "\n" + categories.map { name in
+                context.categoryDescriptions[name].map { "- \(name) : \($0)" } ?? "- \(name)"
+            }.joined(separator: "\n")
         let known = context.facts.isEmpty ? "" : "\nEngram a déjà reconnu dans cette note : \(context.facts.joined(separator: " ; "))"
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes : \(existing)\(known)
+            Catégories existantes (et ce qu'elles contiennent) :\(existing)\(known)
             Note à classer :
             <note>
             \(text)
@@ -157,6 +165,8 @@ enum CloudSchema {
             ("summary", string(style)),
             ("excerpt", string(style)),
             ("kind", string(style, allowed: ["idea", "task", "appointment", "decision", "preference", "info", "other"])),
+            // La raison avant la catégorie : le modèle réfléchit, puis choisit (P32).
+            ("categoryReason", string(style)),
             ("category", string(style)),
             ("categoryDescription", string(style)),
             ("subcategory", string(style)),
@@ -202,6 +212,7 @@ public enum CloudDecoder {
         let summary: String?
         let excerpt: String
         let kind: String?
+        let categoryReason: String?
         let category: String?
         let categoryDescription: String?
         let subcategory: String?
@@ -248,7 +259,8 @@ public enum CloudDecoder {
                                tags: Array((note.tags ?? []).prefix(3)), mentionedDates: dates,
                                category: clean(note.category) ?? "", subcategory: clean(note.subcategory),
                                categoryDescription: clean(note.categoryDescription),
-                               people: note.people ?? [], places: note.places ?? [])
+                               people: note.people ?? [], places: note.places ?? [],
+                               categoryReason: clean(note.categoryReason))
     }
 }
 

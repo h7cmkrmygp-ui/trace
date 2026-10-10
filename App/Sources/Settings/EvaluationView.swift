@@ -9,6 +9,8 @@ struct EvaluationView: View {
         let sentence: String
         let path: String
         let isAccepted: Bool
+        /// Pourquoi l'IA a choisi ce dossier, dans ses mots (P32).
+        var reason: String?
     }
 
     @State private var rows: [Row] = []
@@ -40,6 +42,11 @@ struct EvaluationView: View {
                         Label(row.path, systemImage: row.isAccepted ? "checkmark" : "xmark")
                             .font(.footnote)
                             .foregroundStyle(row.isAccepted ? Color.secondary : Color.red)
+                        if let reason = row.reason {
+                            Text(reason)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -55,20 +62,27 @@ struct EvaluationView: View {
         problem = nil
         let analyzer = AppleThoughtAnalyzer()
         var known: [String] = []
+        var descriptions: [String: String] = [:]
         for item in EvaluationSet.cases {
             do {
-                let analysis = try await analyzer.analyze(text: item.sentence, existingCategories: known)
+                // Comme pour une vraie note : ce qu'Engram reconnaît, et ce que contiennent les catégories déjà créées.
+                let context = AnalysisContext(facts: NoteFacts.describe(item.sentence), categoryDescriptions: descriptions)
+                let analysis = try await analyzer.analyze(text: item.sentence, existingCategories: known, context: context)
                 let valid = try AnalysisValidator.validate(analysis, against: item.sentence)
                 let path = valid.first?.categoryPath ?? []
                 let display = path.joined(separator: " › ")
-                if let root = path.first, !known.contains(root) { known.append(root) }
+                if let root = path.first, !known.contains(root) {
+                    known.append(root)
+                    if let description = valid.first?.categoryDescription { descriptions[root] = description }
+                }
                 if path.count == 2, !known.contains(display) { known.append(display) }
                 // Quand le nombre de notes compte (un rappel ne doit pas devenir deux notes), il est vérifié aussi.
                 let countIsRight = item.expectedNotes.map { $0 == valid.count } ?? true
                 let label = display.isEmpty ? "(aucune catégorie)" : display
                 rows.append(Row(sentence: item.sentence,
                                 path: item.expectedNotes == nil ? label : "\(label) · \(valid.count) note\(valid.count > 1 ? "s" : "")",
-                                isAccepted: item.accepts(categoryPath: path) && countIsRight))
+                                isAccepted: item.accepts(categoryPath: path) && countIsRight,
+                                reason: valid.first?.categoryReason))
             } catch AnalyzerError.unavailable(let reason) {
                 problem = reason
                 return

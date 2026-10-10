@@ -18,7 +18,7 @@ struct BirthdayAndFilingFixesStoreTests {
     @Test func oldNotesGiveTheirBirthdaysToThePeople() throws {
         let env = try StoreTestEnvironment()
         let people = EntityStore(database: env.database, dates: env.dates)
-        _ = try file(env, "Retiens la fête à Amina, c'est le 13 octobre", path: ["Famille"])
+        _ = try file(env, "Retiens la fête à Inès, c'est le 13 octobre", path: ["Famille"])
         _ = try file(env, "L'anniversaire de Marc est le 5 avril", path: ["Famille"])
         // Des notes d'avant ce correctif : la fête n'avait pas été retenue.
         try env.database.writer.write { db in try db.execute(sql: "DELETE FROM person_birthday") }
@@ -26,7 +26,7 @@ struct BirthdayAndFilingFixesStoreTests {
         let marc = try #require(try people.allEntities(kind: .person).first { $0.name == "Marc" })
         try people.setBirthday(marc.id, month: 6, day: 3, year: nil)
         #expect(try people.backfillBirthdays() == 1)
-        #expect(try people.birthdays().map { "\($0.name) \($0.day)/\($0.month)" }.sorted() == ["Amina 13/10", "Marc 3/6"])
+        #expect(try people.birthdays().map { "\($0.name) \($0.day)/\($0.month)" }.sorted() == ["Inès 13/10", "Marc 3/6"])
         // Relancée : rien de plus.
         #expect(try people.backfillBirthdays() == 0)
     }
@@ -34,9 +34,9 @@ struct BirthdayAndFilingFixesStoreTests {
     @Test func aTrackerKeepsOnlyItsMeasurements() throws {
         let env = try StoreTestEnvironment()
         let categories = env.categories
-        let birthday = try file(env, "Retiens l'anniversaire de Amina c'est le 13 octobre", path: ["Santé", "Poids"])
+        let birthday = try file(env, "Retiens l'anniversaire de Inès c'est le 13 octobre", path: ["Santé", "Poids"])
         let weight = try file(env, "Je pèse 162,5 livres", path: ["Santé", "Poids"])
-        let chosen = try file(env, "Souper chez Amina", path: ["Santé", "Poids"])
+        let chosen = try file(env, "Souper chez Inès", path: ["Santé", "Poids"])
         // Rangée là par le propriétaire lui-même : on n'y touche pas.
         let poids = try #require(try categories.categories(for: chosen.id).first)
         try categories.confirm(memoryID: chosen.id, categoryID: poids.id)

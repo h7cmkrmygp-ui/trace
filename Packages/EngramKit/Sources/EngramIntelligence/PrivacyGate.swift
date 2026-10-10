@@ -77,6 +77,13 @@ public enum PrivacyGate {
         names.filter { SensitiveDetectors.signals(in: $0, includeNames: false).isEmpty }
     }
 
+    /// P32 — descriptions de catégories qu'on peut joindre à une requête vers Groq : celles des catégories partageables,
+    /// sans coordonnées, numéros ni montants.
+    public static func shareableDescriptions(_ descriptions: [String: String], for names: [String]) -> [String: String] {
+        let allowed = Set(names)
+        return descriptions.filter { allowed.contains($0.key) && SensitiveDetectors.signals(in: $0.value, includeNames: false).isEmpty }
+    }
+
     /// Pour Gemini (palier gratuit) : seulement les grandes catégories (« Santé », « Maison »), jamais les
     /// sous-catégories, qui peuvent porter un nom propre (« Famille › Julie »), ni un nom de personne.
     public static func neutralCategoryNames(_ names: [String]) -> [String] {

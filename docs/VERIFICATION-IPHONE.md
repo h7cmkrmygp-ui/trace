@@ -301,3 +301,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 148. **Retrouver** : demande « C'est quand déjà la fête à Léa ? » : « La fête de Léa, c'est le 13 mars, dans … jours. » Pareil avec Siri : « Dis Siri, demande à Engram » › « C'est quand la fête à Léa ? ».
 149. **Les anciennes notes** : après la mise à jour, ouvre une personne dont la fête était dite dans une vieille note : la date y est. Une note de fête qui était rangée dans « Poids » est revenue dans « À classer ».
 150. **Des catégories à toi** : dicte une note sur un sujet nouveau (ex. « idée de cadeau pour la fête de Léa ») : l'IA réutilise une de tes catégories si le sujet y va vraiment, sinon elle en crée une nouvelle ; aucune sous-catégorie inventée pour rien.
+
+## AG. P32 — Le choix de la catégorie, réfléchi et visible
+
+151. **Pourquoi ce dossier** : dicte une nouvelle note, ouvre-la › « Détails » (ⓘ) : la section « Pourquoi ce dossier » dit, dans les mots de l'IA, ce dont parle la note et pourquoi elle va dans ce dossier (ou pourquoi elle en a créé un nouveau).
+152. **Ton choix compte** : retire la note de ce dossier : « Pourquoi ce dossier » disparaît.
+153. **Évaluation** : Réglages › Intelligence › « Évaluer le classement sur l'iPhone » › « Lancer l'évaluation » : sous chaque phrase, la raison de l'IA ; les deux fêtes vont dans Famille (ou Amis, Anniversaires…), jamais dans Santé.

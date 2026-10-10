@@ -2,10 +2,11 @@
 
 **Signalé sur l'iPhone par le propriétaire** :
 
-- « Retiens l'anniversaire de Amina c'est le 13 octobre » s'est retrouvé dans **Santé › Poids**.
+- Une fête dictée (ici avec un prénom inventé : « Retiens l'anniversaire de Inès c'est le 13 octobre ») s'est retrouvée
+  dans **Santé › Poids**.
 - Il veut des catégories qui ne sont pas « pré-écrites » : l'IA doit chercher dans les catégories existantes, réutiliser
   celle qui convient vraiment, et sinon en créer une nouvelle.
-- Dans Retrouver, « C'est quand déjà la fête à Amina ? » répondait « Je ne trouve rien là-dessus dans ta mémoire. »
+- Dans Retrouver, « C'est quand déjà la fête à Inès ? » répondait « Je ne trouve rien là-dessus dans ta mémoire. »
 
 ## Causes trouvées
 
@@ -18,9 +19,9 @@
   recevait les 5 premières catégories par ordre alphabétique, présentées comme les plus probables.
 - **Aucun garde-fou pour les suivis.** Un dossier de mesure (« Poids ») acceptait n'importe quelle note.
 - **Des façons de dire une fête n'étaient pas reconnues** :
-  - « la fête **à** Amina » ;
+  - « la fête **à** Inès » ;
   - un jour en lettres (« le treize octobre », « le premier mars ») ;
-  - « Amina fête ses 30 ans le 13 octobre » ;
+  - « Inès fête ses 30 ans le 13 octobre » ;
   - « C'est la fête de Marc le 1er mars ».
 - **Les fêtes des anciennes notes n'étaient jamais relues.**
 - **Retrouver** :
@@ -36,7 +37,7 @@
   - La sous-catégorie est facultative.
   - Une fête va avec la famille ou les amis, jamais en santé ni en argent.
   - Un dossier de mesure ne reçoit que cette mesure.
-- **Ce qu'Engram a déjà reconnu est dit à l'IA** (`NoteFacts`). Exemples : « la fête d'Amina, le 13 octobre (une date
+- **Ce qu'Engram a déjà reconnu est dit à l'IA** (`NoteFacts`). Exemples : « la fête d'Inès, le 13 octobre (une date
   pour une personne, pas une mesure de santé) », « une mesure de poids », « un ajout à la liste d'épicerie ».
   - Rien de plus que la note elle-même ne part.
   - Le choix du service (Gemini, Groq, iPhone) ne change pas.
@@ -54,9 +55,9 @@
   - les notes rangées par l'IA dans un suivi sans rapport en sont retirées ; une note rangée ou confirmée par le
     propriétaire n'est jamais touchée.
 - **Retrouver et Siri.**
-  - Pour « C'est quand la fête à Amina ? », la réponse vient de la page de la personne : « La fête d'Amina, c'est le
+  - Pour « C'est quand la fête à Inès ? », la réponse vient de la page de la personne : « La fête d'Inès, c'est le
     13 octobre, dans 4 jours. »
-  - Un nom entendu à une lettre près (« Amena ») est retrouvé s'il n'y en a qu'un.
+  - Un nom entendu à une lettre près (« Inèz ») est retrouvé s'il n'y en a qu'un.
   - « Fête » trouve aussi « anniversaire ».
 
 ## Ce qui ne change pas

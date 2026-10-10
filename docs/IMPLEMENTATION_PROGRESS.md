@@ -429,7 +429,7 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p30-lieux-trouves-tout-seuls-de
 
 ## P31 — Les fêtes bien retenues, des catégories qui viennent du sens (branche `p2-je-parle`)
 
-Spec : `docs/superpowers/specs/2026-10-09-engram-p31-fetes-et-categories-design.md` — signalé sur l'iPhone (une fête classée dans Santé › Poids, « C'est quand la fête à Amina ? » sans réponse).
+Spec : `docs/superpowers/specs/2026-10-09-engram-p31-fetes-et-categories-design.md` — signalé sur l'iPhone (une fête classée dans Santé › Poids, « C'est quand la fête à Inès ? » sans réponse).
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
@@ -438,3 +438,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p31-fetes-et-categories-design.
 | — | Un suivi (Poids, Sommeil…) ne reçoit que sa mesure | n/a | ✅ | ✅ | ✅ (une fête ou une nuit de sommeil refusées dans Poids, « À classer » plutôt que mal rangée) | ⏳ | — | aussi pour les anciennes notes, une fois |
 | — | Fêtes dites comme au Québec | n/a | ✅ | ✅ | ✅ (« la fête à », jour en lettres, « fête ses 30 ans » → année de naissance, extrait incomplet relu) | ⏳ | — | anciennes notes relues une fois |
 | — | Retrouver et Siri répondent « C'est quand la fête à … ? » | n/a | ✅ | ✅ | ✅ (« fête » = « anniversaire », nom à une lettre près, date et âge) | ⏳ | — | depuis la page de la personne |
+
+## P32 — Le choix de la catégorie : fait par l'IA, réfléchi et visible (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p32-choix-de-l-ia-reflechi-design.md` — demande : « assure-toi que c'est vraiment l'IA qui choisit, de façon intelligente ».
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | L'IA lit ce que contient chaque catégorie | n/a | ✅ | ✅ | ✅ (Apple : toutes ; Groq : sans coordonnées, numéros ni montants ; Gemini : aucune) | ⏳ | — | descriptions des catégories |
+| — | L'IA explique son choix avant de le faire (migration v16) | n/a | ✅ | ✅ | ✅ (raison avant la catégorie dans la réponse, gardée avec la note, effacée si le chemin est refusé ou retiré par le propriétaire) | ⏳ | — | note › Détails › « Pourquoi ce dossier » |
+| — | Évaluation sur l'iPhone comme une vraie note | n/a | ✅ | ✅ | ✅ (49 phrases, dont deux fêtes et une assurance ; raison affichée) | ⏳ | — | Réglages › Intelligence |

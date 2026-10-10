@@ -1,8 +1,8 @@
 import Foundation
 
-/// P31 — « C'est quand déjà la fête à Amina ? » : Retrouver et Siri répondent avec la fête gardée sur la page de la personne.
+/// P31 — « C'est quand déjà la fête à Inès ? » : Retrouver et Siri répondent avec la fête gardée sur la page de la personne.
 public enum BirthdayQuestion {
-    /// Le nom peut être écrit sans majuscule dans une question tapée (« la fête à amina »).
+    /// Le nom peut être écrit sans majuscule dans une question tapée (« la fête à inès »).
     static let name = #"(?<name>(?i:mon|ma|mes|notre)\s+\p{L}[\p{L}'-]*|\p{L}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)?)"#
     /// En anglais, le nom vient avant (« Julie's birthday ») : il commence par une majuscule.
     static let englishName = #"(?<name>\p{Lu}[\p{L}-]*(?:\s+\p{Lu}[\p{L}-]*)?)"#
@@ -12,7 +12,7 @@ public enum BirthdayQuestion {
     ]
     /// La question demande une date (« quand », « quelle date », « when »).
     static let asksWhen = #"\b(quand|quelle date|quel jour|c est quel|when|what day|what date)\b"#
-    /// Une question courte (« La fête d'Amina ? ») suffit, même sans « quand ».
+    /// Une question courte (« La fête d'Inès ? ») suffit, même sans « quand ».
     static let shortQuestion = 5
     static let notAPerson: Set<String> = ["qui", "quelqu'un", "quelqu un", "who", "mariage"]
 
@@ -39,7 +39,7 @@ public enum BirthdayQuestion {
         return nil
     }
 
-    /// La fête de cette personne : même nom, ou un nom entendu à une lettre près s'il n'y en a qu'un (« Amena »).
+    /// La fête de cette personne : même nom, ou un nom entendu à une lettre près s'il n'y en a qu'un (« Inèz »).
     public static func find(_ name: String, in birthdays: [Birthday]) -> Birthday? {
         let key = EntityName.key(name)
         guard !key.isEmpty else { return nil }
@@ -52,7 +52,7 @@ public enum BirthdayQuestion {
         return close.count == 1 ? close[0] : nil
     }
 
-    /// « La fête d'Amina, c'est le 13 octobre, dans 4 jours. », « La fête de Marc, c'est demain, le 10 octobre. Marc aura
+    /// « La fête d'Inès, c'est le 13 octobre, dans 4 jours. », « La fête de Marc, c'est demain, le 10 octobre. Marc aura
     /// 36 ans. »
     public static func answer(_ birthday: Birthday, now: Date, calendar: Calendar) -> String {
         let feast = BirthdayPlanner.feast(birthday.name)

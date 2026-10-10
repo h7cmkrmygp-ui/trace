@@ -5,9 +5,9 @@ import Foundation
 import Testing
 @testable import EngramPipeline
 
-/// P31 — « Retiens l'anniversaire de Amina c'est le 13 octobre » classé dans Santé › Poids (signalé sur l'iPhone).
+/// P31 — « Retiens l'anniversaire de Inès c'est le 13 octobre » classé dans Santé › Poids (signalé sur l'iPhone).
 struct BirthdayFilingPipelineTests {
-    static let text = "Retiens l'anniversaire de Amina c'est le 13 octobre"
+    static let text = "Retiens l'anniversaire de Inès c'est le 13 octobre"
 
     @Test func aBirthdayIsNeverFiledAsAWeight() async throws {
         let database = try AppDatabase.inMemory()
@@ -16,9 +16,9 @@ struct BirthdayFilingPipelineTests {
         let categories = CategoryStore(database: database, dates: dates)
         // L'IA se trompe de dossier, et son extrait a perdu le début de la phrase.
         let analyzer = FakeAnalyzer([.success(ThoughtAnalysis(thoughts: [
-            AnalyzedThought(title: "Anniversaire d'Amina", summary: nil, excerpt: "Amina c'est le 13 octobre", kind: .info,
+            AnalyzedThought(title: "Anniversaire d'Inès", summary: nil, excerpt: "Inès c'est le 13 octobre", kind: .info,
                             tags: [], mentionedDates: ["13 octobre"], category: "Santé", subcategory: "Poids",
-                            people: ["Amina"]),
+                            people: ["Inès"]),
         ]))])
         let processor = ThoughtProcessor(memories: memories, categories: categories,
                                          filer: ThoughtFiler(database: database, dates: dates), analyzer: analyzer)
@@ -33,9 +33,9 @@ struct BirthdayFilingPipelineTests {
         // Pas de dossier « Poids » : la note attend d'être classée plutôt que d'être mal rangée.
         #expect(summary.categoryPaths.isEmpty)
         #expect(try !categories.activeCategories().map(\.name).contains("Poids"))
-        // La fête est sur la page d'Amina, même si l'extrait de l'IA était incomplet.
+        // La fête est sur la page d'Inès, même si l'extrait de l'IA était incomplet.
         let birthdays = try EntityStore(database: database, dates: dates).birthdays()
-        #expect(birthdays.map(\.name) == ["Amina"])
+        #expect(birthdays.map(\.name) == ["Inès"])
         #expect(birthdays.first?.month == 10 && birthdays.first?.day == 13)
     }
 }

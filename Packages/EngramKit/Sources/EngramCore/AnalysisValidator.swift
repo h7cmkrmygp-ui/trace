@@ -63,7 +63,16 @@ public enum AnalysisValidator {
                 .flatMap { $0.isEmpty ? nil : $0 },
             // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus).
             people: EntityName.clean(thought.people, in: text, limit: maxNames),
-            places: EntityName.clean(thought.places, in: text, limit: maxNames))
+            places: EntityName.clean(thought.places, in: text, limit: maxNames),
+            // La raison du choix suit le chemin : un chemin refusé n'a plus de raison (P32).
+            categoryReason: path.isEmpty ? nil : cleanReason(thought.categoryReason))
+    }
+
+    /// Une phrase sur une ligne, espaces réduits, coupée à `maxReasonLength` ; nil si vide.
+    static func cleanReason(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let collapsed = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return collapsed.isEmpty ? nil : String(collapsed.prefix(maxReasonLength))
     }
 
     /// Chemin de 0 à 2 niveaux. Un modèle peut renvoyer « Automobile › Corolla » dans un seul champ :

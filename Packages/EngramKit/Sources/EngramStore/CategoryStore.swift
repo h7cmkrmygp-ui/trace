@@ -219,7 +219,7 @@ public struct CategoryStore: Sendable {
     }
 
     func assign(_ db: Database, memoryID: UUID, categoryID: UUID, origin: AssignmentOrigin,
-                confidence: Double?, now: Date) throws -> AssignmentOutcome {
+                confidence: Double?, reason: String? = nil, now: Date) throws -> AssignmentOutcome {
         guard try Memory.exists(db, key: memoryID) else { throw StoreError.notFound }
         guard let category = try EngramCategory.fetchOne(db, key: categoryID), category.status == .active else {
             throw StoreError.notFound
@@ -228,7 +228,7 @@ public struct CategoryStore: Sendable {
         let outcome = try AssignmentRules.assign(
             db, existing: existing,
             makeNew: { CategoryAssignment(memoryID: memoryID, categoryID: category.id, origin: origin,
-                                          confidence: confidence, confirmed: origin == .user, now: now) },
+                                          confidence: confidence, confirmed: origin == .user, reason: reason, now: now) },
             origin: origin, now: now)
         try SortingStatus.refresh(db, memoryID: memoryID, now: now)
         return outcome
@@ -321,12 +321,37 @@ public struct CategoryStore: Sendable {
 
     /// P32 — ce que contient chaque catégorie active qui a une description (chemin complet → description), donné à l'IA.
     public func categoryDescriptions() throws -> [String: String] {
-        [:]
+        try database.writer.read { db in
+            let active = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+            let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+            var descriptions: [String: String] = [:]
+            for category in active {
+                guard let text = category.descriptionText?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !text.isEmpty else { continue }
+                descriptions[CategoryPaths.display(CategoryPaths.components(of: category, in: byID))] = text
+            }
+            return descriptions
+        }
     }
 
-    /// P32 — pourquoi l'IA a rangé la note dans chacun de ses dossiers (seulement les dossiers encore là).
+    /// P32 — pourquoi l'IA a rangé la note dans chacun de ses dossiers (seulement les dossiers encore là ; un dossier
+    /// retiré par le propriétaire n'a plus de raison affichée).
     public func filingReasons(for memoryID: UUID) throws -> [FilingReason] {
-        []
+        try database.writer.read { db in
+            let active = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+            let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT category_id, reason FROM memory_category
+                WHERE memory_id = ? AND rejected = 0 AND reason IS NOT NULL AND reason <> ''
+                ORDER BY created_at
+                """, arguments: [memoryID])
+            return rows.compactMap { row -> FilingReason? in
+                let categoryID: UUID = row["category_id"]
+                guard let category = byID[categoryID] else { return nil }
+                return FilingReason(path: CategoryPaths.display(CategoryPaths.components(of: category, in: byID)),
+                                    reason: row["reason"])
+            }
+        }
     }
 
     /// Archive une fois pour toutes les catégories de départ (P1) qui n'ont aucun souvenir ni sous-catégorie.
@@ -351,7 +376,7 @@ public struct CategoryStore: Sendable {
     }
 
     /// P31 — un suivi (« Poids », « Sommeil »…) rend les notes que l'IA y a rangées sans rapport avec sa mesure
-    /// (« l'anniversaire d'Amina » dans Poids). Une note rangée ou confirmée par le propriétaire n'est jamais touchée ;
+    /// (« l'anniversaire d'Inès » dans Poids). Une note rangée ou confirmée par le propriétaire n'est jamais touchée ;
     /// sans autre catégorie, la note revient « À classer ». Renvoie le nombre de notes retirées.
     public func removeMisfiledFromTrackers() throws -> Int {
         let now = dates.now()

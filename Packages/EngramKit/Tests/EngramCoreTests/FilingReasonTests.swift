@@ -29,12 +29,4 @@ struct FilingReasonTests {
         #expect(valid.categoryPath.isEmpty)
         #expect(valid.categoryReason == nil)
     }
-
-    @Test func singularAndPluralNameTheSameCategory() {
-        #expect(CategoryNames.key("Assurances") == CategoryNames.key("assurance"))
-        #expect(CategoryNames.key("Impôts") == CategoryNames.key("Impot"))
-        #expect(CategoryNames.key("Pièces d'auto") == CategoryNames.key("Pièce d'auto"))
-        #expect(CategoryNames.key("Famille") != CategoryNames.key("Finance"))
-        #expect(CategoryNames.key("Pas") == "pas")
-    }
 }

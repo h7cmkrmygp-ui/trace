@@ -143,7 +143,12 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         case .secret: []
         }
         let shareable = PrivacyGate.shareableCategoryNames(existingCategories)
-        let cloudContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts)
+        // Ce que contient chaque catégorie (P32) : seulement vers Groq, et seulement des descriptions sans coordonnées,
+        // numéros ni montants. Gemini (palier gratuit) n'en reçoit aucune.
+        let descriptions = PrivacyGate.shareableDescriptions(context.categoryDescriptions, for: shareable)
+        let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts)
+        let personalContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
+                                           categoryDescriptions: descriptions)
         var temporarilyMissing = false
         var notes: [String] = []
         for provider in candidates {
@@ -154,9 +159,11 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                 continue
             }
             // Gemini (palier gratuit) ne voit que les grandes catégories ; Groq peut voir les chemins complets.
-            let categories = provider.name == neutral?.name ? PrivacyGate.neutralCategoryNames(existingCategories) : shareable
+            let isNeutral = provider.name == neutral?.name
+            let categories = isNeutral ? PrivacyGate.neutralCategoryNames(existingCategories) : shareable
             do {
-                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: categories, context: cloudContext)
+                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: categories,
+                                                                   context: isNeutral ? neutralContext : personalContext)
                 quota.recordUse(provider.name)
                 analysis.route = AnalysisRoute(level: decision.level, provider: provider.name,
                                                reason: decision.reasons.joined(separator: " "), needsCloudRetry: false)

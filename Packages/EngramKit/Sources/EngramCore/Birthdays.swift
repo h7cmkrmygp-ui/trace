@@ -6,7 +6,7 @@ public struct ParsedBirthday: Sendable, Equatable {
     public let month: Int
     public let day: Int
     public let year: Int?
-    /// « Amina fête ses 30 ans le 13 octobre » : l'âge fêté (P31).
+    /// « Inès fête ses 30 ans le 13 octobre » : l'âge fêté (P31).
     public let turning: Int?
 
     public init(person: String, month: Int, day: Int, year: Int? = nil, turning: Int? = nil) {
@@ -47,8 +47,8 @@ public struct Birthday: Sendable, Equatable, Identifiable {
 
 /// Reconnaît, sur l'iPhone et sans IA : « l'anniversaire de Julie est le 12 mars », « Marc a sa fête le 3 juin »,
 /// « la fête de Léa, c'est le 1er août », « Sophie est née le 24 décembre 1990 », « Julie's birthday is March 12 ».
-/// P31 : aussi « la fête à Amina, c'est le treize octobre », « C'est la fête de Marc le premier mars »,
-/// « Amina fête ses 30 ans le 13 octobre ». « La fête de Noël », « l'anniversaire de mariage » n'en sont pas.
+/// P31 : aussi « la fête à Inès, c'est le treize octobre », « C'est la fête de Marc le premier mars »,
+/// « Inès fête ses 30 ans le 13 octobre ». « La fête de Noël », « l'anniversaire de mariage » n'en sont pas.
 public enum BirthdayParser {
     static let months: [String: Int] = [
         "janvier": 1, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6, "juillet": 7, "aout": 8, "septembre": 9,
@@ -76,11 +76,11 @@ public enum BirthdayParser {
     static let day = #"(?<day>1er|\d{1,2}|(?i:premier|trente(?:[\s-]et[\s-]un)?|vingt(?:[\s-](?:et[\s-]un|deux|trois|quatre|cinq|six|sept|huit|neuf))?|dix(?:[\s-](?:sept|huit|neuf))?|onze|douze|treize|quatorze|quinze|seize|deux|trois|quatre|cinq|six|sept|huit|neuf))"#
     static let frenchDate = #"(?i:le)\s+"# + day + #"\s+(?<month>(?i:janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[ée]cembre))(?:\s+(?<year>\d{4}))?"#
     static let patterns: [String] = [
-        // « l'anniversaire de Julie est le 12 mars », « la fête à Amina, c'est le 13 octobre », « la fête de Marc le 1er mars ».
+        // « l'anniversaire de Julie est le 12 mars », « la fête à Inès, c'est le 13 octobre », « la fête de Marc le 1er mars ».
         #"(?i:l['’]anniversaire|la f[êe]te)\s+(?i:de\s+|d['’]|[àa]\s+)"# + name
             + #"\s*,?\s+(?:(?i:est|c['’]est|tombe|sera)\s+)?"# + frenchDate,
         name + #"\s+(?i:a sa f[êe]te|aura sa f[êe]te|f[êe]te son anniversaire)\s+"# + frenchDate,
-        // « Amina fête ses 30 ans le 13 octobre », « Marc aura 40 ans le 3 juin ».
+        // « Inès fête ses 30 ans le 13 octobre », « Marc aura 40 ans le 3 juin ».
         name + #"\s+(?i:f[êe]te\s+ses|f[êe]tera\s+ses|aura|va\s+avoir|a)\s+(?<turning>\d{1,3})\s+(?i:ans)\s+"# + frenchDate,
         name + #"\s+(?i:est n[ée]e?)\s+"# + frenchDate,
         name + #"(?i:['’]s birthday is)\s+(?i:on\s+)?(?<month>(?i:january|february|march|april|may|june|july|august|september|october|november|december))\s+(?<day>\d{1,2})(?i:st|nd|rd|th)?(?:,?\s+(?<year>\d{4}))?"#,
