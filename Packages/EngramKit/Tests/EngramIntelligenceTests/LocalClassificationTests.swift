@@ -47,7 +47,7 @@ struct LocalClassificationTests {
 
     #if canImport(FoundationModels)
     @Test func appleInstructionsSplitBySubjectNotBySentence() {
-        #expect(AnalysisPrompt.version == "p32-v1")
+        #expect(AnalysisPrompt.version == "p33-v1")
         #expect(!AnalysisPrompt.instructions.localizedCaseInsensitiveContains("A single sentence can contain several thoughts"))
         #expect(AnalysisPrompt.instructions.localizedCaseInsensitiveContains("never split"))
         #expect(AnalysisPrompt.instructions.contains("pis après je vais au gym"))

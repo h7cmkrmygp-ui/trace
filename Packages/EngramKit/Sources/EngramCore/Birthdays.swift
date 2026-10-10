@@ -87,6 +87,11 @@ public enum BirthdayParser {
     ]
 
     public static func parse(_ text: String) -> ParsedBirthday? {
+        match(text)?.birthday
+    }
+
+    /// La fête reconnue et la partie du texte qui la dit.
+    static func match(_ text: String) -> (birthday: ParsedBirthday, range: Range<String.Index>)? {
         let cleaned = text.replacingOccurrences(of: "’", with: "'")
         let whole = NSRange(cleaned.startIndex..., in: cleaned)
         for pattern in patterns {
@@ -101,17 +106,37 @@ public enum BirthdayParser {
                       let month = months[MeasurementParser.normalized(monthText)],
                       let day = dayNumber(dayText), isValid(month: month, day: day) else { continue }
                 let turning = pattern.contains("?<turning>") ? group("turning").flatMap { Int($0) } : nil
-                return ParsedBirthday(person: person, month: month, day: day, year: group("year").flatMap { Int($0) },
-                                      turning: turning.flatMap { (1...130).contains($0) ? $0 : nil })
+                guard let range = Range(match.range, in: cleaned) else { continue }
+                let birthday = ParsedBirthday(person: person, month: month, day: day, year: group("year").flatMap { Int($0) },
+                                              turning: turning.flatMap { (1...130).contains($0) ? $0 : nil })
+                // Même longueur (’ et ' comptent pour un caractère) : la plage vaut pour le texte d'origine.
+                guard let lower = text.index(text.startIndex, offsetBy: cleaned.distance(from: cleaned.startIndex,
+                                                                                         to: range.lowerBound),
+                                             limitedBy: text.endIndex),
+                      let upper = text.index(lower, offsetBy: cleaned.distance(from: range.lowerBound, to: range.upperBound),
+                                             limitedBy: text.endIndex) else { continue }
+                return (birthday, lower..<upper)
             }
         }
         return nil
     }
 
+    /// Mots qui entourent une fête sans rien demander de plus (« Retiens », « N'oublie pas que », « c'est »).
+    static let fillerWords: Set<String> = [
+        "retiens", "retenir", "rappelle", "rappelles", "rappeler", "souviens", "souvienne", "souvenir", "note", "noter",
+        "prends", "oublie", "oublier", "pas", "que", "qu", "toi", "moi", "te", "me", "ne", "n", "je", "j", "il", "faut",
+        "dois", "engram", "euh", "hum", "ok", "okay", "alors", "bon", "hey", "ca", "cela", "c", "est", "la", "le", "les",
+        "de", "d", "du", "a", "et", "pis", "aussi", "donc", "remember", "that", "please", "svp", "stp", "merci",
+    ]
+
     /// P33 — la phrase dit seulement une fête (« Retiens l'anniversaire de Inès c'est le 13 octobre ») : rien d'autre à
     /// faire. « Acheter un cadeau pour la fête de Julie le 12 mars » est une tâche.
     public static func isOnlyABirthday(_ text: String) -> Bool {
-        false
+        guard let found = match(text) else { return false }
+        var rest = text
+        rest.replaceSubrange(found.range, with: " ")
+        let words = MeasurementParser.normalized(rest).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        return words.allSatisfy { fillerWords.contains($0) }
     }
 
     /// « 13 », « 1er », « treize », « vingt-deux ».

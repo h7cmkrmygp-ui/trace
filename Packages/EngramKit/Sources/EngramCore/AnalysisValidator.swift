@@ -10,14 +10,20 @@ public enum AnalysisValidator {
     /// Personnes, et lieux, gardés au plus par pensée.
     public static let maxNames = 4
 
+    /// P33 — le dossier des fêtes quand le propriétaire n'en a pas encore (le classement reprend le sien s'il existe).
+    public static let birthdayFolder = "Anniversaires"
+    public static let birthdayFolderDescription = "Les fêtes des personnes de ta vie, rappelées chaque année."
+
     /// Pensées valides, dans l'ordre. Lève `invalidOutput` s'il n'en reste aucune.
     public static func validate(_ analysis: ThoughtAnalysis, against text: String) throws -> [ValidThought] {
-        let valid = analysis.thoughts.compactMap { validate($0, against: text) }
+        let alone = analysis.thoughts.count == 1
+        let valid = analysis.thoughts.compactMap { validate($0, against: text, alone: alone) }
         guard !valid.isEmpty else { throw AnalyzerError.invalidOutput }
         return valid
     }
 
-    static func validate(_ thought: AnalyzedThought, against text: String) -> ValidThought? {
+    /// - Parameter alone: seule pensée de la note (un extrait incomplet se relit alors avec la note entière).
+    static func validate(_ thought: AnalyzedThought, against text: String, alone: Bool = false) -> ValidThought? {
         var excerpt = thought.excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
         if !TextNormalizer.containsPhrase(excerpt, in: text) {
             // L'IA a pu écrire « puis » pour « pis » ou corriger une faute : on reprend les vrais mots du passage.
@@ -33,6 +39,18 @@ public enum AnalysisValidator {
         var path = categoryPath(category: thought.category, subcategory: thought.subcategory)
         // Un suivi (« Santé › Poids ») ne reçoit que sa mesure : sinon la note reste « À classer » plutôt que mal rangée (P31).
         if !MeasurementFolders.accepts(path, text: excerpt) { path = [] }
+        var kind = thought.kind
+        var reason = path.isEmpty ? nil : cleanReason(thought.categoryReason)
+        // Une note qui dit seulement une fête (P33) : une chose à retenir, dans le dossier des fêtes, sans échéance
+        // (la page de la personne la rappelle chaque année). Une tâche autour d'une fête reste une tâche.
+        let birthdayText = BirthdayParser.isOnlyABirthday(excerpt) ? excerpt
+            : alone && BirthdayParser.isOnlyABirthday(text) ? text : nil
+        let birthday = birthdayText.flatMap(BirthdayParser.parse)
+        if let birthday {
+            kind = .info
+            path = [birthdayFolder]
+            reason = birthdayReason(birthday)
+        }
 
         var seen = Set<String>()
         var tags: [String] = []
@@ -51,21 +69,32 @@ public enum AnalysisValidator {
             excerpt: excerpt,
             spanStart: found ? range.location : nil,
             spanEnd: found ? range.location + range.length : nil,
-            kind: thought.kind,
+            kind: kind,
             tags: tags,
             categoryPath: path,
             // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
             mentionedDates: thought.mentionedDates
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) },
-            categoryDescription: thought.categoryDescription
+            // Le dossier des fêtes a sa propre description (celle de l'IA parlait d'un autre dossier).
+            categoryDescription: birthday != nil ? birthdayFolderDescription : thought.categoryDescription
                 .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
                 .flatMap { $0.isEmpty ? nil : $0 },
             // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus).
             people: EntityName.clean(thought.people, in: text, limit: maxNames),
             places: EntityName.clean(thought.places, in: text, limit: maxNames),
             // La raison du choix suit le chemin : un chemin refusé n'a plus de raison (P32).
-            categoryReason: path.isEmpty ? nil : cleanReason(thought.categoryReason))
+            categoryReason: reason,
+            birthdayOf: birthday?.person)
+    }
+
+    /// « La fête d'Inès, le 13 octobre : une date à retenir, rangée avec les anniversaires ; Engram te la rappelle chaque
+    /// année. » (P33, affichée dans « Pourquoi ce dossier »).
+    public static func birthdayReason(_ birthday: ParsedBirthday) -> String {
+        let day = birthday.day == 1 ? "1er" : "\(birthday.day)"
+        let feast = BirthdayPlanner.feast(birthday.person)
+        return "\(feast.prefix(1).uppercased() + feast.dropFirst()), le \(day) \(WeeklyReviewText.months[birthday.month - 1]) :"
+            + " une date à retenir, rangée avec les anniversaires ; Engram te la rappelle chaque année."
     }
 
     /// Une phrase sur une ligne, espaces réduits, coupée à `maxReasonLength` ; nil si vide.

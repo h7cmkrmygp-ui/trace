@@ -26,7 +26,7 @@ struct GeneratedThought {
     var mentionedDates: [String]
     @Guide(description: "Written BEFORE choosing the category, one short French sentence for the owner: what this item is really about, then which existing category it truly belongs to and why, judged by what that category contains, or why none fits and a new one is needed.")
     var categoryReason: String
-    @Guide(description: "The domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from its meaning. Reuse an existing category name exactly only when the item truly belongs to it; otherwise create a new one. A person's birthday is never health or money.")
+    @Guide(description: "The domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from its meaning. Reuse an existing category name exactly only when the item truly belongs to it; otherwise create a new one. A person's birthday alone goes in the owner's birthdays category, or « Anniversaires ».")
     var category: String
     @Guide(description: "If the category is new: one short French sentence describing what it will contain. Otherwise empty.")
     var categoryDescription: String
@@ -46,7 +46,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p32-v1"
+    static let version = "p33-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -71,8 +71,9 @@ enum AnalysisPrompt {
         - category: the domain of the owner's life this item belongs to, in French, decided from its meaning. Reuse an \
         existing category, written exactly as given, only when the subject truly belongs to it; a word in common is not \
         enough. When none truly fits, create a new category: a broad domain in French that later notes will join.
-        A birthday or a feast day of a person is a date to remember for that person: file it with the family or \
-        friends, never with health or money.
+        A note that only gives a person's birthday or feast day is info, a date to remember, not a task: file it in the \
+        owner's existing category for birthdays, or create « Anniversaires »; never with family, health or money. \
+        Something to do around a birthday (buying a gift) stays a task.
         A folder that tracks a measurement (weight, sleep, blood pressure, pulse, steps, blood sugar) only receives that \
         measurement. A weight in pounds (« livres ») is not money.
         When the prompt says what Engram already recognized in the note, trust it.

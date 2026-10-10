@@ -448,3 +448,12 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p32-choix-de-l-ia-reflechi-desi
 | — | L'IA lit ce que contient chaque catégorie | n/a | ✅ | ✅ | ✅ (Apple : toutes ; Groq : sans coordonnées, numéros ni montants ; Gemini : aucune) | ⏳ | — | descriptions des catégories |
 | — | L'IA explique son choix avant de le faire (migration v16) | n/a | ✅ | ✅ | ✅ (raison avant la catégorie dans la réponse, gardée avec la note, effacée si le chemin est refusé ou retiré par le propriétaire) | ⏳ | — | note › Détails › « Pourquoi ce dossier » |
 | — | Évaluation sur l'iPhone comme une vraie note | n/a | ✅ | ✅ | ✅ (49 phrases, dont deux fêtes et une assurance ; raison affichée) | ⏳ | — | Réglages › Intelligence |
+
+## P33 — Les fêtes ont leur dossier (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-09-engram-p33-les-fetes-ont-leur-dossier-design.md` — signalé : une fête rangée dans Famille et dans « À faire », sans dossier Anniversaires.
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Une fête seule va dans « Anniversaires », comme une chose à retenir | n/a | ✅ | ✅ | ✅ (pas une tâche, pas d'échéance, dossier de fêtes du propriétaire repris, une tâche autour d'une fête reste une tâche) | ⏳ | — | rappels sur la page de la personne |
+| — | Anciennes notes de fête rangées une fois | n/a | ✅ | ✅ | ✅ (quittent « À faire », jamais une note touchée par le propriétaire) | ⏳ | — | au lancement |

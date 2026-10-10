@@ -63,7 +63,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p32-cloud-v1"
+    public static let version = "p33-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -94,8 +94,8 @@ public enum CloudPrompt {
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
         - categoryReason: written BEFORE choosing the category, one short French sentence for the owner: what this item \
-        is really about, then either which existing category it truly belongs to and why (« Une date à retenir pour \
-        Inès : elle va avec la famille. »), or why none of the existing categories fits and a new one is needed. \
+        is really about, then either which existing category it truly belongs to and why (« Un entretien de la \
+        voiture : il va dans Automobile. »), or why none of the existing categories fits and a new one is needed. \
         Judge an existing category by what it contains (its description, when given), not only by its name.
         - category: the domain of the owner's life this item belongs to, in French, 1 to 3 words, decided from the \
         meaning of the item itself, as the owner would file it by hand, and consistent with categoryReason. First read \
@@ -103,8 +103,11 @@ public enum CloudPrompt {
         item truly belongs to it; a word in common is not enough. When none truly fits, create a new category: a broad \
         domain in French that later notes on the same subject will join. There is no list of categories to choose from: \
         only the owner's existing ones, or a new one.
-        - A birthday or a feast day of a person (« l'anniversaire de Julie », « la fête à Inès ») is a date to remember \
-        for that person: file it with the family or friends, never with health, a body measurement or money.
+        - A note that only gives a person's birthday or feast day (« l'anniversaire de Julie est le 12 mars », « la fête à \
+        Inès, c'est le 13 octobre ») is info, a date to remember, not a task: Engram reminds the owner every year. File it \
+        in the owner's existing category for birthdays, written exactly as given, or create « Anniversaires »; never \
+        with family, health, a body measurement or money. Something to do around a birthday (« acheter un cadeau pour \
+        la fête de Julie ») stays a task.
         - A category or subcategory that tracks a measurement (weight, sleep, blood pressure, pulse, steps, blood sugar) \
         only receives that measurement or what is directly about it. A weight in pounds ("livres") is not money and not \
         a book. Money spent, owed or earned is about finances.
