@@ -1,0 +1,176 @@
+import EngramCapture
+import EngramCore
+import EngramPipeline
+import EngramStore
+import Foundation
+import Observation
+import UIKit
+
+/// Parcours d'une capture : enregistrer → sauvegarder → transcrire → vérifier → classer → afficher le résultat.
+/// À chaque étape, la pensée est déjà sauvegardée : un échec ne fait jamais rien perdre.
+@MainActor
+@Observable
+final class RecordModel {
+    enum Phase: Equatable {
+        case idle
+        case recording
+        case transcribing
+        /// « Vérifie ta note » : la transcription attend la confirmation du propriétaire.
+        case review
+        case filing
+        case result
+        case message(String)
+    }
+
+    struct FiledItem: Identifiable, Equatable {
+        let id: UUID
+        let title: String
+        let path: String?
+        /// Un événement a été ajouté au calendrier de l'iPhone pour cette pensée.
+        var addedToCalendar = false
+    }
+
+    /// Arrêt en cours : l'arrêt automatique à 5 min et un toucher simultané ne doivent pas terminer deux fois.
+    private var isFinishing = false
+
+    private(set) var phase: Phase = .idle
+    private(set) var items: [FiledItem] = []
+    /// Dictée en cours de vérification (phase `.review`), montrée dans une feuille qui garde sa propre copie du texte.
+    private(set) var review: ReviewDraft?
+    private(set) var reviewAudioURL: URL?
+    let recorder = VoiceRecorder()
+
+    var isBusy: Bool { phase == .transcribing || phase == .filing }
+
+    func toggle(app: AppModel) async {
+        switch recorder.state {
+        case .idle: await start(app: app)
+        case .recording, .finished: await finish(app: app)
+        }
+    }
+
+    func start(app: AppModel) async {
+        guard await VoiceRecorder.requestPermission() else {
+            phase = .message("Autorise le micro : Réglages › Engram › Micro.")
+            return
+        }
+        // Une nouvelle dictée pendant une vérification : la précédente reste « À vérifier » dans les Notes.
+        review = nil
+        reviewAudioURL = nil
+        do {
+            try recorder.start(in: app.storageDirectory, stopsOnSilence: app.stopsOnSilence)
+            // L'écran ne se verrouille pas pendant une dictée (sinon l'enregistrement serait coupé).
+            UIApplication.shared.isIdleTimerDisabled = true
+            items = []
+            phase = .recording
+        } catch {
+            phase = .message("Impossible de démarrer l'enregistrement.")
+        }
+    }
+
+    func finish(app: AppModel) async {
+        guard !isFinishing else { return }
+        isFinishing = true
+        defer { isFinishing = false }
+        UIApplication.shared.isIdleTimerDisabled = false
+        guard let result = recorder.stop() else {
+            if phase == .recording { phase = .idle }
+            return
+        }
+        do {
+            let memory = try app.memories.saveVoiceRecording(audioPath: result.relativePath, duration: result.duration)
+            phase = .transcribing
+            guard await app.transcribe(sourceID: memory.sourceID, audioPath: result.relativePath) else {
+                phase = .message("Pensée enregistrée. La transcription se fera dès que possible.")
+                return
+            }
+            if let source = try? app.memories.source(id: memory.sourceID), source.needsReview {
+                showReview(of: source, audioURL: result.url)
+                return
+            }
+            await file(sourceID: memory.sourceID, app: app)
+        } catch {
+            phase = .message(AppModel.describe(error))
+        }
+    }
+
+    /// Affiche « Vérifie ta note » pour une dictée transcrite qui attend la confirmation du propriétaire.
+    func showReview(of source: Source, audioURL: URL?) {
+        review = ReviewDraft(sourceID: source.id, text: source.referenceText ?? "")
+        reviewAudioURL = audioURL
+        phase = .review
+    }
+
+    /// « Classer » sur la feuille de vérification, avec le texte tel que le propriétaire l'a laissé.
+    func confirmReview(_ draft: ReviewDraft, app: AppModel) async {
+        guard review?.sourceID == draft.sourceID else { return }
+        // La feuille se ferme d'abord : rien ne relit la dictée pendant le classement.
+        review = nil
+        reviewAudioURL = nil
+        do {
+            try app.memories.confirmReview(sourceID: draft.sourceID, text: draft.text, keepLocal: draft.keepLocal)
+        } catch {
+            phase = .message(AppModel.describe(error))
+            return
+        }
+        await file(sourceID: draft.sourceID, app: app)
+    }
+
+    /// « Plus tard », ou la feuille fermée d'un geste : la dictée reste dans Notes › À vérifier.
+    func postponeReview() {
+        guard review != nil else { return }
+        review = nil
+        reviewAudioURL = nil
+        phase = .message("Ta dictée t'attend dans Notes › À vérifier.")
+    }
+
+    /// « Jeter la dictée » sur la feuille de vérification : la note va à la corbeille, sans être analysée.
+    func discardReview(app: AppModel) {
+        guard let review else { return }
+        do {
+            try app.memories.discardReview(sourceID: review.sourceID)
+            phase = .message("Note annulée : elle est dans la corbeille si tu changes d'avis.")
+        } catch {
+            phase = .message(AppModel.describe(error))
+        }
+        self.review = nil
+        reviewAudioURL = nil
+    }
+
+    func submit(text: String, keepLocal: Bool = false, app: AppModel) async {
+        do {
+            switch try app.memories.saveTextNoteWithoutAnalysis(text, keepLocal: keepLocal) {
+            case .duplicate:
+                phase = .message("Cette pensée vient déjà d'être enregistrée.")
+            case .saved(let memory):
+                await file(sourceID: memory.sourceID, app: app)
+            }
+        } catch {
+            phase = .message(AppModel.describe(error))
+        }
+    }
+
+    func cancel() {
+        UIApplication.shared.isIdleTimerDisabled = false
+        recorder.cancel()
+        phase = .idle
+    }
+
+    private func file(sourceID: UUID, app: AppModel) async {
+        phase = .filing
+        switch await app.process(sourceID: sourceID) {
+        case .filed(let summary):
+            items = summary.memories.map { FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id]) }
+            phase = .result
+            await app.syncAppointments(askPermission: true)
+            await app.askForRemindersIfNeeded()
+            for index in items.indices {
+                items[index].addedToCalendar = ((try? app.calendarLinks.link(for: items[index].id)) ?? nil) != nil
+            }
+        case .waiting(let reason):
+            phase = .message("Pensée gardée dans « À classer ». \(reason)")
+        case .fallback:
+            phase = .message("Pensée gardée dans « À classer » : l'IA n'a pas su la classer.")
+        }
+    }
+}

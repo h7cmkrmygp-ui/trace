@@ -1,0 +1,199 @@
+name: Engram
+options:
+  bundleIdPrefix: io.github.h7cmkrmygpui
+  deploymentTarget:
+    iOS: "27.0"
+  createIntermediateGroups: true
+  developmentLanguage: fr
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  EngramKit:
+    path: Packages/EngramKit
+targets:
+  Engram:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      # L'icône de l'app (une seule image 1024 × 1024, la même en mode sombre).
+      - path: App/Resources
+      - path: Shared
+    entitlements:
+      path: App/Engram.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
+    dependencies:
+      - target: EngramWidgets
+      - target: EngramShare
+      - package: EngramKit
+        product: EngramCore
+      - package: EngramKit
+        product: EngramStore
+      - package: EngramKit
+        product: EngramPipeline
+      - package: EngramKit
+        product: EngramIntelligence
+      - package: EngramKit
+        product: EngramCapture
+      - package: EngramKit
+        product: EngramCalendar
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Engram
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: fr
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - audio
+        NSMicrophoneUsageDescription: "Engram utilise le micro pour enregistrer les pensées que tu dictes. L'audio reste sur ton iPhone."
+        NSCameraUsageDescription: "Engram lit le texte d'une photo (un papier, une étiquette) pour en faire une note. La photo n'est pas gardée et rien n'est envoyé."
+        NSLocationWhenInUseUsageDescription: "Engram te rappelle une note en arrivant à un lieu (ex. : acheter du lait chez Costco). Ta position reste sur ton iPhone ; c'est iOS qui surveille les lieux."
+        NSCalendarsFullAccessUsageDescription: "Engram affiche tes événements et ajoute à ton calendrier les rendez-vous que tu dictes."
+        NSCalendarsWriteOnlyAccessUsageDescription: "Engram ajoute à ton calendrier les rendez-vous que tu dictes."
+        NSSpeechRecognitionUsageDescription: "Engram transcrit tes pensées directement sur ton iPhone, sans les envoyer sur Internet."
+        NSFaceIDUsageDescription: "Engram utilise Face ID pour que toi seul puisses ouvrir ta mémoire."
+        # AltStore (compte gratuit) renomme le dossier partagé et écrit son vrai nom ici.
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        # engram://record (widgets, Centre de contrôle) et engram://today.
+        CFBundleURLTypes:
+          - CFBundleURLName: io.github.h7cmkrmygpui.engram
+            CFBundleURLSchemes:
+              - engram
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+  # Widgets « Aujourd'hui » et « Enregistrer », bouton du Centre de contrôle.
+  EngramWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    dependencies:
+      - package: EngramKit
+        product: EngramCore
+    entitlements:
+      path: Widgets/EngramWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Engram
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+  # « Partager › Engram » depuis les autres apps.
+  EngramShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+      - path: Shared
+    dependencies:
+      - package: EngramKit
+        product: EngramCore
+    entitlements:
+      path: Share/EngramShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.io.github.h7cmkrmygpui.engram
+    info:
+      path: Share/Info.plist
+      properties:
+        CFBundleDisplayName: Engram
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ALTAppGroups:
+          - group.io.github.h7cmkrmygpui.engram
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.share
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+  # Captures d'écran sur simulateur, avec des notes inventées (workflow « UI screenshots »).
+  EngramUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Engram
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.h7cmkrmygpui.engram.uitests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY: ""
+        TEST_TARGET_NAME: Engram
+schemes:
+  Engram:
+    build:
+      targets:
+        Engram: all
+        EngramUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EngramUITests
+    archive:
+      config: Release
