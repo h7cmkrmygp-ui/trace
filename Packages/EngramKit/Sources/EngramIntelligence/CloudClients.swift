@@ -49,11 +49,14 @@ public struct CloudContext: Sendable {
     public let timeZone: TimeZone
     /// Ce qu'Engram a déjà reconnu dans la note (P31) : rien de plus que la note elle-même.
     public let facts: [String]
+    /// Ce que contient chaque catégorie (P32) : seulement des descriptions sans rien de sensible, jamais pour Gemini.
+    public let categoryDescriptions: [String: String]
 
-    public init(now: Date, timeZone: TimeZone, facts: [String] = []) {
+    public init(now: Date, timeZone: TimeZone, facts: [String] = [], categoryDescriptions: [String: String] = [:]) {
         self.now = now
         self.timeZone = timeZone
         self.facts = facts
+        self.categoryDescriptions = categoryDescriptions
     }
 }
 

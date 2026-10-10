@@ -18,10 +18,13 @@ public struct AnalyzedThought: Sendable, Hashable {
     /// Personnes et lieux nommés dans l'élément, recopiés de la note (P9).
     public var people: [String]
     public var places: [String]
+    /// P32 — pourquoi l'IA choisit cette catégorie, en une phrase écrite avant de la choisir.
+    public var categoryReason: String?
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
                 mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil,
-                people: [String] = [], places: [String] = []) {
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil) {
+        self.categoryReason = categoryReason
         self.people = people
         self.places = places
         self.title = title
@@ -72,11 +75,15 @@ public struct AnalysisContext: Sendable, Equatable {
     public var capturedAt: Date
     /// Ce qu'Engram a déjà reconnu dans la note (P31, `NoteFacts`), dit à l'IA avec elle.
     public var facts: [String]
+    /// Ce que contient chaque catégorie existante (chemin → description), pour que l'IA juge par le sens (P32).
+    public var categoryDescriptions: [String: String]
 
-    public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = []) {
+    public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
+                categoryDescriptions: [String: String] = [:]) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
+        self.categoryDescriptions = categoryDescriptions
     }
 }
 
@@ -122,10 +129,13 @@ public struct ValidThought: Sendable, Hashable {
     /// Personnes et lieux vérifiés (présents dans le texte).
     public var people: [String]
     public var places: [String]
+    /// P32 — la raison donnée par l'IA pour ce chemin (nil si Engram a refusé le chemin).
+    public var categoryReason: String?
 
     public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
                 tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
-                people: [String] = [], places: [String] = []) {
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil) {
+        self.categoryReason = categoryReason
         self.people = people
         self.places = places
         self.title = title

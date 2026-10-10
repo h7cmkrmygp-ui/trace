@@ -80,7 +80,7 @@ enum AnalysisPrompt {
         """
 
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
-                       facts: [String] = []) -> String {
+                       facts: [String] = [], descriptions: [String: String] = [:]) -> String {
         let existing = categories.isEmpty ? "(none yet)" : categories.map { "- \($0)" }.joined(separator: "\n")
         let hint = likely.isEmpty ? ""
             : "\nExisting categories closest in meaning (a hint, not an obligation): \(likely.joined(separator: ", "))\n"
