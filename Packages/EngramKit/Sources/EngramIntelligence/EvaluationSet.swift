@@ -34,7 +34,8 @@ public enum EvaluationSet {
     static let shopping = ["Achats", "Courses", "Épicerie", "Magasinage", "Shopping"]
     static let travel = ["Voyages", "Voyage", "Vacances"]
     static let family = ["Famille", "Proches", "Personnel"]
-    static let birthdays = ["Amis", "Anniversaires", "Anniversaire", "Fêtes", "Personnes", "Relations", "Dates importantes"]
+    // P33 : une fête seule va dans le dossier des fêtes, jamais dans Famille.
+    static let birthdays = ["Anniversaires", "Anniversaire", "Fêtes", "Fête", "Dates importantes"]
     static let studies = ["Études", "École", "Cours", "Apprentissage", "Formation"]
     static let projects = ["Projets", "Idées", "Technologie", "Développement", "Application"]
 
@@ -90,8 +91,8 @@ public enum EvaluationSet {
                        acceptedRoots: finance + auto + home + ["Assurances", "Assurance", "Administratif"], expectedNotes: 1),
         EvaluationCase(sentence: "Je pèse 162,5 livres aujourd'hui", acceptedRoots: health, expectedNotes: 1),
         // P31-P32 : une fête rangée dans Santé › Poids, une assurance rangée dans « Automobile › car part ».
-        EvaluationCase(sentence: "Retiens la fête à Léa, c'est le 13 mars", acceptedRoots: family + birthdays, expectedNotes: 1),
-        EvaluationCase(sentence: "L'anniversaire de mon frère est le 2 juin", acceptedRoots: family + birthdays, expectedNotes: 1),
+        EvaluationCase(sentence: "Retiens la fête à Léa, c'est le 13 mars", acceptedRoots: birthdays, expectedNotes: 1),
+        EvaluationCase(sentence: "L'anniversaire de mon frère est le 2 juin", acceptedRoots: birthdays, expectedNotes: 1),
         EvaluationCase(sentence: "Réévaluer l'assurance de la maison avant le renouvellement",
                        acceptedRoots: finance + home + ["Assurances", "Assurance", "Administratif"]),
     ]

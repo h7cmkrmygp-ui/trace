@@ -72,8 +72,10 @@ public struct ThoughtFiler: Sendable {
 
             func classify(_ memoryID: UUID, with thought: ValidThought) throws {
                 if !thought.categoryPath.isEmpty {
-                    let chain = try categoryStore.resolveChain(db, names: thought.categoryPath, origin: .ai, now: now)
-                    if let root = chain.first, let description = thought.categoryDescription {
+                    // Une fête va dans le dossier des fêtes que le propriétaire a déjà, s'il en a un (P33).
+                    let ownFolder = try thought.birthdayOf == nil ? nil : categoryStore.birthdayFolderPath(db)
+                    let chain = try categoryStore.resolveChain(db, names: ownFolder ?? thought.categoryPath, origin: .ai, now: now)
+                    if ownFolder == nil, let root = chain.first, let description = thought.categoryDescription {
                         try categoryStore.describeIfMissing(db, categoryID: root.id, description: description, now: now)
                     }
                     if let target = chain.last {
@@ -114,8 +116,10 @@ public struct ThoughtFiler: Sendable {
                         if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
                         continue
                     }
-                    let due = DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
-                                                     relativeTo: source.capturedAt, calendar: calendar)
+                    // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33).
+                    let due = thought.birthdayOf != nil ? nil
+                        : DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
+                                                 relativeTo: source.capturedAt, calendar: calendar)
                     // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots
                     // exacts de la dictée (contenu, extrait) restent tels quels.
                     let title = TitleMaker.fallbackTitle(
@@ -162,7 +166,7 @@ public struct ThoughtFiler: Sendable {
                     if memory.status == .active || memory.status == .unsorted, let first = thoughts.first {
                         try classify(memory.id, with: first)
                         // Le texte du propriétaire n'est pas touché, mais l'échéance dictée est posée si la note n'en a pas.
-                        if memory.dueAt == nil, var current = try Memory.fetchOne(db, key: memory.id),
+                        if memory.dueAt == nil, first.birthdayOf == nil, var current = try Memory.fetchOne(db, key: memory.id),
                            let due = DateResolver.firstDate(in: first.mentionedDates, excerpt: first.excerpt,
                                                             relativeTo: source.capturedAt, calendar: calendar) {
                             current.dueAt = due.date

@@ -30,8 +30,11 @@ struct BirthdayFilingPipelineTests {
         // Ce qu'Engram a déjà reconnu (une fête, pas une mesure) est dit à l'IA avec la note.
         #expect(analyzer.receivedContexts.first?.facts == NoteFacts.describe(Self.text))
         #expect(analyzer.receivedContexts.first?.facts.isEmpty == false)
-        // Pas de dossier « Poids » : la note attend d'être classée plutôt que d'être mal rangée.
-        #expect(summary.categoryPaths.isEmpty)
+        // Pas de dossier « Poids » : la fête va avec les anniversaires (P33), comme une chose à retenir.
+        #expect(summary.categoryPaths == ["Anniversaires"])
+        // La note classée (la dernière : la note provisoire, si elle est gardée, vient avant).
+        #expect(summary.memories.last?.kind == .info)
+        #expect(summary.memories.last?.dueAt == nil)
         #expect(try !categories.activeCategories().map(\.name).contains("Poids"))
         // La fête est sur la page d'Inès, même si l'extrait de l'IA était incomplet.
         let birthdays = try EntityStore(database: database, dates: dates).birthdays()

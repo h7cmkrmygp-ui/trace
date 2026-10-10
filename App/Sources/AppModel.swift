@@ -920,6 +920,19 @@ final class AppModel {
             if done { perform { try settings.set(iso.string(from: habitsStart), for: .habitsScannedAt) } }
         }
         await fixOldFilingsOnce()
+        await fileOldBirthdaysOnce()
+    }
+
+    /// P33, une seule fois : les anciennes notes qui disent seulement une fête vont dans « Anniversaires » (ou le dossier
+    /// de fêtes du propriétaire), comme des choses à retenir : elles quittent « À faire » et n'ont plus d'échéance.
+    func fileOldBirthdaysOnce() async {
+        guard ((try? settings.string(.birthdayFolderAt)) ?? nil) == nil else { return }
+        let folders = categories
+        let done = await Task.detached(priority: .utility) { (try? folders.refileBirthdayNotes()) != nil }.value
+        guard done else { return }
+        perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .birthdayFolderAt) }
+        // Les anciennes échéances des fêtes ne sont plus rappelées comme des tâches.
+        await syncReminders()
     }
 
     /// P31, une seule fois : les fêtes dites dans les anciennes notes vont sur la page des personnes, et les suivis

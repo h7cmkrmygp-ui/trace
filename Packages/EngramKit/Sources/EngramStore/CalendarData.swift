@@ -49,6 +49,8 @@ public struct SettingStore: Sendable {
         case habitNudges = "reminders.habitNudges"
         /// Moment (ISO 8601) de la relecture unique des anciennes notes (P31) : fêtes manquantes, suivis mal remplis.
         case filingFixesAt = "fixes.p31.doneAt"
+        /// Moment (ISO 8601) où les anciennes notes de fête ont été rangées dans le dossier des fêtes (P33).
+        case birthdayFolderAt = "fixes.p33.doneAt"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }

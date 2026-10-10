@@ -307,3 +307,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 151. **Pourquoi ce dossier** : dicte une nouvelle note, ouvre-la › « Détails » (ⓘ) : la section « Pourquoi ce dossier » dit, dans les mots de l'IA, ce dont parle la note et pourquoi elle va dans ce dossier (ou pourquoi elle en a créé un nouveau).
 152. **Ton choix compte** : retire la note de ce dossier : « Pourquoi ce dossier » disparaît.
 153. **Évaluation** : Réglages › Intelligence › « Évaluer le classement sur l'iPhone » › « Lancer l'évaluation » : sous chaque phrase, la raison de l'IA ; les deux fêtes vont dans Famille (ou Amis, Anniversaires…), jamais dans Santé.
+
+## AH. P33 — Les fêtes ont leur dossier
+
+154. **Une fête dictée** : « Retiens la fête à Léa, c'est le 2 juin ». La note va dans **Anniversaires** (créé s'il n'existe pas), pas dans Famille, et **pas** dans « À faire ». Détails › « Pourquoi ce dossier » : « La fête de Léa, le 2 juin : une date à retenir… ».
+155. **Tes anciennes fêtes** : après la mise à jour, les notes de fête qui étaient dans « À faire » ou dans Famille sont dans Anniversaires (sauf celles que tu avais modifiées ou rangées toi-même).
+156. **Une tâche reste une tâche** : « Acheter un cadeau pour la fête de Léa le 2 juin » reste dans « À faire ».

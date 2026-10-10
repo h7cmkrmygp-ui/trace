@@ -23,7 +23,7 @@ struct FilingReasonPromptTests {
         let category = try #require(order.firstIndex(of: "category"))
         #expect(reason < category)
         #expect(CloudPrompt.system.contains("categoryReason"))
-        #expect(CloudPrompt.version == "p32-cloud-v1")
+        #expect(CloudPrompt.version == "p33-cloud-v1")
     }
 
     @Test func theReasonIsReadFromTheAnswer() throws {
@@ -76,14 +76,14 @@ struct FilingReasonPromptTests {
 
     @Test func theEvaluationChecksBirthdays() {
         #expect(EvaluationSet.cases.contains { item in
-            item.sentence.localizedCaseInsensitiveContains("fête à") && item.accepts(categoryPath: ["Famille"])
+            item.sentence.localizedCaseInsensitiveContains("fête à") && item.accepts(categoryPath: ["Anniversaires"])
                 && !item.accepts(categoryPath: ["Santé"])
         })
     }
 
     #if canImport(FoundationModels)
     @Test func theAppleModelExplainsAndReadsTheDescriptionsToo() {
-        #expect(AnalysisPrompt.version == "p32-v1")
+        #expect(AnalysisPrompt.version == "p33-v1")
         #expect(AnalysisPrompt.instructions.contains("categoryReason"))
         #expect(AnalysisPrompt.prompt(text: "x", categories: ["Automobile"], likely: [],
                                       descriptions: ["Automobile": "Entretien de la voiture"])

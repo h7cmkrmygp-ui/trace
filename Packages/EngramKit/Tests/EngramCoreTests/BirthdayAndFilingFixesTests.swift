@@ -60,9 +60,11 @@ struct BirthdayAndFilingFixesTests {
     }
 
     @Test func aMeasurementFolderOnlyReceivesThatMeasurement() throws {
-        // Une fête n'a rien à faire dans « Poids » : la note reste « À classer » plutôt que mal rangée.
+        // Une fête n'a rien à faire dans « Poids » : elle va avec les anniversaires (P33).
         #expect(try validated("Retiens l'anniversaire de Inès c'est le 13 octobre", category: "Santé", subcategory: "Poids")
-            == [])
+            == ["Anniversaires"])
+        // Une note sans mesure reste « À classer » plutôt que mal rangée.
+        #expect(try validated("Appeler la clinique", category: "Santé", subcategory: "Poids") == [])
         #expect(try validated("Je pèse 162,5 livres", category: "Santé", subcategory: "Poids") == ["Santé", "Poids"])
         #expect(try validated("J'ai dormi 7 h", category: "Santé", subcategory: "Poids") == [])
         #expect(try validated("J'ai dormi 7 h", category: "Santé", subcategory: "Sommeil") == ["Santé", "Sommeil"])
