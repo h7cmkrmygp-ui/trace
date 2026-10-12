@@ -77,13 +77,20 @@ public struct AnalysisContext: Sendable, Equatable {
     public var facts: [String]
     /// Ce que contient chaque catégorie existante (chemin → description), pour que l'IA juge par le sens (P32).
     public var categoryDescriptions: [String: String]
+    /// Où sont rangées les notes semblables (P34, calculé sur l'iPhone).
+    public var folderEvidence: [FolderEvidence]
+    /// Nombre de notes de chaque dossier (chemin → nombre, sous-dossiers compris).
+    public var categoryCounts: [String: Int]
 
     public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
-                categoryDescriptions: [String: String] = [:]) {
+                categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
+                categoryCounts: [String: Int] = [:]) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
         self.categoryDescriptions = categoryDescriptions
+        self.folderEvidence = folderEvidence
+        self.categoryCounts = categoryCounts
     }
 }
 

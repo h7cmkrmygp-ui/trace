@@ -51,12 +51,19 @@ public struct CloudContext: Sendable {
     public let facts: [String]
     /// Ce que contient chaque catégorie (P32) : seulement des descriptions sans rien de sensible, jamais pour Gemini.
     public let categoryDescriptions: [String: String]
+    /// Où sont rangées les notes semblables (P34) : des noms de dossiers seulement, les grands dossiers pour Gemini.
+    public let folderEvidence: [FolderEvidence]
+    /// Nombre de notes de chaque dossier.
+    public let categoryCounts: [String: Int]
 
-    public init(now: Date, timeZone: TimeZone, facts: [String] = [], categoryDescriptions: [String: String] = [:]) {
+    public init(now: Date, timeZone: TimeZone, facts: [String] = [], categoryDescriptions: [String: String] = [:],
+                folderEvidence: [FolderEvidence] = [], categoryCounts: [String: Int] = [:]) {
         self.now = now
         self.timeZone = timeZone
         self.facts = facts
         self.categoryDescriptions = categoryDescriptions
+        self.folderEvidence = folderEvidence
+        self.categoryCounts = categoryCounts
     }
 }
 

@@ -627,3 +627,18 @@ public struct CategoryStore: Sendable {
         return assignment.origin == .user ? 1 : 0
     }
 }
+
+// MARK: - P34 : exemples de classement
+
+extension CategoryStore {
+    /// Les notes rangées (actives ou faites), avec leurs dossiers et si le propriétaire les y a mises lui-même : les exemples
+    /// que l'iPhone compare à une nouvelle note. Jamais « À classer », la corbeille ni les dictées à vérifier.
+    public func filingSamples(limit: Int = 3_000) throws -> [FilingSample] {
+        []
+    }
+
+    /// Nombre de notes de chaque dossier actif (chemin complet → nombre, sous-dossiers compris).
+    public func categoryCounts() throws -> [String: Int] {
+        [:]
+    }
+}

@@ -86,7 +86,8 @@ enum AnalysisPrompt {
         """
 
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
-                       facts: [String] = [], descriptions: [String: String] = [:]) -> String {
+                       facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
+                       counts: [String: Int] = [:]) -> String {
         // Une catégorie par ligne, avec ce qu'elle contient quand Engram le sait (P32).
         let existing = categories.isEmpty ? "(none yet)"
             : categories.map { name in descriptions[name].map { "- \(name) : \($0)" } ?? "- \(name)" }.joined(separator: "\n")

@@ -7,15 +7,16 @@ import Testing
 
 /// Faux transport HTTP : renvoie les réponses prévues dans l'ordre et retient les adresses appelées.
 final class FakeTransport: HTTPTransport {
-    private let state: Mutex<(responses: [(Int, Data)], urls: [String])>
+    private let state: Mutex<(responses: [(Int, Data)], urls: [String], bodies: [String])>
 
     init(_ responses: [(Int, Data)]) {
-        state = Mutex((responses, []))
+        state = Mutex((responses, [], []))
     }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (status, data) = state.withLock { state -> (Int, Data) in
             state.urls.append(request.url?.absoluteString ?? "")
+            state.bodies.append(request.httpBody.map { String(decoding: $0, as: UTF8.self) } ?? "")
             return state.responses.isEmpty ? (500, Data()) : state.responses.removeFirst()
         }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,
@@ -24,6 +25,8 @@ final class FakeTransport: HTTPTransport {
     }
 
     var urls: [String] { state.withLock { $0.urls } }
+    /// Corps des requêtes envoyées, dans l'ordre.
+    var bodies: [String] { state.withLock { $0.bodies } }
 }
 
 /// Juge qui compte ses appels (et répond « neutre »).

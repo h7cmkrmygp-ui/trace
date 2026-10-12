@@ -21,11 +21,16 @@ public actor ThoughtProcessor {
     let filer: ThoughtFiler
     let analyzer: any MemoryAnalyzer
 
-    public init(memories: MemoryStore, categories: CategoryStore, filer: ThoughtFiler, analyzer: any MemoryAnalyzer) {
+    /// Où sont rangées les notes semblables (P34), calculé sur l'iPhone avant chaque classement.
+    let evidence: (any FolderEvidenceSource)?
+
+    public init(memories: MemoryStore, categories: CategoryStore, filer: ThoughtFiler, analyzer: any MemoryAnalyzer,
+                evidence: (any FolderEvidenceSource)? = nil) {
         self.memories = memories
         self.categories = categories
         self.filer = filer
         self.analyzer = analyzer
+        self.evidence = evidence
     }
 
     /// Traitements en cours : un second appel pour la même source attend le premier au lieu de la classer deux fois.
