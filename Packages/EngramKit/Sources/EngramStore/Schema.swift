@@ -55,8 +55,16 @@ enum Schema {
         migrator.registerMigration("v16_filing_reason") { db in
             try db.execute(sql: v16FilingReason)
         }
+        migrator.registerMigration("v17_analysis_attempts") { db in
+            try db.execute(sql: v17AnalysisAttempts)
+        }
         return migrator
     }
+
+    /// v17 (P35) : les essais de classement ratés d'une note (réessayée 3 fois au plus).
+    static let v17AnalysisAttempts = """
+        ALTER TABLE source ADD COLUMN analysis_attempts INTEGER NOT NULL DEFAULT 0 CHECK (analysis_attempts >= 0);
+        """
 
     /// v16 (P32) : la phrase où l'IA explique pourquoi elle a rangé la note dans ce dossier.
     static let v16FilingReason = """

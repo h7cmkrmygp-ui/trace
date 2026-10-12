@@ -59,10 +59,26 @@ public struct ThoughtFiler: Sendable {
             for memory in interims {
                 if try Self.isTouchedByOwner(db, memory) { touched.append(memory) } else { untouched.append(memory) }
             }
-            let coverage = AnalysisValidator.coverage(of: thoughts.map(\.excerpt), in: source.referenceText ?? "")
-            let keepUntouched = forceKeepInterim || (keepInterimIfUncovered && coverage < Self.minimumCoverage)
+            // P35 : seule la partie de la dictée qu'aucune pensée ne reprend reste « À classer », jamais une copie de toute
+            // la dictée (et pas pour des « euh »). Sans `keepInterimIfUncovered`, l'ancienne règle s'applique.
+            let leftover = keepInterimIfUncovered
+                ? AnalysisValidator.leftover(of: source.referenceText ?? "", excerpts: thoughts.map(\.excerpt)) : nil
+            let keepUntouched = keepInterimIfUncovered ? leftover != nil : forceKeepInterim
             if touched.isEmpty && !keepUntouched {
                 for memory in untouched { _ = try memory.delete(db) }
+            }
+            if touched.isEmpty, let leftover, var piece = untouched.first {
+                for other in untouched.dropFirst() { _ = try other.delete(db) }
+                piece.content = leftover
+                piece.excerpt = leftover
+                piece.title = TitleMaker.fallbackTitle(from: leftover)
+                let range = ((source.referenceText ?? "") as NSString).range(of: leftover)
+                piece.spanStart = range.location == NSNotFound ? nil : range.location
+                piece.spanEnd = range.location == NSNotFound ? nil : range.location + range.length
+                piece.analysisVersion = Self.leftoverAnalysisVersion
+                piece.updatedAt = now
+                try piece.update(db)
+                untouched = [piece]
             }
             let kept = touched
 
@@ -199,14 +215,22 @@ public struct ThoughtFiler: Sendable {
             """, arguments: [memory.id, memory.id, memory.id]) ?? false
     }
 
-    /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close.
+    /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close ; P35 : elle sera
+    /// réessayée plus tard, `maxAnalysisAttempts` fois au plus.
     public func markFallback(sourceID: UUID) throws {
         let now = dates.now()
         try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             source.processingStatus = .done
+            source.analysisAttempts += 1
+            source.needsCloudRetry = source.analysisAttempts < Self.maxAnalysisAttempts
             source.updatedAt = now
             try source.update(db)
         }
     }
+
+    /// P35 — essais de classement au plus pour une même note avant de la laisser au propriétaire.
+    public static let maxAnalysisAttempts = 3
+    /// P35 — la partie d'une dictée qu'aucune pensée ne reprend (gardée « À classer »).
+    public static let leftoverAnalysisVersion = "p35-reste"
 }

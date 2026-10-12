@@ -109,15 +109,24 @@ struct ThoughtProcessorTests {
         #expect(env.analyzer.callCount == 2)
     }
 
-    @Test func anInventedExcerptFallsBackAfterOneRetry() async throws {
+    /// P35 : après un nouvel essai, les vrais mots du propriétaire sont classés comme une seule note ; rien d'inventé n'est
+    /// gardé (ni l'extrait, ni le titre « Pneus », ni un texte rédigé).
+    @Test func anInventedExcerptStillFilesTheOwnersWordsAfterOneRetry() async throws {
         let invented = ThoughtAnalysis(thoughts: [
-            AnalyzedThought(title: "Pneus", summary: nil, excerpt: "changer les pneus d'hiver", kind: .task, tags: [],
-                            mentionedDates: [], category: "Automobile", subcategory: nil),
+            AnalyzedThought(title: "Pneus", summary: "Changer les pneus d'hiver", excerpt: "changer les pneus d'hiver",
+                            kind: .task, tags: [], mentionedDates: [], category: "Automobile", subcategory: nil),
         ])
         let env = try Env([.success(invented), .success(invented)])
         let interim = try env.saveNote(Self.text)
-        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
-        #expect(try env.memories.memory(id: interim.id) != nil)
+        guard case .filed(let summary) = await env.processor.process(sourceID: interim.sourceID) else {
+            Issue.record("la note devait être classée")
+            return
+        }
+        #expect(env.analyzer.callCount == 2)
+        let memory = try #require(summary.memories.first)
+        #expect(memory.content == Self.text)
+        #expect(memory.title != "Pneus")
+        #expect(memory.summary == nil)
     }
 
     @Test func aRefusalFallsBackWithoutRetrying() async throws {

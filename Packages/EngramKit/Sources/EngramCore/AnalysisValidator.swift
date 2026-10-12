@@ -183,13 +183,59 @@ public enum AnalysisValidator {
     /// P35 — la partie de la dictée qu'aucun extrait ne reprend (des propositions entières, sans les « euh ») ; nil s'il
     /// ne reste rien qui dise quelque chose.
     public static func leftover(of text: String, excerpts: [String]) -> String? {
-        nil
+        let covered = Set(excerpts.flatMap { meaningfulWords($0) })
+        var kept: [String] = []
+        var words = 0
+        for clause in clauses(of: text) {
+            let meaning = meaningfulWords(clause)
+            // Un bout sans sujet (« Aussi, bon ») ne compte pas ; une proposition surtout reprise ailleurs non plus.
+            guard meaning.count >= 2 else { continue }
+            let found = meaning.filter { covered.contains($0) }.count
+            guard Double(found) < Double(meaning.count) / 2 else { continue }
+            kept.append(clause)
+            words += meaning.count
+        }
+        guard words >= 3 else { return nil }
+        return kept.joined(separator: ". ")
+    }
+
+    /// Mots qui n'apportent rien au sujet : hésitations, liaisons, petites formules de dictée.
+    static let fillerWords: Set<String> = [
+        "euh", "hum", "okay", "genre", "ben", "bon", "tse", "mettons", "style", "comme", "alors", "donc", "aussi", "pis",
+        "faut", "faudrait", "rappelle", "voila", "bref", "enfin", "ouin", "ouais", "oui", "non",
+    ]
+
+    /// Les mots porteurs de sens d'un texte, dans l'ordre (pour mesurer ce que les extraits reprennent).
+    static func meaningfulWords(_ text: String) -> [String] {
+        TextNormalizer.matchingForm(text).split(separator: " ").map(String.init)
+            .filter { $0.count >= 3 && !functionWords.contains($0) && !fillerWords.contains($0) }
+    }
+
+    /// Les propositions d'un texte (coupé sur . ! ? ; , et les retours à la ligne), sans espaces autour.
+    static func clauses(of text: String) -> [String] {
+        text.components(separatedBy: CharacterSet(charactersIn: ".!?;,\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     /// P35 — l'IA a reformulé au lieu de recopier (aucun extrait ne se retrouve) : la dictée entière devient une seule note,
     /// avec le titre, le type et le dossier choisis par l'IA.
     public static func salvage(_ analysis: ThoughtAnalysis, against text: String) -> ValidThought? {
-        nil
+        let whole = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !whole.isEmpty,
+              let first = analysis.thoughts.first(where: { !$0.category.trimmingCharacters(in: .whitespaces).isEmpty })
+                ?? analysis.thoughts.first else { return nil }
+        // Les dates, étiquettes, personnes et lieux de toutes les pensées (chacun est revérifié dans le texte).
+        var thought = first
+        thought.excerpt = whole
+        // Rien d'inventé n'est gardé : pas de texte rédigé, et le titre de l'IA seulement s'il parle de la note.
+        thought.summary = nil
+        if Set(meaningfulWords(first.title)).isDisjoint(with: meaningfulWords(whole)) { thought.title = "" }
+        thought.mentionedDates = analysis.thoughts.flatMap(\.mentionedDates)
+        thought.tags = analysis.thoughts.flatMap(\.tags)
+        thought.people = analysis.thoughts.flatMap(\.people)
+        thought.places = analysis.thoughts.flatMap(\.places)
+        return validate(thought, against: whole, alone: true)
     }
 
     /// Part des mots du texte (0 à 1) que l'on retrouve dans les extraits.

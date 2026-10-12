@@ -467,3 +467,15 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p34-classement-reflechi-design.
 | — | L'IA voit où sont rangées les notes semblables | n/a | ✅ | ✅ | ✅ (8 plus proches, celles du propriétaire comptent triple, grands dossiers seulement pour Gemini) | ⏳ | — | calcul sur l'iPhone, noms de dossiers seulement |
 | — | Taille des dossiers et règles du propriétaire dans les consignes | n/a | ✅ | ✅ | ✅ (peu de grands dossiers, sous-dossier à partir de 3 notes) | ⏳ | — | `p34-cloud-v1`, `p34-v1` |
 | — | Groq réfléchit davantage | n/a | ✅ | ✅ | ✅ (second essai sans le réglage si refusé) | ⏳ | — | |
+
+## P35 — Moins de « À classer » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p35-moins-a-classer-design.md` — étape 2 de 3.
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Seule la partie oubliée reste « À classer » | n/a | ✅ | ✅ | ✅ (plus de copie de toute la dictée, les « euh » ne comptent pas) | ⏳ | — | |
+| — | Réponse reformulée : la dictée entière classée | n/a | ✅ | ✅ | ✅ (mots du propriétaire, rien d'inventé) | ⏳ | — | |
+| — | Sans dossier : les notes semblables décident | n/a | ✅ | ✅ | ✅ (seulement si elles sont d'accord) | ⏳ | — | |
+| — | Échecs réessayés 3 fois (migration v17) et « Pourquoi elle est ici » | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+| — | Ménage unique des anciennes copies et anciens échecs | n/a | ✅ | ✅ | ✅ (corbeille récupérable, jamais une note touchée) | ⏳ | — | au lancement |

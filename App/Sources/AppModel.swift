@@ -926,6 +926,21 @@ final class AppModel {
         }
         await fixOldFilingsOnce()
         await fileOldBirthdaysOnce()
+        await tidyUnsortedOnce()
+    }
+
+    /// P35, une seule fois : les anciennes copies de dictées déjà rangées quittent « À classer » (à la corbeille,
+    /// récupérables, ou réduites à la partie qui n'est nulle part ailleurs), et les anciens échecs sont réessayés.
+    func tidyUnsortedOnce() async {
+        guard ((try? settings.string(.unsortedCleanupAt)) ?? nil) == nil else { return }
+        let store = memories
+        let done = await Task.detached(priority: .utility) {
+            (try? store.cleanUpWholeNoteCopies()) != nil && (try? store.retryOldFailures()) != nil
+        }.value
+        guard done else { return }
+        perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .unsortedCleanupAt) }
+        // Les anciens échecs repartent tout de suite (10 au plus par retour dans l'app).
+        await retryCloudClassifications()
     }
 
     /// P33, une seule fois : les anciennes notes qui disent seulement une fête vont dans « Anniversaires » (ou le dossier

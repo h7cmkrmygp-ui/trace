@@ -30,6 +30,8 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     /// `correctedText` vient du propriétaire (« Vérifie ta note ») et non d'une retranscription :
     /// c'est une référence fiable, et aucune retranscription ne l'écrase.
     public var correctedByOwner: Bool
+    /// P35 — essais de classement ratés (la note est réessayée tant qu'il en reste).
+    public var analysisAttempts: Int
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
@@ -38,9 +40,10 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         processingStatus: ProcessingStatus = .pending, createdAt: Date, updatedAt: Date,
         needsReview: Bool = false, keepLocal: Bool = false, privacyLevel: PrivacyLevel? = nil,
         analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false,
-        correctedByOwner: Bool = false
+        correctedByOwner: Bool = false, analysisAttempts: Int = 0
     ) {
         self.correctedByOwner = correctedByOwner
+        self.analysisAttempts = analysisAttempts
         self.needsReview = needsReview
         self.keepLocal = keepLocal
         self.privacyLevel = privacyLevel
@@ -84,6 +87,7 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case routeReason = "route_reason"
         case needsCloudRetry = "needs_cloud_retry"
         case correctedByOwner = "corrected_by_owner"
+        case analysisAttempts = "analysis_attempts"
     }
 }
 

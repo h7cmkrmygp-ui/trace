@@ -319,3 +319,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 157. **Comme tes notes semblables** : dicte une note qui ressemble à des notes déjà rangées (ex. un entretien de l'auto quand tu as déjà des notes d'auto). Elle va dans le même dossier ; « Pourquoi ce dossier » le dit.
 158. **Peu de grands dossiers** : sur une semaine de notes, pas de nouveau dossier pour un sujet d'une seule note ; un sous-dossier apparaît seulement pour un sujet qui revient.
 159. **Tes corrections comptent** : déplace une note dans un autre dossier ; la prochaine note semblable va dans ce dossier.
+
+## AJ. P35 — Moins de « À classer »
+
+160. **Après la mise à jour** : « À classer » contient beaucoup moins de notes ; les copies de dictées déjà rangées sont dans la Corbeille (récupérables).
+161. **Pourquoi elle est ici** : ouvre une note de « À classer » : sous « Rangée dans », une phrase dit pourquoi (partie oubliée, en attente, réessai…).
+162. **Une longue dictée avec des « euh »** : elle est rangée en morceaux, sans copie entière dans « À classer ».

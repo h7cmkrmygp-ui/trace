@@ -37,7 +37,8 @@ extension MemoryStore {
     /// Notes classées sur l'iPhone parce que le service en ligne ne répondait pas (quota, réseau).
     public func sourcesNeedingCloudRetry(limit: Int = 20) throws -> [Source] {
         try database.writer.read { db in
-            try Source.filter(Column("needs_cloud_retry") == true && Column("processing_status") == ProcessingStatus.done)
+            try Source.filter(Column("needs_cloud_retry") == true && Column("processing_status") == ProcessingStatus.done
+                              && Column("analysis_attempts") < ThoughtFiler.maxAnalysisAttempts)
                 .order(Column("captured_at"))
                 .limit(limit)
                 .fetchAll(db)

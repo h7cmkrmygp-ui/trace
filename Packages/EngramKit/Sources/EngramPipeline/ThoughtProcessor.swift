@@ -73,8 +73,19 @@ public actor ThoughtProcessor {
                     // et deux pensées au même extrait n'en font qu'une.
                     let analysis = DuplicateThoughts.merge(ReminderMerger.merge(
                         try await analyzer.analyze(text: text, existingCategories: paths, context: context), in: text))
-                    let valid = try AnalysisValidator.validate(analysis, against: text)
-                    // Des pensées rejetées ou un texte mal couvert : la note complète reste aussi « À classer ».
+                    var valid: [ValidThought]
+                    do {
+                        valid = try AnalysisValidator.validate(analysis, against: text)
+                    } catch AnalyzerError.invalidOutput where attempt >= 2 {
+                        // P35 : l'IA a reformulé au lieu de recopier, deux fois : la dictée entière devient une seule note,
+                        // dans le dossier choisi par l'IA, plutôt que de rester « À classer ».
+                        guard let whole = AnalysisValidator.salvage(analysis, against: text) else {
+                            throw AnalyzerError.invalidOutput
+                        }
+                        valid = [whole]
+                    }
+                    valid = await withSimilarNotesFolder(valid)
+                    // Des pensées rejetées ou un texte mal couvert : seule la partie oubliée reste « À classer » (P35).
                     let summary = try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
                                                  forceKeepInterim: valid.count < analysis.thoughts.count)
                     if let route = analysis.route { try memories.recordRoute(sourceID: sourceID, route: route) }
@@ -93,6 +104,22 @@ public actor ThoughtProcessor {
             try? filer.markFallback(sourceID: sourceID)
             return .fallback
         }
+    }
+
+    /// P35 — une pensée sans dossier va là où sont rangées les notes qui lui ressemblent, quand elles sont d'accord (au moins
+    /// 2 notes, ou une rangée par le propriétaire) et qu'un suivi ne la refuse pas.
+    func withSimilarNotesFolder(_ thoughts: [ValidThought]) async -> [ValidThought] {
+        guard let evidence else { return thoughts }
+        var result = thoughts
+        for index in result.indices where result[index].categoryPath.isEmpty {
+            guard let top = await evidence.evidence(for: result[index].excerpt).first,
+                  top.notes >= 2 || top.byOwner >= 1 else { continue }
+            let path = top.path.components(separatedBy: CategoryPaths.separator)
+            guard MeasurementFolders.accepts(path, text: result[index].excerpt) else { continue }
+            result[index].categoryPath = path
+            result[index].categoryReason = "Rangée comme tes notes semblables (\(top.path)) : l'IA n'avait pas trouvé de dossier sûr."
+        }
+        return result
     }
 
     /// Traite toutes les sources en attente, de la plus ancienne à la plus récente.

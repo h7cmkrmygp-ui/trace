@@ -51,6 +51,8 @@ public struct SettingStore: Sendable {
         case filingFixesAt = "fixes.p31.doneAt"
         /// Moment (ISO 8601) où les anciennes notes de fête ont été rangées dans le dossier des fêtes (P33).
         case birthdayFolderAt = "fixes.p33.doneAt"
+        /// Moment (ISO 8601) du ménage unique de « À classer » (P35) : anciennes copies, anciens échecs réessayés.
+        case unsortedCleanupAt = "fixes.p35.doneAt"
         /// Modèles Gemini choisis au test de la clé (« flash,flash-lite »), sans la clé elle-même.
         case geminiModels = "cloud.gemini.models"
     }

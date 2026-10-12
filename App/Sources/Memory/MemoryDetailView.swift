@@ -13,6 +13,8 @@ struct MemoryDetailView: View {
     @State private var memory: Memory?
     @State private var source: Source?
     @State private var assigned: [EngramCategory] = []
+    /// Pourquoi la note est « À classer » (P35).
+    @State private var unsortedReason: String?
     /// Notes sur le même sujet (au plus 3, seulement si elles ressemblent vraiment).
     @State private var related: [RecallHit] = []
     /// Personnes et lieux de la note (P9).
@@ -244,6 +246,11 @@ struct MemoryDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choisir les catégories")
+            }
+            if assigned.isEmpty, let unsortedReason {
+                Label(unsortedReason, systemImage: "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -497,6 +504,7 @@ struct MemoryDetailView: View {
             guard let memory else { return }
             source = try model.memories.source(id: memory.sourceID)
             assigned = try model.categories.categories(for: memoryID)
+            unsortedReason = try model.memories.unsortedReason(for: memoryID)
             allCategories = Dictionary(uniqueKeysWithValues: try model.categories.activeCategories().map { ($0.id, $0) })
             linkedEntities = try model.entities.entities(for: memoryID)
             noteMeasurements = try model.measurements.measurements(for: memoryID)
