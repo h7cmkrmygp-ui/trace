@@ -457,3 +457,13 @@ Spec : `docs/superpowers/specs/2026-10-09-engram-p33-les-fetes-ont-leur-dossier-
 |---|---|---|---|---|---|---|---|---|
 | — | Une fête seule va dans « Anniversaires », comme une chose à retenir | n/a | ✅ | ✅ | ✅ (pas une tâche, pas d'échéance, dossier de fêtes du propriétaire repris, une tâche autour d'une fête reste une tâche) | ⏳ | — | rappels sur la page de la personne |
 | — | Anciennes notes de fête rangées une fois | n/a | ✅ | ✅ | ✅ (quittent « À faire », jamais une note touchée par le propriétaire) | ⏳ | — | au lancement |
+
+## P34 — Le classement réfléchi (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p34-classement-reflechi-design.md` — demande : « l'app est stupide comparée à ChatGPT » ; étape 1 de 3 (P35 moins de « À classer », P36 ménage automatique).
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | L'IA voit où sont rangées les notes semblables | n/a | ✅ | ✅ | ✅ (8 plus proches, celles du propriétaire comptent triple, grands dossiers seulement pour Gemini) | ⏳ | — | calcul sur l'iPhone, noms de dossiers seulement |
+| — | Taille des dossiers et règles du propriétaire dans les consignes | n/a | ✅ | ✅ | ✅ (peu de grands dossiers, sous-dossier à partir de 3 notes) | ⏳ | — | `p34-cloud-v1`, `p34-v1` |
+| — | Groq réfléchit davantage | n/a | ✅ | ✅ | ✅ (second essai sans le réglage si refusé) | ⏳ | — | |

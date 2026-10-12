@@ -51,17 +51,58 @@ public protocol FolderEvidenceSource: Sendable {
 
 /// Le vote des notes semblables : les plus proches seulement, celles du propriétaire comptent triple.
 public enum SimilarFolders {
+    /// En dessous, une note ne ressemble pas assez pour voter.
+    public static let minimumSimilarity = 0.55
+    /// Seules les notes les plus proches votent.
+    public static let neighborCount = 8
+    /// Une note rangée par le propriétaire montre comment il aime classer : elle compte triple.
+    public static let ownerWeight = 3.0
+
     public static func vote(_ neighbors: [FolderNeighbor], limit: Int = 3) -> [FolderEvidence] {
-        []
+        let closest = neighbors
+            .filter { $0.similarity >= minimumSimilarity && !$0.paths.isEmpty }
+            .sorted { $0.similarity > $1.similarity }
+            .prefix(neighborCount)
+        var weights: [String: Double] = [:]
+        var notes: [String: Int] = [:]
+        var byOwner: [String: Int] = [:]
+        var order: [String] = []
+        for neighbor in closest {
+            for path in neighbor.paths {
+                if weights[path] == nil { order.append(path) }
+                weights[path, default: 0] += neighbor.similarity * (neighbor.byOwner ? ownerWeight : 1)
+                notes[path, default: 0] += 1
+                if neighbor.byOwner { byOwner[path, default: 0] += 1 }
+            }
+        }
+        return order.enumerated()
+            .sorted { (weights[$0.element] ?? 0, -$0.offset) > (weights[$1.element] ?? 0, -$1.offset) }
+            .prefix(limit)
+            .map { FolderEvidence(path: $0.element, notes: notes[$0.element] ?? 0, byOwner: byOwner[$0.element] ?? 0) }
     }
 
-    /// Pour Gemini : seulement les grands dossiers, additionnés.
+    /// Pour Gemini : seulement les grands dossiers, additionnés, dans l'ordre du vote.
     public static func roots(_ evidence: [FolderEvidence]) -> [FolderEvidence] {
-        evidence
+        var order: [String] = []
+        var notes: [String: Int] = [:]
+        var byOwner: [String: Int] = [:]
+        for item in evidence {
+            let root = item.path.components(separatedBy: "›").first?.trimmingCharacters(in: .whitespaces) ?? item.path
+            guard !root.isEmpty else { continue }
+            if notes[root] == nil { order.append(root) }
+            notes[root, default: 0] += item.notes
+            byOwner[root, default: 0] += item.byOwner
+        }
+        return order.map { FolderEvidence(path: $0, notes: notes[$0] ?? 0, byOwner: byOwner[$0] ?? 0) }
     }
 
     /// « Automobile › Corolla (2 notes, dont 1 rangée par le propriétaire) ; Finances (1 note) ».
     public static func describe(_ evidence: [FolderEvidence]) -> String {
-        ""
+        evidence.map { item in
+            let count = item.notes == 1 ? "1 note" : "\(item.notes) notes"
+            guard item.byOwner > 0 else { return "\(item.path) (\(count))" }
+            let owner = item.byOwner == 1 ? "1 rangée" : "\(item.byOwner) rangées"
+            return "\(item.path) (\(count), dont \(owner) par le propriétaire)"
+        }.joined(separator: " ; ")
     }
 }

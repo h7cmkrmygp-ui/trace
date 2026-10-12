@@ -59,8 +59,12 @@ public actor ThoughtProcessor {
             // Ce qu'Engram reconnaît déjà (une fête, une mesure, une liste) est dit à l'IA avec la note (P31).
             // Ce que contient chaque catégorie, pour que l'IA juge par le sens et pas par le nom (P32).
             let descriptions = try categories.categoryDescriptions().filter { paths.contains($0.key) }
+            // Où sont rangées les notes semblables, et la taille de chaque dossier : l'IA classe comme le propriétaire (P34).
+            let similar = await evidence?.evidence(for: text) ?? []
+            let counts = try categories.categoryCounts().filter { paths.contains($0.key) }
             let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
-                                          facts: NoteFacts.describe(text), categoryDescriptions: descriptions)
+                                          facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
+                                          folderEvidence: similar, categoryCounts: counts)
             var attempt = 0
             while true {
                 attempt += 1

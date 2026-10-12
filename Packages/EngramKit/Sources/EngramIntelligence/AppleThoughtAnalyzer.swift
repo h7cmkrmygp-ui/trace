@@ -46,7 +46,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p33-v1"
+    static let version = "p34-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -71,6 +71,9 @@ enum AnalysisPrompt {
         - category: the domain of the owner's life this item belongs to, in French, decided from its meaning. Reuse an \
         existing category, written exactly as given, only when the subject truly belongs to it; a word in common is not \
         enough. When none truly fits, create a new category: a broad domain in French that later notes will join.
+        The owner wants few broad categories: prefer an existing broad category (its number of notes is given) to a new one.
+        When the prompt says where the most similar notes are filed, file the item there if the subject truly matches; \
+        the owner's own filings show how he likes to organize.
         A note that only gives a person's birthday or feast day is info, a date to remember, not a task: file it in the \
         owner's existing category for birthdays, or create « Anniversaires »; never with family, health or money. \
         Something to do around a birthday (buying a gift) stays a task.
@@ -78,8 +81,8 @@ enum AnalysisPrompt {
         measurement. A weight in pounds (« livres ») is not money.
         When the prompt says what Engram already recognized in the note, trust it.
         - categoryDescription: only when the category is new, one short French sentence describing it.
-        - subcategory: optional, a precise and lasting topic inside the category that several notes will share; reuse \
-        an existing one only when the item truly belongs to it, otherwise leave it empty.
+        - subcategory: optional, a precise and lasting topic inside the category; reuse an existing one when the item \
+        truly belongs to it; create one only for a subject that will gather at least 3 notes; otherwise leave it empty.
         - mentionedDates: an item that follows another one in time (« pis après ») also gets that item's date expression.
         - people and places: the named people and the specific places of the item, copied from the note; never « je » or « moi ».
         Never invent facts, dates or names that are not in the note.
@@ -88,17 +91,22 @@ enum AnalysisPrompt {
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
                        facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
                        counts: [String: Int] = [:]) -> String {
-        // Une catégorie par ligne, avec ce qu'elle contient quand Engram le sait (P32).
+        // Une catégorie par ligne, avec son nombre de notes (P34) et ce qu'elle contient (P32) quand Engram le sait.
         let existing = categories.isEmpty ? "(none yet)"
-            : categories.map { name in descriptions[name].map { "- \(name) : \($0)" } ?? "- \(name)" }.joined(separator: "\n")
+            : categories.map { name in
+                let size = counts[name].map { " (\($0))" } ?? ""
+                return descriptions[name].map { "- \(name)\(size) : \($0)" } ?? "- \(name)\(size)"
+            }.joined(separator: "\n")
         let hint = likely.isEmpty ? ""
             : "\nExisting categories closest in meaning (a hint, not an obligation): \(likely.joined(separator: ", "))\n"
         let known = facts.isEmpty ? "" : "\nEngram already recognized in this note: \(facts.joined(separator: "; "))\n"
+        let similar = evidence.isEmpty ? "" : "\nThe most similar notes are filed in: \(SimilarFolders.describe(evidence))\n"
         let date = today.map { "Today: \($0)\n" } ?? ""
         return """
-            \(date)Existing categories ("Parent › Child" means a subcategory; after « : », what it contains):
+            \(date)Existing categories ("Parent › Child" means a subcategory; in parentheses, its number of notes; \
+            after « : », what it contains):
             \(existing)
-            \(hint)\(known)
+            \(hint)\(known)\(similar)
             Note to file:
             \(text)
             """
@@ -146,18 +154,20 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
         var thoughts: [AnalyzedThought] = []
         for chunk in TextChunker.chunks(of: text, maxLength: Self.maxChunkLength) {
             thoughts += try await analyze(chunk: chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                          facts: context.facts, descriptions: context.categoryDescriptions, depth: 0)
+                                          facts: context.facts, descriptions: context.categoryDescriptions,
+                                          evidence: context.folderEvidence, counts: context.categoryCounts, depth: 0)
         }
         return ThoughtAnalysis(thoughts: thoughts)
     }
 
     func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?, facts: [String] = [],
-                 descriptions: [String: String] = [:], depth: Int) async throws -> [AnalyzedThought] {
+                 descriptions: [String: String] = [:], evidence: [FolderEvidence] = [], counts: [String: Int] = [:],
+                 depth: Int) async throws -> [AnalyzedThought] {
         let session = LanguageModelSession(instructions: AnalysisPrompt.instructions)
         do {
             let response = try await session.respond(
                 to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories, likely: likely, today: today,
-                                          facts: facts, descriptions: descriptions),
+                                          facts: facts, descriptions: descriptions, evidence: evidence, counts: counts),
                 generating: GeneratedThoughts.self)
             return response.content.thoughts.map(Self.convert)
         } catch let error as LanguageModelError {
@@ -165,7 +175,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             switch error {
             case .contextSizeExceeded where depth < 3:
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth)
             case .unsupportedLanguageOrLocale, .guardrailViolation, .refusal:
                 // Problème propre à cette note : repli pour elle seule (ne bloque pas les suivantes).
                 throw AnalyzerError.refused
@@ -182,21 +192,22 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             }
             if name.localizedCaseInsensitiveContains("exceededContextWindowSize"), depth < 3 {
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth)
             }
             throw AnalyzerError.invalidOutput
         }
     }
 
     func analyzeInHalves(_ chunk: String, existingCategories: [String], likely: [String], today: String?,
-                         facts: [String] = [], descriptions: [String: String] = [:],
+                         facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
+                         counts: [String: Int] = [:],
                          depth: Int) async throws -> [AnalyzedThought] {
         let halves = TextChunker.halves(of: chunk)
         guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
         let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, likely: likely, today: today,
-                                      facts: facts, descriptions: descriptions, depth: depth + 1)
+                                      facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth + 1)
         let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, likely: likely, today: today,
-                                       facts: facts, descriptions: descriptions, depth: depth + 1)
+                                       facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth + 1)
         return first + second
     }
 

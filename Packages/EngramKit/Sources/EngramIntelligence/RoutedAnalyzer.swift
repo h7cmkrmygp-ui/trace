@@ -146,9 +146,19 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         // Ce que contient chaque catégorie (P32) : seulement vers Groq, et seulement des descriptions sans coordonnées,
         // numéros ni montants. Gemini (palier gratuit) n'en reçoit aucune.
         let descriptions = PrivacyGate.shareableDescriptions(context.categoryDescriptions, for: shareable)
-        let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts)
+        // Où sont rangées les notes semblables et la taille des dossiers (P34) : des noms de dossiers seulement. Gemini ne
+        // voit que les grands dossiers (sans nom de personne), comme pour la liste des catégories.
+        let neutralRoots = Set(PrivacyGate.neutralCategoryNames(existingCategories))
+        let neutralEvidence = SimilarFolders.roots(context.folderEvidence)
+            .filter { !PrivacyGate.neutralCategoryNames([$0.path]).isEmpty }
+        let personalEvidence = context.folderEvidence.filter { !PrivacyGate.shareableCategoryNames([$0.path]).isEmpty }
+        let shareableNames = Set(shareable)
+        let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
+                                          folderEvidence: neutralEvidence,
+                                          categoryCounts: context.categoryCounts.filter { neutralRoots.contains($0.key) })
         let personalContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
-                                           categoryDescriptions: descriptions)
+                                           categoryDescriptions: descriptions, folderEvidence: personalEvidence,
+                                           categoryCounts: context.categoryCounts.filter { shareableNames.contains($0.key) })
         var temporarilyMissing = false
         var notes: [String] = []
         for provider in candidates {

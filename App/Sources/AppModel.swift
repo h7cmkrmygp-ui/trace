@@ -110,8 +110,13 @@ final class AppModel {
                                     healthStaysLocal: { (try? settings.bool(.healthStaysLocal, default: false)) ?? false },
                                     keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? false },
                                     quota: quota)
+        // P34 : avant chaque classement, l'iPhone regarde où sont rangées les notes les plus semblables (rien ne sort
+        // de l'iPhone, sauf les noms de ces dossiers).
+        let categoryStore = categories
+        let similarNotes = SimilarNotesEvidence(embedder: AppleSentenceEmbedder(),
+                                                samples: { try categoryStore.filingSamples() })
         processor = ThoughtProcessor(memories: memories, categories: categories,
-                                     filer: ThoughtFiler(database: database), analyzer: router)
+                                     filer: ThoughtFiler(database: database), analyzer: router, evidence: similarNotes)
         reminders.onOpen = { [weak self] id in self?.openMemory(id) }
         reminders.onAction = { [weak self] action, id in
             Task { await self?.handleReminderAction(action, memoryID: id) }

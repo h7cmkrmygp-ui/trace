@@ -10,7 +10,7 @@ struct BirthdayFolderPromptTests {
         #expect(system.contains("Anniversaires"))
         #expect(!system.contains("file it with the family or friends"))
         #expect(system.localizedCaseInsensitiveContains("not a task"))
-        #expect(CloudPrompt.version == "p33-cloud-v1")
+        #expect(CloudPrompt.version == "p34-cloud-v1")
     }
 
     @Test func theEvaluationExpectsTheBirthdayFolder() {
@@ -23,7 +23,7 @@ struct BirthdayFolderPromptTests {
     @Test func theAppleInstructionsSendBirthdaysToTheirOwnFolderToo() {
         #expect(AnalysisPrompt.instructions.contains("Anniversaires"))
         #expect(!AnalysisPrompt.instructions.contains("file it with the family or"))
-        #expect(AnalysisPrompt.version == "p33-v1")
+        #expect(AnalysisPrompt.version == "p34-v1")
     }
     #endif
 }

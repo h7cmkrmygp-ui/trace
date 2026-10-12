@@ -634,11 +634,51 @@ extension CategoryStore {
     /// Les notes rangées (actives ou faites), avec leurs dossiers et si le propriétaire les y a mises lui-même : les exemples
     /// que l'iPhone compare à une nouvelle note. Jamais « À classer », la corbeille ni les dictées à vérifier.
     public func filingSamples(limit: Int = 3_000) throws -> [FilingSample] {
-        []
+        try database.writer.read { db in
+            let active = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+            let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT m.id AS id, m.title AS title, m.content AS content, mc.category_id AS category_id,
+                       (mc.origin = 'user' OR mc.confirmed = 1) AS by_owner
+                FROM memory m JOIN memory_category mc ON mc.memory_id = m.id AND mc.rejected = 0
+                WHERE m.status IN ('active','archived')
+                  AND m.source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)
+                ORDER BY m.captured_at DESC
+                """)
+            var order: [UUID] = []
+            var texts: [UUID: String] = [:]
+            var paths: [UUID: [String]] = [:]
+            var owner: [UUID: Bool] = [:]
+            for row in rows {
+                let categoryID: UUID = row["category_id"]
+                guard let category = byID[categoryID] else { continue }
+                let id: UUID = row["id"]
+                if texts[id] == nil {
+                    guard order.count < limit else { continue }
+                    order.append(id)
+                    let title: String = row["title"]
+                    let content: String = row["content"]
+                    texts[id] = title == content ? title : String((title + ". " + content).prefix(400))
+                }
+                let path = CategoryPaths.display(CategoryPaths.components(of: category, in: byID))
+                if !(paths[id] ?? []).contains(path) { paths[id, default: []].append(path) }
+                let byOwner: Bool = row["by_owner"]
+                if byOwner { owner[id] = true }
+            }
+            return order.map { FilingSample(id: $0, text: texts[$0] ?? "", paths: paths[$0] ?? [], byOwner: owner[$0] ?? false) }
+        }
     }
 
     /// Nombre de notes de chaque dossier actif (chemin complet → nombre, sous-dossiers compris).
     public func categoryCounts() throws -> [String: Int] {
-        [:]
+        try database.writer.read { db in
+            let active = try EngramCategory.filter(Column("status") == CategoryStatus.active).fetchAll(db)
+            let byID = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
+            var counts: [String: Int] = [:]
+            for summary in try Self.librarySummary(db).categories {
+                counts[CategoryPaths.display(CategoryPaths.components(of: summary.category, in: byID))] = summary.totalCount
+            }
+            return counts
+        }
     }
 }

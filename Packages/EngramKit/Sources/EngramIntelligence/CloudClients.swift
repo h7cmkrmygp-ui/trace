@@ -70,7 +70,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p33-cloud-v1"
+    public static let version = "p34-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -110,6 +110,12 @@ public enum CloudPrompt {
         item truly belongs to it; a word in common is not enough. When none truly fits, create a new category: a broad \
         domain in French that later notes on the same subject will join. There is no list of categories to choose from: \
         only the owner's existing ones, or a new one.
+        - The owner wants few broad categories, about ten domains of life. Each existing category comes with its number \
+        of notes: prefer an existing broad category to a new one.
+        - « Les notes les plus semblables » tells where the owner's most similar notes are already filed (computed on \
+        the iPhone), and how many of them the owner filed himself: they show how he likes to organize. When the subject \
+        truly matches, file the item in that same category. When the meaning clearly differs, decide by meaning and say \
+        why in categoryReason.
         - A note that only gives a person's birthday or feast day (« l'anniversaire de Julie est le 12 mars », « la fête à \
         Inès, c'est le 13 octobre ») is info, a date to remember, not a task: Engram reminds the owner every year. File it \
         in the owner's existing category for birthdays, written exactly as given, or create « Anniversaires »; never \
@@ -120,10 +126,11 @@ public enum CloudPrompt {
         a book. Money spent, owed or earned is about finances.
         - When the prompt says what Engram already recognized in the note (read on the iPhone, without AI), trust it.
         - categoryDescription: when the category is new, one short French sentence describing what it will contain; otherwise empty.
-        - subcategory: optional. A precise and lasting topic inside the category, in French, 1 to 3 words, that several \
-        notes will share (a person, a vehicle, an insurance, a recurring activity). Reuse an existing subcategory of \
-        that category, written exactly as given, only when the item truly belongs to it; create one when a lasting \
-        topic is clear; otherwise leave it empty. Never a one-off detail, never an English word.
+        - subcategory: optional. A precise and lasting topic inside the category, in French, 1 to 3 words (a person, a \
+        vehicle, an insurance, a recurring activity). Reuse an existing subcategory of that category, written exactly as \
+        given, when the item truly belongs to it. Create a new one only for a subject that will gather at least 3 notes \
+        (already several similar notes, or clearly recurring); otherwise leave it empty and the broad category is enough. \
+        Never a one-off detail, never an English word.
         - tags: up to 3 short French tags.
         - dates: every date or time expression copied verbatim from the note, with its role: reminder (when to remind the owner), \
         deadline, event (when something happens), other. An item that follows another one in time (« pis après », \
@@ -143,15 +150,18 @@ public enum CloudPrompt {
         formatter.locale = Locale(identifier: "fr_CA")
         formatter.timeZone = context.timeZone
         formatter.dateFormat = "EEEE d MMMM yyyy"
-        // Une catégorie par ligne, avec ce qu'elle contient quand Engram le sait (P32).
+        // Une catégorie par ligne, avec son nombre de notes (P34) et ce qu'elle contient (P32) quand Engram le sait.
         let existing = categories.isEmpty ? " aucune pour l'instant"
             : "\n" + categories.map { name in
-                context.categoryDescriptions[name].map { "- \(name) : \($0)" } ?? "- \(name)"
+                let size = context.categoryCounts[name].map { " (\($0))" } ?? ""
+                return context.categoryDescriptions[name].map { "- \(name)\(size) : \($0)" } ?? "- \(name)\(size)"
             }.joined(separator: "\n")
         let known = context.facts.isEmpty ? "" : "\nEngram a déjà reconnu dans cette note : \(context.facts.joined(separator: " ; "))"
+        let similar = context.folderEvidence.isEmpty ? ""
+            : "\nLes notes les plus semblables déjà rangées sont dans : \(SimilarFolders.describe(context.folderEvidence))"
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes (et ce qu'elles contiennent) :\(existing)\(known)
+            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(known)\(similar)
             Note à classer :
             <note>
             \(text)
@@ -404,13 +414,14 @@ public struct GroqClient: Sendable {
         self.transport = transport
     }
 
-    public static func makeRequest(apiKey: String, system: String, user: String) throws -> URLRequest {
+    /// - Parameter thinkHard: le modèle réfléchit davantage avant de répondre (P34) ; sans, si le service refuse le réglage.
+    public static func makeRequest(apiKey: String, system: String, user: String, thinkHard: Bool = true) throws -> URLRequest {
         guard let url = URL(string: "\(base)/chat/completions") else { throw CloudError.invalidOutput }
-        var request = URLRequest(url: url, timeoutInterval: 60)
+        var request = URLRequest(url: url, timeoutInterval: 90)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "temperature": 0.2,
             "messages": [["role": "system", "content": system], ["role": "user", "content": user]],
@@ -419,6 +430,7 @@ public struct GroqClient: Sendable {
                 "json_schema": ["name": "engram_notes", "strict": true, "schema": CloudSchema.response(.strictJSONSchema)],
             ],
         ]
+        if thinkHard { body["reasoning_effort"] = "high" }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
@@ -440,7 +452,15 @@ public struct GroqClient: Sendable {
 
     public func generate(system: String, user: String) async throws -> String {
         guard !apiKey.isEmpty else { throw CloudError.missingKey }
-        let request = try Self.makeRequest(apiKey: apiKey, system: system, user: user)
+        do {
+            return try await send(try Self.makeRequest(apiKey: apiKey, system: system, user: user))
+        } catch CloudError.service(400) {
+            // Le service refuse de réfléchir davantage (réglage inconnu) : un second essai, normal.
+            return try await send(try Self.makeRequest(apiKey: apiKey, system: system, user: user, thinkHard: false))
+        }
+    }
+
+    private func send(_ request: URLRequest) async throws -> String {
         let (data, response) = try await transport.send(request)
         return try Self.parse(data: data, status: response.statusCode, headers: lowercasedHeaders(response))
     }

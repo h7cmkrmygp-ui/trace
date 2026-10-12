@@ -313,3 +313,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 154. **Une fête dictée** : « Retiens la fête à Léa, c'est le 2 juin ». La note va dans **Anniversaires** (créé s'il n'existe pas), pas dans Famille, et **pas** dans « À faire ». Détails › « Pourquoi ce dossier » : « La fête de Léa, le 2 juin : une date à retenir… ».
 155. **Tes anciennes fêtes** : après la mise à jour, les notes de fête qui étaient dans « À faire » ou dans Famille sont dans Anniversaires (sauf celles que tu avais modifiées ou rangées toi-même).
 156. **Une tâche reste une tâche** : « Acheter un cadeau pour la fête de Léa le 2 juin » reste dans « À faire ».
+
+## AI. P34 — Le classement réfléchi
+
+157. **Comme tes notes semblables** : dicte une note qui ressemble à des notes déjà rangées (ex. un entretien de l'auto quand tu as déjà des notes d'auto). Elle va dans le même dossier ; « Pourquoi ce dossier » le dit.
+158. **Peu de grands dossiers** : sur une semaine de notes, pas de nouveau dossier pour un sujet d'une seule note ; un sous-dossier apparaît seulement pour un sujet qui revient.
+159. **Tes corrections comptent** : déplace une note dans un autre dossier ; la prochaine note semblable va dans ce dossier.
