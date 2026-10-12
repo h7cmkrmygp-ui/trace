@@ -180,6 +180,18 @@ public enum AnalysisValidator {
         return best?.passage
     }
 
+    /// P35 — la partie de la dictée qu'aucun extrait ne reprend (des propositions entières, sans les « euh ») ; nil s'il
+    /// ne reste rien qui dise quelque chose.
+    public static func leftover(of text: String, excerpts: [String]) -> String? {
+        nil
+    }
+
+    /// P35 — l'IA a reformulé au lieu de recopier (aucun extrait ne se retrouve) : la dictée entière devient une seule note,
+    /// avec le titre, le type et le dossier choisis par l'IA.
+    public static func salvage(_ analysis: ThoughtAnalysis, against text: String) -> ValidThought? {
+        nil
+    }
+
     /// Part des mots du texte (0 à 1) que l'on retrouve dans les extraits.
     public static func coverage(of excerpts: [String], in text: String) -> Double {
         let words = TextNormalizer.matchingForm(text).split(separator: " ")

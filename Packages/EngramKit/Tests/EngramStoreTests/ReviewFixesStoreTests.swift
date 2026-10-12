@@ -65,9 +65,10 @@ struct ReviewFixesStoreTests {
         #expect(try env.memories.source(id: memory.sourceID)?.originalText == "Appeler le garage")
     }
 
-    // Important 8 — une analyse partielle ne fait pas disparaître le texte non couvert.
+    // Important 8 — une analyse partielle ne fait pas disparaître le texte non couvert. P35 : seule la partie oubliée reste
+    // « À classer », pas une copie de toute la dictée.
 
-    @Test func aPartialAnalysisKeepsTheFullTextInUnsorted() throws {
+    @Test func aPartialAnalysisKeepsTheForgottenTextInUnsorted() throws {
         let env = try StoreTestEnvironment()
         let text = "Acheter des wipers pour la Corolla. Penser à rappeler le notaire au sujet de la maison."
         let interim = try env.saveNote(text)
@@ -75,7 +76,7 @@ struct ReviewFixesStoreTests {
                                sourceID: interim.sourceID, keepInterimIfUncovered: true)
         let kept = try #require(try env.memories.memory(id: interim.id))
         #expect(kept.status == .unsorted)
-        #expect(kept.content == text)
+        #expect(kept.content == "Penser à rappeler le notaire au sujet de la maison")
         #expect(try env.memories.memories(statuses: [.active, .unsorted]).count == 2)
     }
 
