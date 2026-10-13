@@ -27,6 +27,10 @@ struct SearchTests {
     @Test func aTypoStillFinds() {
         let policy = document("Assurance de l'auto", "Renouveler l'assurance de l'auto")
         #expect(ids(RecallRanker.search([policy], for: "assurence", now: Self.now)) == [policy.id])
+        // Une lettre oubliée au début du mot (le début commun ne suffit plus).
+        #expect(ids(RecallRanker.search([policy], for: "asurance", now: Self.now)) == [policy.id])
+        let lunch = document("Dîner avec Corinne", "Dîner avec Corinne jeudi")
+        #expect(ids(RecallRanker.search([lunch], for: "Carinne", now: Self.now)) == [lunch.id])
         // Un prénom entendu à une lettre près.
         let party = document("Fête d'Amélie", "La fête d'Amélie samedi")
         #expect(ids(RecallRanker.search([party], for: "Amelia", now: Self.now)) == [party.id])
@@ -66,7 +70,8 @@ struct SearchTests {
 
     @Test func retrouverToleratesTyposToo() {
         let policy = document("Assurance de l'auto", "Renouveler l'assurance de l'auto")
-        let query = RecallQuery.parse("C'était quand le renouvèlement de l'assurence?", now: Self.now, calendar: .current)
-        #expect(ids(RecallRanker.rank([policy], for: query, now: Self.now)) == [policy.id])
+        let other = document("Acheter du lait", "Acheter du lait")
+        let query = RecallQuery.parse("C'était quoi déjà pour l'asurance?", now: Self.now, calendar: .current)
+        #expect(ids(RecallRanker.rank([policy, other], for: query, now: Self.now)) == [policy.id])
     }
 }
