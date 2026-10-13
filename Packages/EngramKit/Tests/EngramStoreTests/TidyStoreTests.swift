@@ -47,7 +47,7 @@ struct TidyStoreTests {
         #expect(try !env.categories.categoryPaths().contains("Auto"))
         #expect(try env.categories.tidyHistory().map(\.summary) == records.map(\.summary))
 
-        try env.categories.undoTidy(records[0].id)
+        try env.categories.undoTidy(try #require(records.first).id)
         #expect(try folderNames(env, a) == ["Auto"])
         #expect(try folderNames(env, b) == ["Automobile"])
         #expect(try env.categories.tidyHistory().first?.undone == true)

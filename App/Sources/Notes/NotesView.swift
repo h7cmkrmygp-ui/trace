@@ -12,6 +12,8 @@ enum NotesRoute: Hashable {
     case review(UUID)
     case settings
     case evaluation
+    /// P40 : le ménage des dossiers (historique, annuler).
+    case tidy
     case benchmark
     /// P9 : les personnes, les lieux, et la page de l'un d'eux.
     case people
@@ -42,6 +44,7 @@ enum NotesRoute: Hashable {
         case .review(let sourceID): ReviewScreen(sourceID: sourceID)
         case .settings: SettingsView()
         case .evaluation: EvaluationView()
+        case .tidy: TidyView()
         case .benchmark: BenchmarkView()
         case .people: EntityListView(kind: .person)
         case .places: EntityListView(kind: .place)

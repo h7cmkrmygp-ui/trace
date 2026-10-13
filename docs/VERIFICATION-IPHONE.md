@@ -347,3 +347,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 171. **Un numéro** : avec une note « Le numéro de police est 1234-5678 », demande à Retrouver « C'est quoi le numéro de ma police ? » : « 1234-5678 — dans ta note « … » du … ».
 172. **Un montant, une date, un endroit** : « Combien j'ai payé pour… ? », « C'est quand le dentiste ? », « Où j'ai mis mon passeport ? » : la réponse exacte, et sous la note, la phrase qui répond en gras.
+
+## AO. P40 — Le ménage automatique des dossiers
+
+173. **Le ménage** : Réglages › Intelligence › « Ménage des dossiers » › « Faire le ménage maintenant » : la liste dit ce qui a changé (« « Auto » fusionné dans « Automobile » (2 notes). », « « car part » renommé « Pièces auto ». »…).
+174. **Annuler** : touche « Annuler » sur un changement : les dossiers et les notes reviennent comme avant.
+175. **Tes choix** : un dossier que tu as créé ou une note que tu as rangée toi-même ne bougent jamais.

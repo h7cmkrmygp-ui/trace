@@ -58,8 +58,24 @@ enum Schema {
         migrator.registerMigration("v17_analysis_attempts") { db in
             try db.execute(sql: v17AnalysisAttempts)
         }
+        migrator.registerMigration("v18_tidy_history") { db in
+            try db.execute(sql: v18TidyHistory)
+        }
         return migrator
     }
+
+    /// v18 (P40) : l'historique du ménage des dossiers, avec de quoi annuler chaque changement.
+    static let v18TidyHistory = """
+        CREATE TABLE tidy_action (
+          id BLOB PRIMARY KEY NOT NULL,
+          run_at DATETIME NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('merge','rename','fold','move')),
+          summary TEXT NOT NULL,
+          undo_data BLOB NOT NULL,
+          undone_at DATETIME
+        );
+        CREATE INDEX tidy_action_run_at ON tidy_action(run_at);
+        """
 
     /// v17 (P35) : les essais de classement ratés d'une note (réessayée 3 fois au plus).
     static let v17AnalysisAttempts = """

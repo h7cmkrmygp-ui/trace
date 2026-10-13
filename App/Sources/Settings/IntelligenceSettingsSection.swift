@@ -37,6 +37,10 @@ struct IntelligenceSettingsSection: View {
             NavigationLink(value: NotesRoute.evaluation) {
                 Label("Évaluer le classement sur l'iPhone", systemImage: "checklist")
             }
+            // P40 : le ménage automatique des dossiers, chaque semaine (historique et « Annuler »).
+            NavigationLink(value: NotesRoute.tidy) {
+                Label("Ménage des dossiers", systemImage: "sparkles")
+            }
             // P9 : les notes d'avant relues sur l'iPhone (reconnaissance des noms d'Apple), sans rien envoyer.
             Button {
                 Task {

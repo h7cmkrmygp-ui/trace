@@ -514,3 +514,12 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p39-retrouver-repond-direct-des
 |---|---|---|---|---|---|---|---|---|
 | — | Réponse exacte pour un montant, un numéro, une date, un endroit | n/a | ✅ | ✅ | ✅ (rien d'inventé, note peu sûre ignorée) | ⏳ | — | Retrouver et Siri |
 | — | Passage en gras sous chaque note trouvée | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+
+## P40 — Le ménage automatique des dossiers (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p40-menage-automatique-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Ménage hebdomadaire : doublons fusionnés, noms anglais en français, petits sous-dossiers repliés, notes mal rangées déplacées | n/a | ✅ | ✅ | ✅ (jamais un choix du propriétaire) | ⏳ | — | Réglages › Intelligence |
+| — | Historique et « Annuler » (migration v18) | ✅ | ✅ | ✅ | ✅ (tout remis comme avant, rien supprimé) | ⏳ | — | |

@@ -954,6 +954,42 @@ final class AppModel {
         await fixOldFilingsOnce()
         await fileOldBirthdaysOnce()
         await tidyUnsortedOnce()
+        await tidyFoldersIfDue()
+    }
+
+    /// P40 — le ménage des dossiers, une fois par semaine au retour dans l'app.
+    func tidyFoldersIfDue() async {
+        let iso = ISO8601DateFormatter()
+        if let last = ((try? settings.string(.tidyAt)) ?? nil).flatMap({ iso.date(from: $0) }),
+           Date().timeIntervalSince(last) < 7 * 86_400 { return }
+        _ = await tidyFoldersNow()
+    }
+
+    /// P40 — fusionne les doublons, met les noms anglais en français, replie les petits sous-dossiers, déplace les notes
+    /// clairement mal rangées (au plus 20 par ménage). Jamais un choix du propriétaire ; tout s'annule dans « Ménage des
+    /// dossiers ». Renvoie le nombre de changements.
+    @discardableResult
+    func tidyFoldersNow() async -> Int {
+        let store = categories
+        let finder = similarNotes
+        let count = await Task.detached(priority: .utility) { () -> Int in
+            var changes = 0
+            // Une étape à la fois : chaque étape voit les dossiers tels que la précédente les a laissés.
+            if let folders = try? store.tidyFolders() { changes += ((try? store.applyTidy(TidyPlanner.merges(folders))) ?? []).count }
+            if let folders = try? store.tidyFolders() { changes += ((try? store.applyTidy(TidyPlanner.renames(folders))) ?? []).count }
+            if let folders = try? store.tidyFolders() {
+                changes += ((try? store.applyTidy(TidyPlanner.folds(folders, now: Date()))) ?? []).count
+            }
+            if let samples = try? store.filingSamples() {
+                let notes = samples.filter { !$0.byOwner }.map {
+                    TidyNote(id: $0.id, paths: $0.paths, evidence: finder.vote(for: $0, among: samples))
+                }
+                changes += ((try? store.applyTidy(Array(TidyPlanner.moves(notes).prefix(20)))) ?? []).count
+            }
+            return changes
+        }.value
+        perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .tidyAt) }
+        return count
     }
 
     /// P35, une seule fois : les anciennes copies de dictées déjà rangées quittent « À classer » (à la corbeille,

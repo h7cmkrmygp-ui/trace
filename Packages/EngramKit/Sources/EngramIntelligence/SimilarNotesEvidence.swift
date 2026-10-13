@@ -53,3 +53,17 @@ extension SimilarNotesEvidence {
             .map(\.sample)
     }
 }
+
+// MARK: - P40 : le vote pour une note déjà rangée
+
+extension SimilarNotesEvidence {
+    /// Où sont rangées les notes qui ressemblent le plus à cette note déjà rangée (sans elle), parmi `samples`.
+    public func vote(for sample: FilingSample, among samples: [FilingSample]) -> [FolderEvidence] {
+        guard let target = vector(for: sample) else { return [] }
+        let neighbors = samples.compactMap { other -> FolderNeighbor? in
+            guard other.id != sample.id, let vector = vector(for: other) else { return nil }
+            return FolderNeighbor(paths: other.paths, similarity: CategoryHints.cosine(target, vector), byOwner: other.byOwner)
+        }
+        return SimilarFolders.vote(neighbors)
+    }
+}

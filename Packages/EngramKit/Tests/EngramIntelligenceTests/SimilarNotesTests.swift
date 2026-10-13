@@ -19,3 +19,14 @@ struct SimilarNotesTests {
         #expect(finder.closest(to: "Texte sans sens connu", among: [close]).isEmpty)
     }
 }
+
+/// P40 — le vote des notes semblables pour une note déjà rangée ne compte jamais la note elle-même.
+struct SimilarNotesVoteTests {
+    @Test func aNoteNeverVotesForItself() {
+        let embedder = FakeEmbedder(vectors: ["A": [1, 0, 0], "B": [0.99, 0.01, 0], "C": [0.98, 0.02, 0], "D": [0.97, 0.03, 0]])
+        let note = FilingSample(id: UUID(), text: "A", paths: ["Automobile"], byOwner: false)
+        let others = ["B", "C", "D"].map { FilingSample(id: UUID(), text: $0, paths: ["Finances"], byOwner: false) }
+        let finder = SimilarNotesEvidence(embedder: embedder, samples: { [] })
+        #expect(finder.vote(for: note, among: [note] + others) == [FolderEvidence(path: "Finances", notes: 3, byOwner: 0)])
+    }
+}
