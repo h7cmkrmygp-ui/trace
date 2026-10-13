@@ -78,18 +78,6 @@ public enum BirthdayQuestion {
 
     /// Nombre de lettres à changer, ajouter ou retirer pour passer d'un nom à l'autre.
     static func distance(_ lhs: String, _ rhs: String) -> Int {
-        let left = Array(lhs)
-        let right = Array(rhs)
-        guard !left.isEmpty else { return right.count }
-        guard !right.isEmpty else { return left.count }
-        var previous = Array(0...right.count)
-        for (i, letter) in left.enumerated() {
-            var current = [i + 1]
-            for (j, other) in right.enumerated() {
-                current.append(min(previous[j + 1] + 1, current[j] + 1, previous[j] + (letter == other ? 0 : 1)))
-            }
-            previous = current
-        }
-        return previous[right.count]
+        RecallText.distance(lhs, rhs)
     }
 }

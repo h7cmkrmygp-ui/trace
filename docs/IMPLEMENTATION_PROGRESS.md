@@ -479,3 +479,13 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p35-moins-a-classer-design.md` 
 | — | Sans dossier : les notes semblables décident | n/a | ✅ | ✅ | ✅ (seulement si elles sont d'accord) | ⏳ | — | |
 | — | Échecs réessayés 3 fois (migration v17) et « Pourquoi elle est ici » | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
 | — | Ménage unique des anciennes copies et anciens échecs | n/a | ✅ | ✅ | ✅ (corbeille récupérable, jamais une note touchée) | ⏳ | — | au lancement |
+
+## P36 — Une recherche qui trouve (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p36-une-recherche-qui-trouve-design.md` — demande : « améliore la recherche, à ta guise ».
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Barre de recherche : moteur de Retrouver (petits mots ignorés, plus de mots d'abord, synonymes, dossiers, personnes, début de mot, notes faites après) | n/a | ✅ | ✅ | ✅ | ⏳ | — | sur l'iPhone, sans IA |
+| — | Fautes de frappe tolérées (recherche et Retrouver) | n/a | ✅ | ✅ | ✅ (« asurance », prénom à une lettre près, pas « pain »/« bain ») | ⏳ | — | |
+| — | Passage trouvé en gras sous chaque résultat | n/a | ✅ | ✅ | ✅ | ⏳ | — | |

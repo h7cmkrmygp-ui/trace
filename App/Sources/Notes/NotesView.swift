@@ -67,7 +67,9 @@ struct NotesView: View {
     @State private var reviewCount = 0
     @State private var isWriting = false
     @State private var query = ""
-    @State private var results: [Memory] = []
+    /// P36 : les notes trouvées par la barre de recherche, et les notes lues une fois au début de la recherche.
+    @State private var results: [RecallHit] = []
+    @State private var searchDocuments: [RecallDocument]?
     @State private var people: [EntityStore.Summary] = []
     @State private var places: [EntityStore.Summary] = []
     /// P15 : les listes.
@@ -207,12 +209,23 @@ struct NotesView: View {
                 model.notesPath = path
             }
             .task(id: query) {
-                try? await Task.sleep(for: .milliseconds(200))
-                guard !Task.isCancelled, isSearching else { return }
-                model.perform {
-                    let hits = try model.memories.searchText(query)
-                    results = try model.memories.memories(ids: hits.map(\.memoryID))
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                guard isSearching else {
+                    // Recherche terminée : la prochaine relira les notes telles qu'elles sont.
+                    searchDocuments = nil
+                    results = []
+                    return
                 }
+                if searchDocuments == nil { searchDocuments = (try? model.memories.recallDocuments()) ?? [] }
+                let documents = searchDocuments ?? []
+                let text = query
+                // P36 : le même moteur que Retrouver, sans IA ni réseau (fautes de frappe, synonymes, dossiers, personnes).
+                let hits = await Task.detached(priority: .userInitiated) {
+                    RecallRanker.search(documents, for: text, now: Date())
+                }.value
+                guard !Task.isCancelled else { return }
+                results = hits
             }
         }
     }
@@ -337,8 +350,8 @@ struct NotesView: View {
     }
 
     @ViewBuilder private var searchResults: some View {
-        List(results) { memory in
-            NavigationLink(value: memory.id) { MemoryRow(memory: memory) }
+        List(results, id: \.document.id) { hit in
+            NavigationLink(value: hit.document.id) { SearchResultRow(document: hit.document, query: query) }
         }
         .listStyle(.plain)
         .overlay {

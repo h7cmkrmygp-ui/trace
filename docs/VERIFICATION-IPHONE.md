@@ -325,3 +325,10 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 160. **Après la mise à jour** : « À classer » contient beaucoup moins de notes ; les copies de dictées déjà rangées sont dans la Corbeille (récupérables).
 161. **Pourquoi elle est ici** : ouvre une note de « À classer » : sous « Rangée dans », une phrase dit pourquoi (partie oubliée, en attente, réessai…).
 162. **Une longue dictée avec des « euh »** : elle est rangée en morceaux, sans copie entière dans « À classer ».
+
+## AK. P36 — Une recherche qui trouve
+
+163. **Une question tapée** : dans Notes, tape « c'est quoi le numéro d'assurance » : les notes d'assurance apparaissent (avant, rien).
+164. **Une faute** : tape « asurance » ou un prénom mal écrit d'une lettre : la note est trouvée.
+165. **En tapant** : « coro » montre déjà les notes de la Corolla ; « voiture » trouve tes notes du dossier Auto.
+166. **Le passage** : sous chaque résultat, la phrase où sont tes mots, en gras, et le dossier ; les notes faites sont à la fin, marquées « Fait ».

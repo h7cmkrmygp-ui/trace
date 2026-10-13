@@ -212,8 +212,13 @@ public enum RecallRanker {
 
     // MARK: Retrouver (mots, sens)
 
+    /// - Parameters:
+    ///   - minimum: score minimal d'une note proposée (plus bas pour la barre de recherche, qui montre aussi les notes
+    ///     qui n'ont qu'une partie des mots).
+    ///   - prefix: le mot en train d'être tapé, qui compte aussi comme un début de mot (« coro » pour « Corolla »).
     static func find(_ documents: [RecallDocument], for query: RecallQuery, now: Date, semanticScores: [UUID: Double],
-                     expansions: [String: [String]], limit: Int) -> [RecallHit] {
+                     expansions: [String: [String]], limit: Int, minimum: Double = RecallRanker.threshold,
+                     prefix: String? = nil) -> [RecallHit] {
         let indexed = documents.map { IndexedDocument($0) }
         let related = Dictionary(uniqueKeysWithValues: query.keywords.map { keyword in
             (keyword, RecallSynonyms.related(to: keyword) + (expansions[keyword] ?? []).map(RecallText.normalize))
@@ -222,7 +227,7 @@ public enum RecallRanker {
         var documentFrequency: [String: Int] = [:]
         for document in indexed {
             for keyword in query.keywords {
-                let score = document.match(keyword, related: related[keyword] ?? [])
+                let score = document.match(keyword, related: related[keyword] ?? [], asPrefix: keyword == prefix)
                 guard score > 0 else { continue }
                 matchScores[document.document.id, default: [:]][keyword] = score
                 documentFrequency[keyword, default: 0] += 1
@@ -252,7 +257,7 @@ public enum RecallRanker {
             if let period = query.period { score += matches(document, period: period, due: query.periodMeansDue) ? 0.3 : -0.4 }
             if document.status == .archived { score -= 0.2 }
             score += 0.1 * exp(-max(0, now.timeIntervalSince(document.capturedAt)) / (30 * 86_400))
-            if score >= threshold { hits.append(RecallHit(document: document, score: score)) }
+            if score >= minimum { hits.append(RecallHit(document: document, score: score)) }
         }
         return Array(hits.sorted { $0.score > $1.score }.prefix(limit))
     }
@@ -269,18 +274,23 @@ public enum RecallRanker {
             other = Set(RecallText.tokens(document.text))
         }
 
-        /// Meilleure correspondance d'un mot de la question : exacte (titre et dossier comptent plus), forme
-        /// voisine (pluriel, début commun), ou mot proche (« resto » pour « restaurant »).
-        func match(_ keyword: String, related: [String]) -> Double {
+        /// Meilleure correspondance d'un mot de la question : exacte (titre et dossier comptent plus), début du mot en
+        /// train d'être tapé (P36), forme voisine (pluriel, début commun), mot proche (« resto » pour « restaurant »), ou
+        /// faute de frappe (P36 : « asurance » pour « assurance »).
+        func match(_ keyword: String, related: [String], asPrefix: Bool = false) -> Double {
             var best = 0.0
             for (words, bonus) in [(strong, 0.3), (other, 0.0)] {
                 for word in words {
                     if RecallText.sameWord(word, keyword) {
                         best = max(best, 1.0 + bonus)
+                    } else if asPrefix, keyword.count >= 2, word.hasPrefix(keyword) {
+                        best = max(best, 0.9 + bonus * 0.5)
                     } else if RecallText.sharePrefix(word, keyword) {
                         best = max(best, 0.7)
                     } else if related.contains(where: { RecallText.sameWord(word, $0) }) {
                         best = max(best, 0.75 + bonus * 0.5)
+                    } else if RecallText.closeTypo(word, keyword) {
+                        best = max(best, 0.55 + bonus * 0.5)
                     }
                 }
             }
@@ -341,6 +351,46 @@ enum RecallText {
     /// Début commun d'au moins 5 lettres (« appeler » et « appelé », « assurance » et « assureur »).
     static func sharePrefix(_ lhs: String, _ rhs: String) -> Bool {
         lhs.count >= 5 && rhs.count >= 5 && lhs.prefix(5) == rhs.prefix(5)
+    }
+
+    /// P36 — une faute de frappe : même première lettre, mots d'au moins 5 lettres, une lettre de différence (deux pour un
+    /// mot de 8 lettres et plus). « pain » et « bain » ne sont pas rapprochés.
+    static func closeTypo(_ lhs: String, _ rhs: String) -> Bool {
+        guard lhs.count >= 5, rhs.count >= 5, lhs.first == rhs.first, abs(lhs.count - rhs.count) <= 2,
+              !stopwords.contains(lhs), !stopwords.contains(rhs) else { return false }
+        return distance(lhs, rhs) <= (max(lhs.count, rhs.count) >= 8 ? 2 : 1)
+    }
+
+    /// Nombre de lettres à changer, ajouter ou retirer pour passer d'un mot à l'autre.
+    static func distance(_ lhs: String, _ rhs: String) -> Int {
+        let left = Array(lhs)
+        let right = Array(rhs)
+        guard !left.isEmpty else { return right.count }
+        guard !right.isEmpty else { return left.count }
+        var previous = Array(0...right.count)
+        for (i, letter) in left.enumerated() {
+            var current = [i + 1]
+            for (j, other) in right.enumerated() {
+                current.append(min(previous[j + 1] + 1, current[j] + 1, previous[j] + (letter == other ? 0 : 1)))
+            }
+            previous = current
+        }
+        return previous[right.count]
+    }
+
+    /// P36 — les mots utiles d'une recherche tapée : sans les petits mots ni les mots de question, une fois chacun.
+    static func searchKeywords(_ text: String) -> [String] {
+        var seen: Set<String> = []
+        return tokens(text).filter { word in
+            guard !stopwords.contains(word), word.count >= 2 || word.allSatisfy(\.isNumber) else { return false }
+            return seen.insert(word).inserted
+        }
+    }
+
+    /// Le mot cherché correspond-il à ce mot d'une note (même mot, début, début commun ou faute de frappe) ?
+    static func answers(_ word: String, _ keyword: String) -> Bool {
+        sameWord(word, keyword) || (keyword.count >= 2 && word.hasPrefix(keyword)) || sharePrefix(word, keyword)
+            || closeTypo(word, keyword)
     }
 
     static func stem(_ word: String) -> String {
@@ -493,23 +543,65 @@ enum RecallPeriods {
 // MARK: - P36 : la barre de recherche
 
 extension RecallRanker {
+    /// Score minimal d'une note dans la barre de recherche : une note qui n'a qu'une partie des mots y figure aussi
+    /// (après celles qui les ont tous).
+    static let searchThreshold = 0.3
+
     /// P36 — la recherche pendant qu'on tape (barre « Chercher dans ta mémoire ») : sur l'iPhone, sans IA, instantanée.
     /// Les petits mots sont ignorés, une faute de frappe passe, le dernier mot compte comme un début de mot, les notes qui
     /// ont le plus de mots cherchés viennent d'abord, et les notes faites après les autres. Jamais la corbeille.
     public static func search(_ documents: [RecallDocument], for text: String, now: Date, limit: Int = 50) -> [RecallHit] {
-        []
+        var query = RecallQuery()
+        query.keywords = RecallText.searchKeywords(text)
+        guard !query.keywords.isEmpty else { return [] }
+        query.spokenKeywords = RecallText.spoken(query.keywords, in: text)
+        // Le dernier mot est encore en train d'être tapé s'il n'est suivi ni d'une espace ni d'une ponctuation.
+        let typing = text.last.map { $0.isLetter || $0.isNumber } ?? false
+        return find(documents.filter { $0.status != .trashed }, for: query, now: now, semanticScores: [:], expansions: [:],
+                    limit: limit, minimum: searchThreshold, prefix: typing ? query.keywords.last : nil)
     }
 }
 
 /// P36 — le passage d'une note où se trouvent les mots cherchés, et ces mots, à mettre en gras.
 public enum SearchSnippet {
-    /// La proposition qui contient le plus de mots cherchés (coupée autour s'il le faut) ; nil si aucun n'y est.
+    /// Longueur maximale d'un passage affiché.
+    static let maxLength = 140
+
+    /// La phrase qui contient le plus de mots cherchés (coupée au-delà de 140 caractères) ; nil si aucun n'y est.
     public static func make(_ text: String, query: String) -> String? {
-        nil
+        let keywords = RecallText.searchKeywords(query)
+        guard !keywords.isEmpty else { return nil }
+        var best: (sentence: String, found: Int)?
+        for sentence in text.components(separatedBy: CharacterSet(charactersIn: ".!?;\n")) {
+            let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let words = RecallText.tokens(trimmed)
+            let found = keywords.filter { keyword in words.contains { RecallText.answers($0, keyword) } }.count
+            if found > (best?.found ?? 0) { best = (trimmed, found) }
+        }
+        guard let best else { return nil }
+        return best.sentence.count > maxLength ? String(best.sentence.prefix(maxLength)) + "…" : best.sentence
     }
 
     /// Les mots du passage qui répondent à la recherche.
     public static func highlights(in snippet: String, query: String) -> [Range<String.Index>] {
-        []
+        let keywords = RecallText.searchKeywords(query)
+        guard !keywords.isEmpty else { return [] }
+        var ranges: [Range<String.Index>] = []
+        var start: String.Index?
+        var index = snippet.startIndex
+        while index <= snippet.endIndex {
+            let isWordCharacter = index < snippet.endIndex && (snippet[index].isLetter || snippet[index].isNumber)
+            if isWordCharacter, start == nil { start = index }
+            if !isWordCharacter, let wordStart = start {
+                let range = wordStart..<index
+                let word = RecallText.normalize(String(snippet[range]))
+                if keywords.contains(where: { RecallText.answers(word, $0) }) { ranges.append(range) }
+                start = nil
+            }
+            guard index < snippet.endIndex else { break }
+            index = snippet.index(after: index)
+        }
+        return ranges
     }
 }
