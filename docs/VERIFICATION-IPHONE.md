@@ -337,3 +337,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 167. **Un nom difficile** : dicte une note avec le prénom d'une personne déjà dans Personnes (ou un magasin de tes Lieux) : il est écrit comme sur sa page.
 168. **Silence** : un enregistrement presque muet ne donne pas une note contenant ta liste de noms.
+
+## AM. P38 — Corriger une fois partout
+
+169. **Déplacer une note mal rangée** : ouvre une note dans un mauvais dossier › « Changer » › retire l'ancien dossier, choisis le bon › ferme. Si d'autres notes semblables étaient dans l'ancien dossier : « Déplacer aussi N notes semblables dans « … » ? » avec leurs titres.
+170. **Un toucher** : « Déplacer » : elles sont dans le bon dossier. « Non merci » : rien ne bouge.

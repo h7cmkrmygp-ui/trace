@@ -690,6 +690,22 @@ extension CategoryStore {
     /// du propriétaire (confirmé, l'IA ne le défera pas). Une note qu'il avait rangée lui-même ne bouge pas.
     /// Renvoie le nombre de notes déplacées.
     public func moveNotes(_ memoryIDs: [UUID], from oldCategoryIDs: [UUID], to newCategoryID: UUID) throws -> Int {
-        0
+        let now = dates.now()
+        return try database.writer.write { db -> Int in
+            var moved = 0
+            for memoryID in memoryIDs {
+                // Seulement les liens posés par l'IA (ni confirmés ni retirés) : un choix du propriétaire ne bouge pas.
+                let links = try CategoryAssignment
+                    .filter(Column("memory_id") == memoryID && oldCategoryIDs.contains(Column("category_id"))
+                            && Column("origin") == AssignmentOrigin.ai.rawValue && Column("confirmed") == false
+                            && Column("rejected") == false)
+                    .fetchAll(db)
+                guard !links.isEmpty else { continue }
+                for link in links { try AssignmentRules.remove(db, row: link, by: .ai, now: now) }
+                _ = try assign(db, memoryID: memoryID, categoryID: newCategoryID, origin: .user, confidence: nil, now: now)
+                moved += 1
+            }
+            return moved
+        }
     }
 }

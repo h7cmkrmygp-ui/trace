@@ -15,6 +15,16 @@ struct MemoryDetailView: View {
     @State private var assigned: [EngramCategory] = []
     /// Pourquoi la note est « À classer » (P35).
     @State private var unsortedReason: String?
+    /// P38 : les dossiers avant « Changer », et la proposition de déplacer aussi les notes semblables.
+    @State private var assignedBeforePicking: [EngramCategory] = []
+    @State private var moveProposal: MoveProposal?
+
+    struct MoveProposal {
+        let notes: [FilingSample]
+        let from: [UUID]
+        let to: EngramCategory
+        let toPath: String
+    }
     /// Notes sur le même sujet (au plus 3, seulement si elles ressemblent vraiment).
     @State private var related: [RecallHit] = []
     /// Personnes et lieux de la note (P9).
@@ -106,7 +116,18 @@ struct MemoryDetailView: View {
         // Chaque fois qu'on quitte un champ, la note est enregistrée (comme dans Notes, sans bouton).
         .onChange(of: focus) { _, _ in save() }
         .sheet(isPresented: $isEditingWords, onDismiss: reload) { MemoryEditor(memory: memory) }
-        .sheet(isPresented: $isPickingCategories, onDismiss: reload) { CategoryPicker(memoryID: memoryID) }
+        .sheet(isPresented: $isPickingCategories, onDismiss: pickerClosed) { CategoryPicker(memoryID: memoryID) }
+        .confirmationDialog(moveProposal.map { MoveSuggestions.message(count: $0.notes.count, folder: $0.toPath) } ?? "",
+                            isPresented: Binding(get: { moveProposal != nil }, set: { if !$0 { moveProposal = nil } }),
+                            titleVisibility: .visible, presenting: moveProposal) { proposal in
+            Button("Déplacer") {
+                model.moveAlong(proposal.notes.map(\.id), from: proposal.from, to: proposal.to.id)
+                moveProposal = nil
+            }
+            Button("Non merci", role: .cancel) { moveProposal = nil }
+        } message: { proposal in
+            Text(proposal.notes.prefix(4).map { "« \(String($0.text.prefix(60))) »" }.joined(separator: "\n"))
+        }
         .sheet(isPresented: $isAddingEntity, onDismiss: reload) { AddEntitySheet(memoryID: memoryID) }
         .sheet(isPresented: $isShowingInfo, onDismiss: reload) { MemoryInfoSheet(memory: memory, source: source) }
         .sheet(isPresented: $isSettingPlace, onDismiss: reload) { PlaceTriggerSheet(memoryID: memoryID) }
@@ -236,6 +257,7 @@ struct MemoryDetailView: View {
                         .background(color.opacity(0.14), in: Capsule())
                 }
                 Button {
+                    assignedBeforePicking = assigned
                     isPickingCategories = true
                 } label: {
                     Label("Changer", systemImage: "folder.badge.plus")
@@ -539,6 +561,23 @@ struct MemoryDetailView: View {
                               summary: bodyChanged ? body : nil)
         model.perform {
             self.memory = try model.memories.updateMemory(memoryID, with: edit, actor: .user)
+        }
+    }
+
+    /// P38 — la note a quitté un dossier pour un autre : les notes semblables que l'IA avait mises dans l'ancien sont
+    /// proposées pour suivre (un toucher).
+    private func pickerClosed() {
+        reload()
+        let before = Set(assignedBeforePicking.map(\.id))
+        let after = Set(assigned.map(\.id))
+        let left = assignedBeforePicking.filter { !after.contains($0.id) }
+        guard !left.isEmpty, let target = assigned.first(where: { !before.contains($0.id) }) else { return }
+        let folders = left.map { path(of: $0) }
+        let targetPath = path(of: target)
+        Task {
+            let notes = await model.notesToMoveAlong(with: memoryID, leaving: folders)
+            guard !notes.isEmpty else { return }
+            moveProposal = MoveProposal(notes: notes, from: left.map(\.id), to: target, toPath: targetPath)
         }
     }
 

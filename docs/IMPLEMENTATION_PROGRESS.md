@@ -497,3 +497,11 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p37-la-transcription-connait-te
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | Whisper et la reconnaissance d'Apple reçoivent tes noms (personnes, lieux, dossiers) | n/a | ✅ | ✅ | ✅ (les plus cités d'abord, liste courte, écho reconnu, jamais un nom masqué) | ⏳ | — | sur l'iPhone |
+
+## P38 — Corriger une fois partout (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p38-corriger-une-fois-partout-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Déplacer aussi ces notes semblables ? » après un changement de dossier | n/a | ✅ | ✅ | ✅ (vraiment semblables, rangées par l'IA dans le dossier quitté, jamais un choix du propriétaire) | ⏳ | — | sur l'iPhone |

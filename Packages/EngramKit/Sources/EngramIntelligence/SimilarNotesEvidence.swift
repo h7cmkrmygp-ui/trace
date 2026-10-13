@@ -41,6 +41,15 @@ extension SimilarNotesEvidence {
     /// Les notes, parmi `samples`, qui ressemblent vraiment à ce texte (par le sens, sur l'iPhone), les plus proches d'abord.
     public func closest(to text: String, among samples: [FilingSample], minimum: Double = SimilarNotesEvidence.moveSimilarity,
                         limit: Int = 8) -> [FilingSample] {
-        []
+        guard let target = embedder.vector(for: text) else { return [] }
+        return samples
+            .compactMap { sample -> (sample: FilingSample, similarity: Double)? in
+                guard let vector = vector(for: sample) else { return nil }
+                let similarity = CategoryHints.cosine(target, vector)
+                return similarity >= minimum ? (sample, similarity) : nil
+            }
+            .sorted { $0.similarity > $1.similarity }
+            .prefix(limit)
+            .map(\.sample)
     }
 }

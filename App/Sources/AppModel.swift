@@ -81,6 +81,8 @@ final class AppModel {
     /// « Retrouver » : recherche par mots, mots proches et sens, entièrement sur l'iPhone.
     let recall = RecallEngine(embedder: AppleSentenceEmbedder(), neighbors: AppleWordNeighbors())
     let recallAnswerer = RecallAnswerer()
+    /// P34 et P38 : les notes semblables, trouvées sur l'iPhone par le sens (classement, déplacements groupés).
+    let similarNotes: SimilarNotesEvidence
     private var whisperTranscribers: [WhisperModel: WhisperTranscriber] = [:]
     private var isResuming = false
     private var isSyncingCalendar = false
@@ -113,7 +115,7 @@ final class AppModel {
         // P34 : avant chaque classement, l'iPhone regarde où sont rangées les notes les plus semblables (rien ne sort
         // de l'iPhone, sauf les noms de ces dossiers).
         let categoryStore = categories
-        let similarNotes = SimilarNotesEvidence(embedder: AppleSentenceEmbedder(),
+        similarNotes = SimilarNotesEvidence(embedder: AppleSentenceEmbedder(),
                                                 samples: { try categoryStore.filingSamples() })
         processor = ThoughtProcessor(memories: memories, categories: categories,
                                      filer: ThoughtFiler(database: database), analyzer: router, evidence: similarNotes)
@@ -766,6 +768,24 @@ final class AppModel {
               let birthdays = try? entities.birthdays(),
               let birthday = BirthdayQuestion.find(person, in: birthdays) else { return nil }
         return BirthdayQuestion.answer(birthday, now: Date(), calendar: Self.recallCalendar)
+    }
+
+    /// P38 — les notes vraiment semblables que l'IA avait rangées dans les dossiers que le propriétaire vient de quitter
+    /// (jamais celles qu'il a rangées lui-même). Calculé sur l'iPhone.
+    func notesToMoveAlong(with memoryID: UUID, leaving folders: [String]) async -> [FilingSample] {
+        guard !folders.isEmpty, let memory = try? memories.memory(id: memoryID) else { return [] }
+        let store = categories
+        let finder = similarNotes
+        let text = memory.title == memory.content ? memory.title : memory.title + ". " + memory.content
+        return await Task.detached(priority: .userInitiated) {
+            let samples = (try? store.filingSamples()) ?? []
+            return finder.closest(to: text, among: MoveSuggestions.candidates(samples, leaving: folders, excluding: memoryID))
+        }.value
+    }
+
+    /// P38 — déplace ces notes comme le propriétaire l'a fait pour la sienne.
+    func moveAlong(_ memoryIDs: [UUID], from oldCategoryIDs: [UUID], to newCategoryID: UUID) {
+        perform { _ = try categories.moveNotes(memoryIDs, from: oldCategoryIDs, to: newCategoryID) }
     }
 
     /// Question et réponse en une fois (Siri).
