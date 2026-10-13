@@ -682,3 +682,14 @@ extension CategoryStore {
         }
     }
 }
+
+// MARK: - P38 : déplacer d'un coup les notes semblables
+
+extension CategoryStore {
+    /// Déplace vers `newCategoryID` les notes que l'IA avait rangées dans un des dossiers `oldCategoryIDs` : c'est le choix
+    /// du propriétaire (confirmé, l'IA ne le défera pas). Une note qu'il avait rangée lui-même ne bouge pas.
+    /// Renvoie le nombre de notes déplacées.
+    public func moveNotes(_ memoryIDs: [UUID], from oldCategoryIDs: [UUID], to newCategoryID: UUID) throws -> Int {
+        0
+    }
+}

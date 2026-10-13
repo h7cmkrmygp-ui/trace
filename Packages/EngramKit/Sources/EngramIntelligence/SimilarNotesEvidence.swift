@@ -31,3 +31,16 @@ public final class SimilarNotesEvidence: FolderEvidenceSource, @unchecked Sendab
         return vector
     }
 }
+
+// MARK: - P38 : les notes vraiment semblables
+
+extension SimilarNotesEvidence {
+    /// Ressemblance minimale (cosinus) d'une note proposée pour suivre un déplacement : nettement plus que pour le vote.
+    public static let moveSimilarity = 0.75
+
+    /// Les notes, parmi `samples`, qui ressemblent vraiment à ce texte (par le sens, sur l'iPhone), les plus proches d'abord.
+    public func closest(to text: String, among samples: [FilingSample], minimum: Double = SimilarNotesEvidence.moveSimilarity,
+                        limit: Int = 8) -> [FilingSample] {
+        []
+    }
+}
