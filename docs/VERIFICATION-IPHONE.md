@@ -342,3 +342,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 169. **Déplacer une note mal rangée** : ouvre une note dans un mauvais dossier › « Changer » › retire l'ancien dossier, choisis le bon › ferme. Si d'autres notes semblables étaient dans l'ancien dossier : « Déplacer aussi N notes semblables dans « … » ? » avec leurs titres.
 170. **Un toucher** : « Déplacer » : elles sont dans le bon dossier. « Non merci » : rien ne bouge.
+
+## AN. P39 — Retrouver répond direct
+
+171. **Un numéro** : avec une note « Le numéro de police est 1234-5678 », demande à Retrouver « C'est quoi le numéro de ma police ? » : « 1234-5678 — dans ta note « … » du … ».
+172. **Un montant, une date, un endroit** : « Combien j'ai payé pour… ? », « C'est quand le dentiste ? », « Où j'ai mis mon passeport ? » : la réponse exacte, et sous la note, la phrase qui répond en gras.

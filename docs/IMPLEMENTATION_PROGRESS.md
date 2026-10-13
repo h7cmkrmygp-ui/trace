@@ -505,3 +505,12 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p38-corriger-une-fois-partout-d
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
 | — | « Déplacer aussi ces notes semblables ? » après un changement de dossier | n/a | ✅ | ✅ | ✅ (vraiment semblables, rangées par l'IA dans le dossier quitté, jamais un choix du propriétaire) | ⏳ | — | sur l'iPhone |
+
+## P39 — Retrouver répond direct (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p39-retrouver-repond-direct-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Réponse exacte pour un montant, un numéro, une date, un endroit | n/a | ✅ | ✅ | ✅ (rien d'inventé, note peu sûre ignorée) | ⏳ | — | Retrouver et Siri |
+| — | Passage en gras sous chaque note trouvée | n/a | ✅ | ✅ | ✅ | ⏳ | — | |

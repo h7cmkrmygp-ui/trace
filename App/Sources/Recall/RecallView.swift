@@ -325,7 +325,7 @@ private struct ExchangeView: View {
                     }
                 }
                 ForEach(reply.hits, id: \.document.id) { hit in
-                    NavigationLink(value: hit.document.id) { RecallHitRow(document: hit.document) }
+                    NavigationLink(value: hit.document.id) { RecallHitRow(document: hit.document, question: exchange.question) }
                         .buttonStyle(.plain)
                 }
             } else {
@@ -341,6 +341,8 @@ private struct ExchangeView: View {
 /// Une note trouvée : titre, type, date où elle a été notée, échéance et dossier.
 struct RecallHitRow: View {
     let document: RecallDocument
+    /// P39 : la question posée, pour montrer le passage qui y répond (mots en gras).
+    var question: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -355,6 +357,13 @@ struct RecallHitRow: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.leading)
+                if let question, let passage = SearchSnippet.make(document.text, query: question), passage != document.title {
+                    Text(SearchResultRow.bold(passage, query: question))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                }
                 Text(details)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
