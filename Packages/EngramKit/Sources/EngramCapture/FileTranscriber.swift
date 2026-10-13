@@ -16,12 +16,24 @@ public struct FileTranscriber: AudioTranscriber {
     }
 
     public func transcribe(url: URL) async throws -> Transcript {
+        try await transcribe(url: url, vocabulary: [])
+    }
+
+    /// - Parameter vocabulary: P37 — les noms du propriétaire (personnes, lieux, dossiers), que la reconnaissance d'Apple
+    ///   doit savoir écrire.
+    public func transcribe(url: URL, vocabulary: [String]) async throws -> Transcript {
         guard let locale = await resolveLocale() else { throw TranscriptionError.unsupportedLanguage }
         let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
             try await request.downloadAndInstall()
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
+        if !vocabulary.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = vocabulary
+            // Une indication seulement : si elle est refusée, la transcription se fait quand même.
+            try? await analyzer.setContext(context)
+        }
         let file = try AVAudioFile(forReading: url)
         let collector = Task { () throws -> String in
             var pieces: [String] = []

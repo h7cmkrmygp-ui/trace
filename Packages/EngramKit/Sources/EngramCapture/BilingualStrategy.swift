@@ -130,9 +130,12 @@ public enum WhisperPrompt {
 public enum HypothesisPicker {
     /// L'hypothèse dont le modèle est le plus sûr, parmi celles qui contiennent vraiment de la parole.
     /// À égalité, le français l'emporte (langue principale du propriétaire).
-    public static func best(_ hypotheses: [Hypothesis]) -> Hypothesis? {
+    /// - Parameter prompt: l'amorce donnée à Whisper (avec les noms du propriétaire, P37), pour reconnaître un écho.
+    public static func best(_ hypotheses: [Hypothesis], prompt: String = WhisperPrompt.bilingual) -> Hypothesis? {
         hypotheses
-            .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !WhisperPrompt.isEcho($0.text) }
+            .filter {
+                !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !WhisperPrompt.isEcho($0.text, prompt: prompt)
+            }
             .max { lhs, rhs in
                 if lhs.averageLogProbability != rhs.averageLogProbability {
                     return lhs.averageLogProbability < rhs.averageLogProbability

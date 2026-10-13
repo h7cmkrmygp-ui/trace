@@ -92,6 +92,14 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         set { lock.withLock { strategyValue = newValue } }
     }
 
+    private var vocabularyValue: [String] = []
+
+    /// P37 — les noms du propriétaire (personnes, lieux, dossiers) ajoutés à l'amorce, pour que Whisper les écrive bien.
+    public var vocabulary: [String] {
+        get { lock.withLock { vocabularyValue } }
+        set { lock.withLock { vocabularyValue = newValue } }
+    }
+
     public func transcribe(url: URL) async throws -> Transcript {
         try await transcribe(url: url, strategy: strategy)
     }
@@ -113,7 +121,8 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         } else {
             chunks = [audio]
         }
-        let prompt = Self.promptTokens(for: kit)
+        let promptText = WhisperPrompt.make(names: vocabulary)
+        let prompt = Self.promptTokens(for: kit, text: promptText)
         var pieces: [Hypothesis] = []
         for samples in chunks {
             try Task.checkCancellation()
@@ -122,7 +131,7 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
                 let results = try await kit.transcribe(audioArray: samples,
                                                        decodeOptions: Self.options(language: nil, prompt: prompt))
                 let hypothesis = Self.hypothesis(language: results.first?.language ?? "auto", results: results)
-                if let best = HypothesisPicker.best([hypothesis]) { pieces.append(best) }
+                if let best = HypothesisPicker.best([hypothesis], prompt: promptText) { pieces.append(best) }
                 continue
             }
             let plan: LanguagePlan
@@ -141,7 +150,7 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
                                                        decodeOptions: Self.options(language: language, prompt: prompt))
                 candidates.append(Self.hypothesis(language: language, results: results))
             }
-            if let best = HypothesisPicker.best(candidates) { pieces.append(best) }
+            if let best = HypothesisPicker.best(candidates, prompt: promptText) { pieces.append(best) }
         }
         return TranscriptAssembler.assemble(pieces)
     }
@@ -187,10 +196,10 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
                         promptTokens: prompt)
     }
 
-    static func promptTokens(for kit: WhisperKit) -> [Int]? {
+    static func promptTokens(for kit: WhisperKit, text: String = WhisperPrompt.bilingual) -> [Int]? {
         guard let tokenizer = kit.tokenizer else { return nil }
         let begin = tokenizer.specialTokens.specialTokenBegin
-        let tokens = tokenizer.encode(text: " " + WhisperPrompt.bilingual).filter { $0 < begin }
+        let tokens = tokenizer.encode(text: " " + text).filter { $0 < begin }
         return tokens.isEmpty ? nil : tokens
     }
 

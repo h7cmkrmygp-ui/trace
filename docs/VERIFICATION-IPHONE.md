@@ -332,3 +332,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 164. **Une faute** : tape « asurance » ou un prénom mal écrit d'une lettre : la note est trouvée.
 165. **En tapant** : « coro » montre déjà les notes de la Corolla ; « voiture » trouve tes notes du dossier Auto.
 166. **Le passage** : sous chaque résultat, la phrase où sont tes mots, en gras, et le dossier ; les notes faites sont à la fin, marquées « Fait ».
+
+## AL. P37 — La transcription connaît tes noms
+
+167. **Un nom difficile** : dicte une note avec le prénom d'une personne déjà dans Personnes (ou un magasin de tes Lieux) : il est écrit comme sur sa page.
+168. **Silence** : un enregistrement presque muet ne donne pas une note contenant ta liste de noms.

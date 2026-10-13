@@ -709,10 +709,13 @@ final class AppModel {
 
     /// Whisper si c'est le moteur choisi et que son modèle est sur l'iPhone, sinon la reconnaissance d'Apple.
     private func runTranscription(url: URL) async throws -> (Transcript, String) {
+        // P37 : les noms du propriétaire (personnes, lieux, dossiers), pour qu'ils soient bien écrits. Tout reste sur l'iPhone.
+        let vocabulary = (try? entities.transcriptionVocabulary()) ?? []
         if transcriptionEngine == .whisper {
             let model = whisperModel
             if whisperModels.isDownloaded(model) {
                 let whisper = whisperTranscriber(for: model)
+                whisper.vocabulary = vocabulary
                 do {
                     let transcript = try await whisper.transcribe(url: url, strategy: whisperStrategy)
                     transcriptionNotice = nil
@@ -724,7 +727,7 @@ final class AppModel {
                 transcriptionNotice = "Le modèle Whisper n'est pas encore téléchargé : la reconnaissance d'Apple a pris le relais."
             }
         }
-        let transcript = try await appleTranscriber.transcribe(url: url)
+        let transcript = try await appleTranscriber.transcribe(url: url, vocabulary: vocabulary)
         return (transcript, appleTranscriber.engineName)
     }
 

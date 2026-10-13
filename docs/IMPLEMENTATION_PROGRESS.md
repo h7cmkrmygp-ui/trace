@@ -489,3 +489,11 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p36-une-recherche-qui-trouve-de
 | — | Barre de recherche : moteur de Retrouver (petits mots ignorés, plus de mots d'abord, synonymes, dossiers, personnes, début de mot, notes faites après) | n/a | ✅ | ✅ | ✅ | ⏳ | — | sur l'iPhone, sans IA |
 | — | Fautes de frappe tolérées (recherche et Retrouver) | n/a | ✅ | ✅ | ✅ (« asurance », prénom à une lettre près, pas « pain »/« bain ») | ⏳ | — | |
 | — | Passage trouvé en gras sous chaque résultat | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+
+## P37 — La transcription connaît tes noms (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-12-engram-p37-la-transcription-connait-tes-noms-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Whisper et la reconnaissance d'Apple reçoivent tes noms (personnes, lieux, dossiers) | n/a | ✅ | ✅ | ✅ (les plus cités d'abord, liste courte, écho reconnu, jamais un nom masqué) | ⏳ | — | sur l'iPhone |

@@ -323,6 +323,23 @@ extension EntityStore {
     /// Les noms que la transcription doit bien écrire : les personnes et les lieux les plus souvent cités, puis les
     /// dossiers. Rien ne quitte l'iPhone (Whisper et la reconnaissance d'Apple tournent sur l'iPhone).
     public func transcriptionVocabulary(limit: Int = 30) throws -> [String] {
-        []
+        try database.writer.read { db in
+            let cited = try String.fetchAll(db, sql: """
+                SELECT e.name FROM entity e
+                JOIN memory_entity me ON me.entity_id = e.id AND me.rejected = 0
+                JOIN memory m ON m.id = me.memory_id AND m.status IN ('active','unsorted','archived')
+                WHERE e.status = 'active'
+                GROUP BY e.id
+                ORDER BY count(*) DESC, e.name
+                """)
+            let folders = try String.fetchAll(db, sql: "SELECT name FROM category WHERE status = 'active' ORDER BY name")
+            var seen: Set<String> = []
+            var names: [String] = []
+            for name in cited + folders where seen.insert(EntityName.key(name)).inserted {
+                names.append(name)
+                if names.count == limit { break }
+            }
+            return names
+        }
     }
 }
