@@ -489,3 +489,27 @@ enum RecallPeriods {
         return nil
     }
 }
+
+// MARK: - P36 : la barre de recherche
+
+extension RecallRanker {
+    /// P36 — la recherche pendant qu'on tape (barre « Chercher dans ta mémoire ») : sur l'iPhone, sans IA, instantanée.
+    /// Les petits mots sont ignorés, une faute de frappe passe, le dernier mot compte comme un début de mot, les notes qui
+    /// ont le plus de mots cherchés viennent d'abord, et les notes faites après les autres. Jamais la corbeille.
+    public static func search(_ documents: [RecallDocument], for text: String, now: Date, limit: Int = 50) -> [RecallHit] {
+        []
+    }
+}
+
+/// P36 — le passage d'une note où se trouvent les mots cherchés, et ces mots, à mettre en gras.
+public enum SearchSnippet {
+    /// La proposition qui contient le plus de mots cherchés (coupée autour s'il le faut) ; nil si aucun n'y est.
+    public static func make(_ text: String, query: String) -> String? {
+        nil
+    }
+
+    /// Les mots du passage qui répondent à la recherche.
+    public static func highlights(in snippet: String, query: String) -> [Range<String.Index>] {
+        []
+    }
+}
