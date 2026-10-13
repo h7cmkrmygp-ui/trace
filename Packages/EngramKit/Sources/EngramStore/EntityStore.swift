@@ -316,3 +316,13 @@ public struct EntityStore: Sendable {
         }, origin: origin, now: now)
     }
 }
+
+// MARK: - P37 : les noms donnés à la transcription
+
+extension EntityStore {
+    /// Les noms que la transcription doit bien écrire : les personnes et les lieux les plus souvent cités, puis les
+    /// dossiers. Rien ne quitte l'iPhone (Whisper et la reconnaissance d'Apple tournent sur l'iPhone).
+    public func transcriptionVocabulary(limit: Int = 30) throws -> [String] {
+        []
+    }
+}
