@@ -49,8 +49,8 @@ public enum ContextReferences {
     public static func listItems(in text: String) -> [String]? {
         let cleaned = text.replacingOccurrences(of: "’", with: "'")
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ".!?")))
-        let pattern = "\b\(ListCommandParser.verbs)\s+(?:aussi\s+)?(?<items>.+?)\s+(?:à|a|sur|dans)\s+"
-            + "(?:cette|la\s+m[eê]me)\s+liste\b"
+        let pattern = #"\b"# + ListCommandParser.verbs + #"\s+(?:aussi\s+)?(?<items>.+?)\s+(?:à|a|sur|dans)\s+"#
+            + #"(?:cette|la\s+m[eê]me)\s+liste\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
               let match = regex.firstMatch(in: cleaned, range: NSRange(cleaned.startIndex..., in: cleaned)),
               let range = Range(match.range(withName: "items"), in: cleaned) else { return nil }
