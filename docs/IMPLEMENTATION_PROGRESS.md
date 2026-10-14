@@ -560,4 +560,12 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p44-fete-avec-idees-design.md`
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
-| — | Le rappel de la veille d'une fête propose une idée de cadeau tirée des notes | n/a | ✅ | ✅ | ⏳ | ⏳ | — | aucun rappel de plus ; rien si Engram est verrouillé |
+| — | Le rappel de la veille d'une fête propose une idée de cadeau tirée des notes | n/a | ✅ | ✅ | ✅ | ⏳ | — | aucun rappel de plus ; rien si Engram est verrouillé |
+
+## P45 — « Qu'est-ce que j'avais prévu pour ce projet ? » (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-14-engram-p45-ce-projet-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Ce qui reste à faire pour un projet (nommé, ou celui de la dernière dictée) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | Retrouver et Siri |

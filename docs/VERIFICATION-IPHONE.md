@@ -381,3 +381,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 
 186. **La veille** : avec une fête connue demain et une liste « cadeaux pour … » (ou une note « … aime … »), le rappel de 19 h dit « Pense à souhaiter bonne fête. Idées de cadeaux : … ». Il n'y a pas de notification de plus que d'habitude.
 187. **Verrouillé** : avec le verrou d'Engram activé, le rappel dit seulement « Ouvre Engram pour la voir. »
+
+## AT. P45 — « Qu'est-ce que j'avais prévu pour ce projet ? »
+
+188. **Un projet nommé** : avec quelques tâches dans un dossier « Chalet », demande à Retrouver « Qu'est-ce que j'avais prévu pour le chalet ? ». La réponse donne ce qui reste à faire, puis ce qui est noté.
+189. **Ce projet** : juste après avoir dicté une tâche pour le chalet, demande « Qu'est-ce qu'il reste à faire pour ce projet ? ». La réponse parle du chalet.

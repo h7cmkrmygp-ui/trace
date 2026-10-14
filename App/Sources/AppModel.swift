@@ -763,6 +763,8 @@ final class AppModel {
         // P43 : ce qui reste dans une liste, ce qu'une personne aime : tiré des listes et des notes, rien d'inventé.
         if let answer = try? lists.listAnswer(to: question) { return answer }
         if let answer = try? entities.personAnswer(to: question, now: Date(), calendar: Self.recallCalendar) { return answer }
+        // P45 : ce qui reste à faire pour un projet (nommé, ou celui de la dernière dictée).
+        if let answer = try? categories.projectAnswer(to: question, recent: try? memories.latestContext()) { return answer }
         // P39 : une question de fait (numéro, montant, date, endroit) reçoit la réponse exacte tirée de la note.
         if let direct = DirectAnswer.make(question: question, hits: result.hits, now: Date(), calendar: Self.recallCalendar) {
             return direct
