@@ -9,6 +9,8 @@ public struct FilingSummary: Sendable, Equatable {
     public let categoryPaths: [String]
     /// Chemin posé sur chaque souvenir (absent = « À classer »).
     public let pathByMemory: [UUID: String]
+    /// P41 — les choses ajoutées à chaque liste (note de la liste → choses), pour le résumé après la dictée.
+    public var listAdditions: [UUID: [String]] = [:]
 }
 
 /// Range les pensées validées d'une source, en **une seule transaction** :

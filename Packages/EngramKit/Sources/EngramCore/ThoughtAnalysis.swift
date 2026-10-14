@@ -20,11 +20,18 @@ public struct AnalyzedThought: Sendable, Hashable {
     public var places: [String]
     /// P32 — pourquoi l'IA choisit cette catégorie, en une phrase écrite avant de la choisir.
     public var categoryReason: String?
+    /// P41 — la liste où vont les choses de cet élément (à recevoir, à acheter, à offrir) ; nil pour une note.
+    public var listName: String?
+    /// P41 — les choses à ajouter à cette liste, une par case.
+    public var listItems: [String]
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
                 mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil,
-                people: [String] = [], places: [String] = [], categoryReason: String? = nil) {
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil, listName: String? = nil,
+                listItems: [String] = []) {
         self.categoryReason = categoryReason
+        self.listName = listName
+        self.listItems = listItems
         self.people = people
         self.places = places
         self.title = title
@@ -81,16 +88,19 @@ public struct AnalysisContext: Sendable, Equatable {
     public var folderEvidence: [FolderEvidence]
     /// Nombre de notes de chaque dossier (chemin → nombre, sous-dossiers compris).
     public var categoryCounts: [String: Int]
+    /// P41 — les listes existantes (leurs noms), pour que l'IA y ajoute au lieu d'en créer de nouvelles.
+    public var lists: [String]
 
     public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
                 categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
-                categoryCounts: [String: Int] = [:]) {
+                categoryCounts: [String: Int] = [:], lists: [String] = []) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
         self.categoryDescriptions = categoryDescriptions
         self.folderEvidence = folderEvidence
         self.categoryCounts = categoryCounts
+        self.lists = lists
     }
 }
 
@@ -140,12 +150,18 @@ public struct ValidThought: Sendable, Hashable {
     public var categoryReason: String?
     /// P33 — la pensée dit seulement la fête de cette personne : elle va dans « Anniversaires », sans échéance.
     public var birthdayOf: String?
+    /// P41 — la liste où vont les choses dites (nom sans « Liste de »), et ces choses ; nil pour une note.
+    public var listName: String?
+    public var listItems: [String]
 
     public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
                 tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
-                people: [String] = [], places: [String] = [], categoryReason: String? = nil, birthdayOf: String? = nil) {
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil, birthdayOf: String? = nil,
+                listName: String? = nil, listItems: [String] = []) {
         self.categoryReason = categoryReason
         self.birthdayOf = birthdayOf
+        self.listName = listName
+        self.listItems = listItems
         self.people = people
         self.places = places
         self.title = title

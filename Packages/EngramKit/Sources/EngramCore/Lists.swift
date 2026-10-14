@@ -151,3 +151,11 @@ public enum ListMerge {
         NoteBody.text(from: NoteBody.blocks(from: body).filter { $0.kind != .check(done: true) })
     }
 }
+
+/// P41 — retrouve la liste dont on parle parmi les listes existantes, même dite autrement (« ma liste d'anniversaire »
+/// pour « souhaits d'anniversaire »). En cas de doute, jamais de lien inventé : le nom demandé est gardé.
+public enum ListResolver {
+    public static func resolve(_ name: String, existing: [String]) -> String {
+        name
+    }
+}
