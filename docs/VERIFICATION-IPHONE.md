@@ -370,3 +370,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 180. **Elle** : dicte « Julie aime les parfums. » Quelques minutes plus tard, dicte « Elle adore aussi le chocolat. » Ouvre la deuxième note : Julie est dans ses personnes. Sur la page de Julie, les deux notes apparaissent.
 181. **Cette liste** : dicte « Ajoute des chandelles à ma liste de souhaits ». Juste après, dicte « Ajoute aussi un livre à cette liste ». Le livre est dans la liste de souhaits.
 182. **Pas de lien inventé** : dicte une note qui nomme Julie et Marc. Juste après, dicte « Elle adore le thé ». Aucune personne n'est reliée à la note.
+
+## AR. P43 — Retrouver répond comme un deuxième cerveau
+
+183. **Une liste** : après avoir dicté des souhaits, demande à Retrouver « C'était quoi les affaires que je voulais pour mon anniversaire ? ». La réponse donne ce qui reste dans la liste.
+184. **Une personne** : avec « Julie aime les parfums » et une liste « cadeaux pour Julie », demande « Qu'est-ce que Julie aime ? ». La réponse donne ses goûts, ses idées de cadeaux et sa fête si elle est connue.
+185. **Sa page** : ouvre Personnes › Julie. La section « Ce que tu as noté » montre « Aime les parfums » et « Idée de cadeau : … ».

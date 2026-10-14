@@ -540,6 +540,16 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p42-memoire-du-contexte-design.
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
-| — | « elle », « lui », « sa fête » : la seule personne de la dictée d'il y a quelques minutes (ou de la phrase d'avant) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | ambigu : aucun lien |
-| — | « cette liste », « ce projet » : la seule liste, le seul projet dont on vient de parler | n/a | ✅ | ✅ | ⏳ | ⏳ | — | |
-| — | L'IA reçoit la note précédente (Gemini : sans personne) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | |
+| — | « elle », « lui », « sa fête » : la seule personne de la dictée d'il y a quelques minutes (ou de la phrase d'avant) | n/a | ✅ | ✅ | ✅ | ⏳ | — | ambigu : aucun lien |
+| — | « cette liste », « ce projet » : la seule liste, le seul projet dont on vient de parler | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+| — | L'IA reçoit la note précédente (Gemini : sans personne) | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+
+## P43 — Retrouver répond comme un deuxième cerveau (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-14-engram-p43-reponses-deuxieme-cerveau-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « Qu'est-ce que je voulais pour mon anniversaire ? » : ce qui reste dans la liste | n/a | ✅ | ✅ | ⏳ | ⏳ | — | Retrouver et Siri |
+| — | « Qu'est-ce que Julie aime ? » : ses goûts tirés des notes, ses idées de cadeaux, sa fête | n/a | ✅ | ✅ | ⏳ | ⏳ | — | rien d'inventé |
+| — | Page de la personne : « Ce que tu as noté » | ✅ | ✅ | ✅ | ⏳ | ⏳ | — | |

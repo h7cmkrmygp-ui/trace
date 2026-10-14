@@ -172,6 +172,8 @@ struct EntityDetailView: View {
     /// P20 : la fête d'une personne.
     @State private var birthday: PersonBirthday?
     @State private var isEditingBirthday = false
+    /// P43 : ce que les notes disent de ses goûts, et ses idées de cadeaux.
+    @State private var profile = PersonProfile()
 
     private var openTasks: [Memory] {
         memories.filter {
@@ -213,6 +215,7 @@ struct EntityDetailView: View {
                 }
                 if entity.kind == .person {
                     birthdaySection(entity)
+                    if !profile.isEmpty { profileSection }
                 }
                 if entity.kind == .place {
                     addressSection(entity)
@@ -321,6 +324,7 @@ struct EntityDetailView: View {
                 for try await list in model.entities.memoriesStream(for: entityID) {
                     memories = list
                     entity = try? model.entities.entity(id: entityID)
+                    profile = (try? model.entities.profile(of: entityID)) ?? PersonProfile()
                 }
             } catch {
                 model.errorMessage = AppModel.describe(error)
@@ -361,6 +365,26 @@ struct EntityDetailView: View {
             if birthday == nil {
                 Text("Ou dis-le dans une note : « l'anniversaire de \(entity.name) est le 12 mars ».")
             }
+        }
+    }
+
+    /// P43 — « Ce que tu as noté » : ce que la personne aime ou n'aime pas et ses idées de cadeaux, tirés de ses notes et
+    /// des listes à son nom.
+    private var profileSection: some View {
+        Section {
+            ForEach(profile.tastes.likes, id: \.self) { like in
+                Label("Aime \(like)", systemImage: "heart")
+            }
+            ForEach(profile.tastes.dislikes, id: \.self) { dislike in
+                Label("N'aime pas \(dislike)", systemImage: "hand.thumbsdown")
+            }
+            ForEach(profile.giftIdeas, id: \.self) { idea in
+                Label("Idée de cadeau : \(idea)", systemImage: "gift")
+            }
+        } header: {
+            Text("Ce que tu as noté")
+        } footer: {
+            Text("Tiré de ses notes et des listes à son nom.")
         }
     }
 

@@ -758,6 +758,9 @@ final class AppModel {
     /// La phrase de réponse, rédigée sur l'iPhone à partir des seules notes trouvées.
     func recallAnswer(_ question: String, result: RecallResult) async -> String {
         if let answer = birthdayAnswer(question) { return answer }
+        // P43 : ce qui reste dans une liste, ce qu'une personne aime : tiré des listes et des notes, rien d'inventé.
+        if let answer = try? lists.listAnswer(to: question) { return answer }
+        if let answer = try? entities.personAnswer(to: question, now: Date(), calendar: Self.recallCalendar) { return answer }
         // P39 : une question de fait (numéro, montant, date, endroit) reçoit la réponse exacte tirée de la note.
         if let direct = DirectAnswer.make(question: question, hits: result.hits, now: Date(), calendar: Self.recallCalendar) {
             return direct
