@@ -192,8 +192,9 @@ public enum BirthdayPlanner {
     }
 
     /// La veille à 19 h et le jour même à 9 h, pour chaque fête à venir. `hideNames` : Engram est verrouillé.
+    /// - Parameter ideas: P44 — par personne, une idée de cadeau tirée des notes, ajoutée au rappel de la veille.
     public static func plan(_ birthdays: [Birthday], now: Date, calendar: Calendar, hideNames: Bool, eveHour: Int = 19,
-                            dayHour: Int = 9) -> [PlannedReminder] {
+                            dayHour: Int = 9, ideas: [UUID: String] = [:]) -> [PlannedReminder] {
         var planned: [PlannedReminder] = []
         for birthday in birthdays {
             guard let day = next(month: birthday.month, day: birthday.day, from: now, calendar: calendar) else { continue }
