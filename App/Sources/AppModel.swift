@@ -343,8 +343,10 @@ final class AppModel {
         }
         // Les fêtes (P20) : la veille à 19 h et le jour même à 9 h ; sans nom si Engram est verrouillé. Seulement les
         // 60 prochains jours : iOS garde au plus 64 notifications en attente (recalculées à chaque ouverture).
+        // P44 : la veille, une idée de cadeau tirée des notes (aucun rappel de plus).
         requests += BirthdayPlanner.plan((try? entities.birthdays()) ?? [], now: now, calendar: calendar,
-                                         hideNames: lock.isEnabled)
+                                         hideNames: lock.isEnabled,
+                                         ideas: lock.isEnabled ? [:] : ((try? entities.birthdayIdeas()) ?? [:]))
             .filter { $0.date < now.addingTimeInterval(60 * 86_400) }
             .map { (reminder: $0, kind: .birthday) }
         // « Garde ta série » (P21) : sans nom d'habitude si Engram est verrouillé.

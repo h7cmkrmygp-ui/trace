@@ -203,11 +203,13 @@ public enum BirthdayPlanner {
             let id = identifierPrefix + birthday.personID.uuidString
             if let eveDay = calendar.date(byAdding: .day, value: -1, to: day),
                let eve = calendar.date(bySettingHour: eveHour, minute: 0, second: 0, of: eveDay), eve > now {
+                let wish = age.map { "\(name.prefix(1).uppercased() + name.dropFirst()) aura \($0) ans." } ?? "Pense à souhaiter bonne fête."
+                // P44 : une idée de cadeau tirée des notes, dans le rappel qui existait déjà (jamais si Engram est verrouillé).
                 planned.append(PlannedReminder(
                     identifier: id + ".veille", memoryID: birthday.personID, date: eve,
                     title: hideNames ? "Demain : une fête" : "Demain : \(feast(birthday.name))",
                     body: hideNames ? "Ouvre Engram pour la voir."
-                        : age.map { "\(name.prefix(1).uppercased() + name.dropFirst()) aura \($0) ans." } ?? "Pense à souhaiter bonne fête."))
+                        : [wish, ideas[birthday.personID]].compactMap { $0 }.joined(separator: " ")))
             }
             if let moment = calendar.date(bySettingHour: dayHour, minute: 0, second: 0, of: day), moment > now {
                 planned.append(PlannedReminder(

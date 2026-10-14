@@ -376,3 +376,8 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 183. **Une liste** : après avoir dicté des souhaits, demande à Retrouver « C'était quoi les affaires que je voulais pour mon anniversaire ? ». La réponse donne ce qui reste dans la liste.
 184. **Une personne** : avec « Julie aime les parfums » et une liste « cadeaux pour Julie », demande « Qu'est-ce que Julie aime ? ». La réponse donne ses goûts, ses idées de cadeaux et sa fête si elle est connue.
 185. **Sa page** : ouvre Personnes › Julie. La section « Ce que tu as noté » montre « Aime les parfums » et « Idée de cadeau : … ».
+
+## AS. P44 — La fête qui approche propose une idée de cadeau
+
+186. **La veille** : avec une fête connue demain et une liste « cadeaux pour … » (ou une note « … aime … »), le rappel de 19 h dit « Pense à souhaiter bonne fête. Idées de cadeaux : … ». Il n'y a pas de notification de plus que d'habitude.
+187. **Verrouillé** : avec le verrou d'Engram activé, le rappel dit seulement « Ouvre Engram pour la voir. »

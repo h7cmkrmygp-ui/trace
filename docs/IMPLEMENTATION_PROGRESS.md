@@ -550,6 +550,14 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p43-reponses-deuxieme-cerveau-d
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
-| — | « Qu'est-ce que je voulais pour mon anniversaire ? » : ce qui reste dans la liste | n/a | ✅ | ✅ | ⏳ | ⏳ | — | Retrouver et Siri |
-| — | « Qu'est-ce que Julie aime ? » : ses goûts tirés des notes, ses idées de cadeaux, sa fête | n/a | ✅ | ✅ | ⏳ | ⏳ | — | rien d'inventé |
-| — | Page de la personne : « Ce que tu as noté » | ✅ | ✅ | ✅ | ⏳ | ⏳ | — | |
+| — | « Qu'est-ce que je voulais pour mon anniversaire ? » : ce qui reste dans la liste | n/a | ✅ | ✅ | ✅ | ⏳ | — | Retrouver et Siri |
+| — | « Qu'est-ce que Julie aime ? » : ses goûts tirés des notes, ses idées de cadeaux, sa fête | n/a | ✅ | ✅ | ✅ | ⏳ | — | rien d'inventé |
+| — | Page de la personne : « Ce que tu as noté » | ✅ | ✅ | ✅ | ✅ | ⏳ | — | |
+
+## P44 — La fête qui approche propose une idée de cadeau (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-14-engram-p44-fete-avec-idees-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Le rappel de la veille d'une fête propose une idée de cadeau tirée des notes | n/a | ✅ | ✅ | ⏳ | ⏳ | — | aucun rappel de plus ; rien si Engram est verrouillé |
