@@ -86,14 +86,18 @@ public struct ListStore: Sendable {
 
     /// Ajoute les choses dites à la liste (créée si elle n'existe pas, ou si elle a été jetée). Une dictée déjà ajoutée
     /// à cette liste n'y est pas remise (une case cochée depuis le reste). La liste appartient au propriétaire : elle
-    /// n'est jamais remplacée quand une dictée est reclassée.
+    /// n'est jamais remplacée quand une dictée est reclassée. P41 : une liste existante est retrouvée même dite autrement
+    /// (« anniversaire » pour « souhaits d'anniversaire ») ; `added` dit les choses ajoutées (pour le résumé).
+    /// - Parameter perExcerpt: chaque passage de la dictée compte à part (l'IA peut ranger deux passages dans une liste).
     func add(_ db: Database, _ command: ListCommand, sourceID: UUID, excerpt: String, memoryStore: MemoryStore,
-             now: Date) throws -> (memory: Memory, created: Bool) {
-        let key = ListCommandParser.key(command.listName)
-        let alreadyAdded = try ListAddition.exists(db, key: ["source_id": sourceID, "normalized_name": key])
+             now: Date, perExcerpt: Bool = false) throws -> (memory: Memory, created: Bool, added: [String]) {
+        let name = try Self.resolvedName(db, command.listName)
+        let key = ListCommandParser.key(name)
+        let additionKey = perExcerpt ? key + " | " + TextNormalizer.matchingForm(excerpt) : key
+        let alreadyAdded = try ListAddition.exists(db, key: ["source_id": sourceID, "normalized_name": additionKey])
         if let record = try ListRecord.fetchOne(db, key: key), var memory = try Memory.fetchOne(db, key: record.memoryID),
            memory.status != .trashed {
-            guard !alreadyAdded else { return (memory, false) }
+            guard !alreadyAdded else { return (memory, false, []) }
             let merged = ListMerge.adding(command.items, to: memory.summary ?? "")
             if merged.body != (memory.summary ?? "") || memory.status == .archived {
                 memory.summary = merged.body
@@ -105,18 +109,38 @@ public struct ListStore: Sendable {
                 try memory.update(db)
                 try MemoryVersion(memory: memory, changedBy: .user, reason: "ajouté à la liste", at: now).insert(db)
             }
-            try ListAddition(sourceID: sourceID, normalizedName: key, addedAt: now).insert(db, onConflict: .ignore)
-            return (memory, false)
+            try ListAddition(sourceID: sourceID, normalizedName: additionKey, addedAt: now).insert(db, onConflict: .ignore)
+            return (memory, false, merged.added)
         }
-        let draft = MemoryDraft(sourceID: sourceID, excerpt: excerpt, title: ListCommandParser.title(for: command.listName),
-                                summary: ListMerge.adding(command.items, to: "").body, content: excerpt, kind: .other,
+        let body = ListMerge.adding(command.items, to: "")
+        let draft = MemoryDraft(sourceID: sourceID, excerpt: excerpt, title: ListCommandParser.title(for: name),
+                                summary: body.body, content: excerpt, kind: .other,
                                 status: .active, analysisVersion: ThoughtFiler.analysisVersion)
         var memory = try memoryStore.createMemory(db, draft: draft, actor: .user, now: now)
         memory.userEdited = true
         try memory.update(db)
-        try ListRecord(normalizedName: key, name: command.listName, memoryID: memory.id, createdAt: now).save(db)
-        try ListAddition(sourceID: sourceID, normalizedName: key, addedAt: now).insert(db, onConflict: .ignore)
-        return (memory, true)
+        try ListRecord(normalizedName: key, name: name, memoryID: memory.id, createdAt: now).save(db)
+        try ListAddition(sourceID: sourceID, normalizedName: additionKey, addedAt: now).insert(db, onConflict: .ignore)
+        return (memory, true, body.added)
+    }
+
+    /// P41 — le nom de la liste dont on parle : une liste existante (pas jetée) dite autrement, sinon le nom dit.
+    static func resolvedName(_ db: Database, _ name: String) throws -> String {
+        let existing = try String.fetchAll(db, sql: """
+            SELECT l.name FROM memory_list l JOIN memory m ON m.id = l.memory_id
+            WHERE m.status != 'trashed' ORDER BY m.updated_at DESC
+            """)
+        return ListResolver.resolve(name, existing: existing)
+    }
+
+    /// P41 — les noms des listes, pour que l'IA y ajoute plutôt que d'en créer d'autres.
+    public func names() throws -> [String] {
+        try database.writer.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT l.name FROM memory_list l JOIN memory m ON m.id = l.memory_id
+                WHERE m.status != 'trashed' ORDER BY m.updated_at DESC
+                """)
+        }
     }
 }
 

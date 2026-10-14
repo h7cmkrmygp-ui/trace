@@ -353,3 +353,14 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 173. **Le ménage** : Réglages › Intelligence › « Ménage des dossiers » › « Faire le ménage maintenant » : la liste dit ce qui a changé (« « Auto » fusionné dans « Automobile » (2 notes). », « « car part » renommé « Pièces auto ». »…).
 174. **Annuler** : touche « Annuler » sur un changement : les dossiers et les notes reviennent comme avant.
 175. **Tes choix** : un dossier que tu as créé ou une note que tu as rangée toi-même ne bougent jamais.
+
+## AP. P41 — Comprendre les intentions
+
+176. **Une dictée mélangée** : dicte « J'aimerais qu'on m'achète une gourde et des élastiques pour les cheveux. Il faut aussi que j'appelle mon manager demain. Ah, et l'anniversaire de Léa est le 3 novembre. » Le résumé montre :
+     - « Liste de souhaits » avec « Ajouté : Gourde, Élastiques pour les cheveux » ;
+     - une tâche « Appeler mon gestionnaire » pour demain ;
+     - la fête de Léa dans Anniversaires.
+     Il n'y a pas de note « Souhaits » à part.
+177. **La même liste, dite autrement** : quelques jours plus tard, dicte « Ajoute des écouteurs à ma liste de souhaits » ou « J'aimerais aussi recevoir des écouteurs ». Les écouteurs rejoignent la même liste ; aucune deuxième liste n'est créée.
+178. **Acheter ou recevoir** : « Je dois acheter du lait » va dans l'épicerie ; « J'aimerais qu'on m'achète un livre » va dans les souhaits.
+179. **Corriger** : touche une carte du résumé : la liste s'ouvre et tu peux corriger une case.

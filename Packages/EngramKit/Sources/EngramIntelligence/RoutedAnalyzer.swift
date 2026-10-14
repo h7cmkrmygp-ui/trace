@@ -153,12 +153,15 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
             .filter { !PrivacyGate.neutralCategoryNames([$0.path]).isEmpty }
         let personalEvidence = context.folderEvidence.filter { !PrivacyGate.shareableCategoryNames([$0.path]).isEmpty }
         let shareableNames = Set(shareable)
+        // Les noms des listes (P41) : Gemini ne voit que ceux sans nom de personne.
         let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
                                           folderEvidence: neutralEvidence,
-                                          categoryCounts: context.categoryCounts.filter { neutralRoots.contains($0.key) })
+                                          categoryCounts: context.categoryCounts.filter { neutralRoots.contains($0.key) },
+                                          lists: PrivacyGate.neutralListNames(context.lists))
         let personalContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
                                            categoryDescriptions: descriptions, folderEvidence: personalEvidence,
-                                           categoryCounts: context.categoryCounts.filter { shareableNames.contains($0.key) })
+                                           categoryCounts: context.categoryCounts.filter { shareableNames.contains($0.key) },
+                                           lists: PrivacyGate.shareableCategoryNames(context.lists))
         var temporarilyMissing = false
         var notes: [String] = []
         for provider in candidates {

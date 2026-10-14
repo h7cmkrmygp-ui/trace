@@ -73,7 +73,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p34-cloud-v1"
+    public static let version = "p41-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -89,6 +89,24 @@ public enum CloudPrompt {
         "rappelle-moi de demander congé le 24 novembre, rappelle-moi ça demain", "demain" is the reminder date of the \
         same task, not a second note. Two unrelated subjects ("call the garage, and buy milk") are two items.
 
+        Understand the owner's intention, not only the words. One dictation often holds several intentions: \
+        « J'aimerais qu'on m'achète une gourde et des élastiques pour les cheveux. Il faut aussi que j'appelle mon manager \
+        demain. Ah, et l'anniversaire de Julie est le 12 mars. » gives THREE items: things the owner wishes to receive \
+        (list « souhaits »), a task for « demain », and a birthday to remember. Tell the intentions apart:
+        - Something the owner must buy (« je dois acheter », « il faut que j'achète », « il me faut », « on n'a plus de »): \
+        list « épicerie » for food and household products, otherwise « achats ».
+        - Something the owner wishes to receive (« j'aimerais qu'on m'achète », « j'aimerais recevoir », « je voudrais \
+        avoir », « ça me tenterait d'avoir »): list « souhaits », or « souhaits d'anniversaire » when it is for the owner's \
+        birthday, « souhaits de Noël » for Christmas. Wanting to buy something oneself is not a wish to receive.
+        - A gift idea for someone (« ça ferait un beau cadeau pour Julie », « je pourrais offrir un foulard à Marc »): \
+        list « cadeaux pour Julie », with that person in people.
+        - A preference of someone (« Julie aime les parfums », « Marc déteste le café »): kind preference, that person in \
+        people, never a list: Engram remembers it on the person's page.
+        - « je dois », « il faut que », « faut que je », « rappelle-moi »: a task. « j'aimerais faire », « ce serait le fun \
+        de », « peut-être que »: an idea, not a task. « j'ai décidé », « c'est décidé », « finalement on prend »: a decision.
+        - Other lists the owner keeps (« idées de business », « films à voir », « choses à faire pour le chalet »): \
+        things added to them go to that list.
+
         For each item:
         - excerpt: the exact words of the note for this item, copied verbatim (same spelling, same language, \
         no translation, no correction, « pis » stays « pis »).
@@ -103,6 +121,13 @@ public enum CloudPrompt {
         Empty when the title already says everything.
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
+        - list: when the item only adds things to a list (to buy, to receive, to give, or « ajoute … à ma liste de … »), \
+        the list name in lowercase French without « liste de » (« épicerie », « souhaits », « souhaits d'anniversaire », \
+        « cadeaux pour Julie », « idées de business »). When one of the owner's existing lists (given with the note) is \
+        the same list said differently (« ma liste d'anniversaire » for « souhaits d'anniversaire »), write it exactly as \
+        given. Otherwise empty: a task, an appointment, an idea, a preference or a fact is never a list.
+        - listItems: the things to add to that list, one per entry, a few French words taken from the note (« Gourde », \
+        « Élastiques pour les cheveux »), never a thing the note does not say; empty when list is empty.
         - categoryReason: written BEFORE choosing the category, one short French sentence for the owner: what this item \
         is really about, then either which existing category it truly belongs to and why (« Un entretien de la \
         voiture : il va dans Automobile. »), or why none of the existing categories fits and a new one is needed. \
@@ -162,9 +187,11 @@ public enum CloudPrompt {
         let known = context.facts.isEmpty ? "" : "\nEngram a déjà reconnu dans cette note : \(context.facts.joined(separator: " ; "))"
         let similar = context.folderEvidence.isEmpty ? ""
             : "\nLes notes les plus semblables déjà rangées sont dans : \(SimilarFolders.describe(context.folderEvidence))"
+        // P41 — les listes du propriétaire (leurs noms seulement), pour y ajouter plutôt que d'en créer d'autres.
+        let lists = context.lists.isEmpty ? "" : "\nListes existantes : \(context.lists.joined(separator: " ; "))"
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(known)\(similar)
+            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(lists)\(known)\(similar)
             Note à classer :
             <note>
             \(text)
@@ -188,6 +215,9 @@ enum CloudSchema {
             ("summary", string(style)),
             ("excerpt", string(style)),
             ("kind", string(style, allowed: ["idea", "task", "appointment", "decision", "preference", "info", "other"])),
+            // P41 — la liste où vont les choses dites, et ces choses.
+            ("list", string(style)),
+            ("listItems", array(style, of: string(style))),
             // La raison avant la catégorie : le modèle réfléchit, puis choisit (P32).
             ("categoryReason", string(style)),
             ("category", string(style)),
@@ -243,6 +273,8 @@ public enum CloudDecoder {
         let dates: [Mention]?
         let people: [String]?
         let places: [String]?
+        let list: String?
+        let listItems: [String]?
     }
 
     struct Mention: Decodable {
@@ -283,7 +315,8 @@ public enum CloudDecoder {
                                category: clean(note.category) ?? "", subcategory: clean(note.subcategory),
                                categoryDescription: clean(note.categoryDescription),
                                people: note.people ?? [], places: note.places ?? [],
-                               categoryReason: clean(note.categoryReason))
+                               categoryReason: clean(note.categoryReason), listName: clean(note.list),
+                               listItems: (note.listItems ?? []).compactMap(clean))
     }
 }
 

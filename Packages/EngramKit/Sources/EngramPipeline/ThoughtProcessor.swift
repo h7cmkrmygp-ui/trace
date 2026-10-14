@@ -62,9 +62,11 @@ public actor ThoughtProcessor {
             // Où sont rangées les notes semblables, et la taille de chaque dossier : l'IA classe comme le propriétaire (P34).
             let similar = await evidence?.evidence(for: text) ?? []
             let counts = try categories.categoryCounts().filter { paths.contains($0.key) }
+            // Les listes du propriétaire (leurs noms) : l'IA y ajoute au lieu d'en créer d'autres (P41).
+            let lists = try ListStore(database: memories.database, dates: memories.dates).names()
             let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
                                           facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
-                                          folderEvidence: similar, categoryCounts: counts)
+                                          folderEvidence: similar, categoryCounts: counts, lists: lists)
             var attempt = 0
             while true {
                 attempt += 1

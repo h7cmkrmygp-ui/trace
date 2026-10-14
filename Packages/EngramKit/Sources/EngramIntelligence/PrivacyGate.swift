@@ -96,6 +96,15 @@ public enum PrivacyGate {
         return roots
     }
 
+    /// P41 — pour Gemini : les noms de listes sans nom de personne ni autre nom propre (« épicerie », jamais « cadeaux
+    /// pour Julie »).
+    public static func neutralListNames(_ names: [String]) -> [String] {
+        shareableCategoryNames(names).filter { name in
+            let properNoun = name.split(whereSeparator: \.isWhitespace).dropFirst().contains { $0.first?.isUppercase ?? false }
+            return !properNoun && !SensitiveDetectors.containsPersonName(name)
+        }
+    }
+
     static func unique(_ reasons: [String]) -> [String] {
         var seen: Set<String> = []
         return reasons.filter { seen.insert($0).inserted }

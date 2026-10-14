@@ -26,6 +26,8 @@ final class RecordModel {
         let id: UUID
         let title: String
         let path: String?
+        /// P41 — les choses ajoutées à cette liste par la dictée (vide pour une note).
+        var added: [String] = []
         /// Un événement a été ajouté au calendrier de l'iPhone pour cette pensée.
         var addedToCalendar = false
     }
@@ -160,7 +162,9 @@ final class RecordModel {
         phase = .filing
         switch await app.process(sourceID: sourceID) {
         case .filed(let summary):
-            items = summary.memories.map { FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id]) }
+            items = summary.memories.map {
+                FiledItem(id: $0.id, title: $0.title, path: summary.pathByMemory[$0.id], added: summary.listAdditions[$0.id] ?? [])
+            }
             phase = .result
             await app.syncAppointments(askPermission: true)
             await app.askForRemindersIfNeeded()

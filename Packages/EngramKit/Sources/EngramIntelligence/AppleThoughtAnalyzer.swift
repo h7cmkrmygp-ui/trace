@@ -20,6 +20,10 @@ struct GeneratedThought {
     @Guide(description: "The exact words of the note that express this item, copied verbatim, never rephrased or translated.")
     var excerpt: String
     var kind: GeneratedKind
+    @Guide(description: "When the item only adds things to a list (to buy, to receive, to give): the list name in lowercase French without « liste de » (« épicerie », « souhaits », « souhaits d'anniversaire », « cadeaux pour Julie »), an existing list written exactly as given when it is the same list. Empty for anything else.")
+    var list: String
+    @Guide(description: "The things to add to that list, one per entry, a few French words taken from the note. Empty when list is empty.", .maximumCount(20))
+    var listItems: [String]
     @Guide(description: "Up to 3 short tags in French.", .maximumCount(3))
     var tags: [String]
     @Guide(description: "Date or time expressions copied from the note, e.g. « demain », « 24 novembre ». Put the reminder date first; for an appointment, put its own date and time first.")
@@ -46,7 +50,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p34-v1"
+    static let version = "p41-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -59,12 +63,22 @@ enum AnalysisPrompt {
         "rappelle-moi de réserver la salle le 24 novembre, rappelle-moi ça demain" there is ONE item, a task, and \
         « demain » is its reminder date.
         Two unrelated subjects, such as "appeler le garage pour les pneus, pis acheter du lait", are two items.
+        Understand the owner's intention, not only the words; one dictation often holds several intentions:
+        - something to buy (« je dois acheter », « il me faut »): list « épicerie » for food and household, else « achats »;
+        - something the owner wishes to receive (« j'aimerais qu'on m'achète », « j'aimerais recevoir »): list « souhaits », \
+        or « souhaits d'anniversaire » for the owner's birthday;
+        - a gift idea for someone: list « cadeaux pour Julie », that person in people;
+        - what someone likes or dislikes (« Julie aime les parfums »): kind preference, that person in people, never a list;
+        - « je dois », « il faut que »: a task; « j'aimerais faire », « peut-être »: an idea; « j'ai décidé »: a decision.
         For each item:
         - excerpt: the exact words of the note, copied verbatim, never rephrased or translated.
         - title and summary: clear, natural French without hesitation, English and slang words translated, and the \
         real date instead of « aujourd'hui » or « demain ».
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
+        - list and listItems: when the item only adds things to a list, the list name and the things the note says, one \
+        per entry; reuse an existing list, written exactly as given, when it is the same list said differently. Empty \
+        for a task, an appointment, an idea, a preference or a fact. Never a thing the note does not say.
         - categoryReason: written before choosing the category, one short French sentence: what the item is really \
         about, and why it truly belongs to the existing category you reuse (judged by what it contains), or why none \
         fits and a new one is needed. The category must agree with it.
@@ -102,11 +116,13 @@ enum AnalysisPrompt {
         let known = facts.isEmpty ? "" : "\nEngram already recognized in this note: \(facts.joined(separator: "; "))\n"
         let similar = evidence.isEmpty ? "" : "\nThe most similar notes are filed in: \(SimilarFolders.describe(evidence))\n"
         let date = today.map { "Today: \($0)\n" } ?? ""
+        // P41 — les listes du propriétaire, pour y ajouter plutôt que d'en créer d'autres.
+        let existingLists = lists.isEmpty ? "" : "\nExisting lists: \(lists.joined(separator: "; "))\n"
         return """
             \(date)Existing categories ("Parent › Child" means a subcategory; in parentheses, its number of notes; \
             after « : », what it contains):
             \(existing)
-            \(hint)\(known)\(similar)
+            \(hint)\(existingLists)\(known)\(similar)
             Note to file:
             \(text)
             """
@@ -155,19 +171,22 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
         for chunk in TextChunker.chunks(of: text, maxLength: Self.maxChunkLength) {
             thoughts += try await analyze(chunk: chunk, existingCategories: existingCategories, likely: likely, today: today,
                                           facts: context.facts, descriptions: context.categoryDescriptions,
-                                          evidence: context.folderEvidence, counts: context.categoryCounts, depth: 0)
+                                          evidence: context.folderEvidence, counts: context.categoryCounts,
+                                          lists: context.lists, depth: 0)
         }
         return ThoughtAnalysis(thoughts: thoughts)
     }
 
     func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?, facts: [String] = [],
                  descriptions: [String: String] = [:], evidence: [FolderEvidence] = [], counts: [String: Int] = [:],
+                 lists: [String] = [],
                  depth: Int) async throws -> [AnalyzedThought] {
         let session = LanguageModelSession(instructions: AnalysisPrompt.instructions)
         do {
             let response = try await session.respond(
                 to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories, likely: likely, today: today,
-                                          facts: facts, descriptions: descriptions, evidence: evidence, counts: counts),
+                                          facts: facts, descriptions: descriptions, evidence: evidence, counts: counts,
+                                          lists: lists),
                 generating: GeneratedThoughts.self)
             return response.content.thoughts.map(Self.convert)
         } catch let error as LanguageModelError {
@@ -175,7 +194,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             switch error {
             case .contextSizeExceeded where depth < 3:
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth)
             case .unsupportedLanguageOrLocale, .guardrailViolation, .refusal:
                 // Problème propre à cette note : repli pour elle seule (ne bloque pas les suivantes).
                 throw AnalyzerError.refused
@@ -192,7 +211,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             }
             if name.localizedCaseInsensitiveContains("exceededContextWindowSize"), depth < 3 {
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth)
             }
             throw AnalyzerError.invalidOutput
         }
@@ -200,14 +219,14 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
 
     func analyzeInHalves(_ chunk: String, existingCategories: [String], likely: [String], today: String?,
                          facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
-                         counts: [String: Int] = [:],
+                         counts: [String: Int] = [:], lists: [String] = [],
                          depth: Int) async throws -> [AnalyzedThought] {
         let halves = TextChunker.halves(of: chunk)
         guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
         let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, likely: likely, today: today,
-                                      facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth + 1)
+                                      facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth + 1)
         let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, likely: likely, today: today,
-                                       facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, depth: depth + 1)
+                                       facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth + 1)
         return first + second
     }
 
@@ -228,7 +247,9 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             categoryDescription: clean(generated.categoryDescription),
             people: generated.people,
             places: generated.places,
-            categoryReason: clean(generated.categoryReason))
+            categoryReason: clean(generated.categoryReason),
+            listName: clean(generated.list),
+            listItems: generated.listItems.compactMap(clean))
     }
 
     static func kind(_ generated: GeneratedKind) -> MemoryKind {

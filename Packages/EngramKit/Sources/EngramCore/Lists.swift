@@ -155,7 +155,53 @@ public enum ListMerge {
 /// P41 — retrouve la liste dont on parle parmi les listes existantes, même dite autrement (« ma liste d'anniversaire »
 /// pour « souhaits d'anniversaire »). En cas de doute, jamais de lien inventé : le nom demandé est gardé.
 public enum ListResolver {
+    /// Noms qui désignent la même liste.
+    static let synonyms: [Set<String>] = [
+        ListCommandParser.groceries,
+        ["souhait", "souhaits", "wishlist", "wish list", "envie", "envies", "liste de souhaits", "liste de souhait"],
+    ]
+    /// Mots qui ne disent pas de quelle liste il s'agit.
+    static let noise: Set<String> = ["liste", "list", "mon", "mes", "les", "pour", "des", "une", "ma"]
+
     public static func resolve(_ name: String, existing: [String]) -> String {
-        name
+        let requested = clean(name)
+        let key = ListCommandParser.key(requested)
+        guard !key.isEmpty else { return requested }
+        if let same = existing.first(where: { ListCommandParser.key($0) == key }) { return same }
+        // Le même genre de liste (épicerie et courses, souhaits et wishlist), s'il n'y en a qu'une.
+        if let group = synonyms.first(where: { $0.contains(key) }) {
+            let matches = existing.filter { group.contains(ListCommandParser.key($0)) }
+            if matches.count == 1 { return matches[0] }
+        }
+        // Les mots du nom demandé sont ceux d'une seule liste, à un mot près (« anniversaire », « souhaits d'anniversaire »).
+        // Une liste pour quelqu'un (« cadeaux pour Julie ») ne rejoint jamais une liste plus générale (« cadeaux »).
+        let words = significantWords(requested)
+        guard !words.isEmpty else { return requested }
+        let namesSomeone = requested.split(whereSeparator: \.isWhitespace).dropFirst().contains { $0.first?.isUppercase ?? false }
+        let candidates = existing.filter { other in
+            let otherWords = significantWords(other)
+            guard !otherWords.isEmpty else { return false }
+            return (words.isSubset(of: otherWords) && otherWords.count - words.count <= 1)
+                || (!namesSomeone && otherWords.isSubset(of: words) && words.count - otherWords.count <= 1)
+        }
+        return candidates.count == 1 ? candidates[0] : requested
+    }
+
+    /// « Liste de souhaits » → « souhaits » ; « ma liste d'épicerie » → « épicerie ».
+    public static func clean(_ raw: String) -> String {
+        var name = raw.replacingOccurrences(of: "’", with: "'").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        for prefix in ["ma liste de ", "ma liste d'", "ma liste des ", "la liste de ", "la liste d'", "la liste des ",
+                       "liste de ", "liste d'", "liste des ", "liste du ", "my ", "the "]
+        where name.lowercased().hasPrefix(prefix) {
+            name = String(name.dropFirst(prefix.count))
+            break
+        }
+        if name.lowercased().hasSuffix(" list") { name = String(name.dropLast(5)) }
+        return name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func significantWords(_ name: String) -> Set<String> {
+        Set(TextNormalizer.normalizedName(clean(name)).split(separator: " ").map(String.init)
+            .filter { $0.count >= 3 && !noise.contains($0) })
     }
 }

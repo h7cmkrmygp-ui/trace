@@ -87,6 +87,7 @@ public struct ThoughtFiler: Sendable {
             var filedIDs: [UUID] = []
             var paths: [String] = []
             var pathByMemory: [UUID: String] = [:]
+            var listAdditions: [UUID: [String]] = [:]
 
             func classify(_ memoryID: UUID, with thought: ValidThought) throws {
                 if !thought.categoryPath.isEmpty {
@@ -127,10 +128,23 @@ public struct ThoughtFiler: Sendable {
                         continue
                     }
                     // « ajoute du lait à ma liste d'épicerie » : la liste est complétée, sans nouvelle note (P15).
-                    if let command = ListCommandParser.parse(thought.excerpt) {
+                    // P41 : l'IA a reconnu des choses à recevoir, à acheter ou à offrir, même sans le mot « liste » : elles
+                    // vont dans leur liste (retrouvée même dite autrement), sans note à part.
+                    let spoken = ListCommandParser.parse(thought.excerpt)
+                    let understood = thought.listName.flatMap { name in
+                        thought.listItems.isEmpty ? nil : ListCommand(listName: name, items: thought.listItems)
+                    }
+                    if let command = spoken ?? understood {
                         let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
-                                                     memoryStore: memoryStore, now: now)
-                        if list.created { try classify(list.memory.id, with: thought) }
+                                                     memoryStore: memoryStore, now: now, perExcerpt: spoken == nil)
+                        if list.created {
+                            try classify(list.memory.id, with: thought)
+                        } else {
+                            // « des écouteurs pour Julie » : la liste est reliée à la personne nommée.
+                            try entityStore.linkNames(db, people: thought.people, places: thought.places,
+                                                      to: list.memory.id, now: now)
+                        }
+                        if !list.added.isEmpty { listAdditions[list.memory.id, default: []].append(contentsOf: list.added) }
                         if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
                         continue
                     }
@@ -201,7 +215,8 @@ public struct ThoughtFiler: Sendable {
             source.updatedAt = now
             try source.update(db)
             let memories = try filedIDs.compactMap { try Memory.fetchOne(db, key: $0) }
-            return FilingSummary(memories: memories, categoryPaths: paths, pathByMemory: pathByMemory)
+            return FilingSummary(memories: memories, categoryPaths: paths, pathByMemory: pathByMemory,
+                                 listAdditions: listAdditions)
         }
     }
 

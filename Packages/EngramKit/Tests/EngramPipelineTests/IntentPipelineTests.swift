@@ -7,7 +7,7 @@ import Testing
 
 /// P41 — une dictée mélangée devient plusieurs éléments au bon endroit : une liste de souhaits, une tâche, une fête.
 struct IntentPipelineTests {
-    static let text = "J'aimerais qu'on m'achète une bouteille d'eau et des élastiques pour les cheveux. Il faut aussi que j'appelle mon manager demain. Ah, et l'anniversaire de Sarah est le 22 octobre."
+    static let text = "J'aimerais qu'on m'achète une bouteille d'eau et des élastiques pour les cheveux. Il faut aussi que j'appelle mon manager demain. Ah, et l'anniversaire de Léa est le 3 novembre."
 
     @Test func oneDictationFillsAListAddsATaskAndRemembersABirthday() async throws {
         let database = try AppDatabase.inMemory()
@@ -21,9 +21,9 @@ struct IntentPipelineTests {
                             listName: "souhaits", listItems: ["Bouteille d'eau", "Élastiques pour les cheveux"]),
             AnalyzedThought(title: "Appeler mon gestionnaire", summary: nil, excerpt: "Il faut aussi que j'appelle mon manager demain",
                             kind: .task, tags: [], mentionedDates: ["demain"], category: "Travail", subcategory: nil),
-            AnalyzedThought(title: "Fête de Sarah", summary: nil, excerpt: "l'anniversaire de Sarah est le 22 octobre",
-                            kind: .info, tags: [], mentionedDates: ["22 octobre"], category: "Famille", subcategory: nil,
-                            people: ["Sarah"]),
+            AnalyzedThought(title: "Fête de Léa", summary: nil, excerpt: "l'anniversaire de Léa est le 3 novembre",
+                            kind: .info, tags: [], mentionedDates: ["3 novembre"], category: "Famille", subcategory: nil,
+                            people: ["Léa"]),
         ]))])
         let processor = ThoughtProcessor(memories: memories, categories: categories,
                                          filer: ThoughtFiler(database: database, dates: dates), analyzer: analyzer)
@@ -39,7 +39,7 @@ struct IntentPipelineTests {
         #expect(task.dueAt != nil)
         #expect(try categories.categories(for: task.id).map(\.name) == ["Travail"])
         let birthdays = try EntityStore(database: database, dates: dates).birthdays()
-        #expect(birthdays.map(\.name) == ["Sarah"])
+        #expect(birthdays.map(\.name) == ["Léa"])
         #expect(summary.pathByMemory.values.contains("Anniversaires"))
         // Aucune note à part pour les souhaits.
         #expect(!summary.memories.contains { $0.title == "Souhaits" })

@@ -9,6 +9,9 @@ public enum AnalysisValidator {
     public static let maxReasonLength = 200
     /// Personnes, et lieux, gardés au plus par pensée.
     public static let maxNames = 4
+    /// P41 — choses gardées au plus par liste, et leur longueur.
+    public static let maxListItems = 20
+    public static let maxListItemLength = 60
 
     /// P33 — le dossier des fêtes quand le propriétaire n'en a pas encore (le classement reprend le sien s'il existe).
     public static let birthdayFolder = "Anniversaires"
@@ -61,6 +64,10 @@ public enum AnalysisValidator {
             if tags.count == maxTags { break }
         }
 
+        // P41 — une liste n'est gardée qu'avec au moins une chose vraiment dite.
+        let items = listItems(thought.listItems, in: text)
+        let listName = items.isEmpty ? nil : thought.listName.flatMap(cleanListName)
+
         let range = (text as NSString).range(of: excerpt)
         let found = range.location != NSNotFound
         return ValidThought(
@@ -85,7 +92,38 @@ public enum AnalysisValidator {
             places: EntityName.clean(thought.places, in: text, limit: maxNames),
             // La raison du choix suit le chemin : un chemin refusé n'a plus de raison (P32).
             categoryReason: reason,
-            birthdayOf: birthday?.person)
+            birthdayOf: birthday?.person,
+            listName: listName,
+            listItems: listName == nil ? [] : items)
+    }
+
+    /// « Liste de Souhaits » → « souhaits » (la carte ajoute « Liste de ») ; nil si vide.
+    static func cleanListName(_ raw: String) -> String? {
+        guard let name = cleanName(ListResolver.clean(raw), maxLength: maxCategoryLength) else { return nil }
+        // Une majuscule de début de phrase tombe ; un sigle ou un nom propre en début de nom reste (« NHL »).
+        let startsASentence = name.dropFirst().first.map { $0.isLowercase } ?? true
+        return startsASentence ? name.prefix(1).lowercased() + name.dropFirst() : name
+    }
+
+    /// Les choses d'une liste, nettoyées (une majuscule, sans doublon, 20 au plus) ; une chose n'est gardée que si la moitié
+    /// au moins de ses mots porteurs de sens sont dans le texte : l'IA range ce qui est dit, elle n'ajoute rien.
+    static func listItems(_ raw: [String], in text: String) -> [String] {
+        let said = Set(meaningfulWords(text).map(TextNormalizer.singularize))
+        var seen = Set<String>()
+        var items: [String] = []
+        for proposed in raw {
+            let collapsed = proposed.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+                .trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?-–•☐☑ "))
+            guard !collapsed.isEmpty, collapsed.count <= maxListItemLength,
+                  seen.insert(TextNormalizer.normalizedName(collapsed)).inserted else { continue }
+            let words = Set(meaningfulWords(collapsed).map(TextNormalizer.singularize))
+            let grounded = words.isEmpty ? TextNormalizer.containsPhrase(collapsed, in: text)
+                : words.filter(said.contains).count * 2 >= words.count
+            guard grounded else { continue }
+            items.append(collapsed.prefix(1).uppercased() + collapsed.dropFirst())
+            if items.count == maxListItems { break }
+        }
+        return items
     }
 
     /// « La fête d'Inès, le 13 octobre : une date à retenir, rangée avec les anniversaires ; Engram te la rappelle chaque

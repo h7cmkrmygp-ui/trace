@@ -523,3 +523,13 @@ Spec : `docs/superpowers/specs/2026-10-12-engram-p40-menage-automatique-design.m
 |---|---|---|---|---|---|---|---|---|
 | — | Ménage hebdomadaire : doublons fusionnés, noms anglais en français, petits sous-dossiers repliés, notes mal rangées déplacées | n/a | ✅ | ✅ | ✅ (jamais un choix du propriétaire) | ⏳ | — | Réglages › Intelligence |
 | — | Historique et « Annuler » (migration v18) | ✅ | ✅ | ✅ | ✅ (tout remis comme avant, rien supprimé) | ⏳ | — | |
+
+## P41 — Comprendre les intentions (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-14-engram-p41-comprendre-les-intentions-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | Une dictée mélangée : chaque morceau au bon endroit (liste de souhaits, d'achats ou de cadeaux sans le mot « liste », tâche, fête) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | l'IA reçoit les intentions et les listes existantes |
+| — | Liste existante retrouvée même dite autrement, jamais devinée | n/a | ✅ | ✅ | ⏳ | ⏳ | — | aussi pour « ajoute … à ma liste … » |
+| — | Résumé « Ajouté : … » après la dictée | ✅ | ✅ | ✅ | ⏳ | ⏳ | — | toucher ouvre la liste pour corriger |

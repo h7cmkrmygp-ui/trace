@@ -20,6 +20,13 @@ public enum DuplicateThoughts {
             for tag in thought.tags where !kept.tags.contains(tag) && kept.tags.count < maxTags { kept.tags.append(tag) }
             if kept.summary == nil { kept.summary = thought.summary }
             if kept.categoryDescription == nil { kept.categoryDescription = thought.categoryDescription }
+            // Les choses de l'autre pour la même liste la rejoignent (P41).
+            if kept.listName == nil {
+                kept.listName = thought.listName
+                kept.listItems = thought.listItems
+            } else if kept.listName == thought.listName {
+                for item in thought.listItems where !kept.listItems.contains(item) { kept.listItems.append(item) }
+            }
             merged[index] = kept
         }
         return ThoughtAnalysis(thoughts: merged, route: analysis.route)
