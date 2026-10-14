@@ -57,9 +57,12 @@ public struct CloudContext: Sendable {
     public let categoryCounts: [String: Int]
     /// P41 — les listes existantes (noms seulement ; jamais une liste au nom d'une personne pour Gemini).
     public let lists: [String]
+    /// P42 — la dictée précédente (pour Gemini : sans personne, grands dossiers seulement).
+    public let recent: RecentContext?
 
     public init(now: Date, timeZone: TimeZone, facts: [String] = [], categoryDescriptions: [String: String] = [:],
-                folderEvidence: [FolderEvidence] = [], categoryCounts: [String: Int] = [:], lists: [String] = []) {
+                folderEvidence: [FolderEvidence] = [], categoryCounts: [String: Int] = [:], lists: [String] = [],
+                recent: RecentContext? = nil) {
         self.now = now
         self.timeZone = timeZone
         self.facts = facts
@@ -67,6 +70,7 @@ public struct CloudContext: Sendable {
         self.folderEvidence = folderEvidence
         self.categoryCounts = categoryCounts
         self.lists = lists
+        self.recent = recent
     }
 }
 

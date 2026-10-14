@@ -90,10 +90,12 @@ public struct AnalysisContext: Sendable, Equatable {
     public var categoryCounts: [String: Int]
     /// P41 — les listes existantes (leurs noms), pour que l'IA y ajoute au lieu d'en créer de nouvelles.
     public var lists: [String]
+    /// P42 — ce qui vient d'être dit (la dictée précédente), pour comprendre « elle », « cette liste », « ce projet ».
+    public var recent: RecentContext?
 
     public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
                 categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
-                categoryCounts: [String: Int] = [:], lists: [String] = []) {
+                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
@@ -101,6 +103,7 @@ public struct AnalysisContext: Sendable, Equatable {
         self.folderEvidence = folderEvidence
         self.categoryCounts = categoryCounts
         self.lists = lists
+        self.recent = recent
     }
 }
 

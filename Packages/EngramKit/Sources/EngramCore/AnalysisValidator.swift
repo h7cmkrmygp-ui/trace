@@ -18,7 +18,9 @@ public enum AnalysisValidator {
     public static let birthdayFolderDescription = "Les fêtes des personnes de ta vie, rappelées chaque année."
 
     /// Pensées valides, dans l'ordre. Lève `invalidOutput` s'il n'en reste aucune.
-    public static func validate(_ analysis: ThoughtAnalysis, against text: String) throws -> [ValidThought] {
+    /// - Parameter recent: P42 — la dictée précédente, pour comprendre « elle », « cette liste », « ce projet ».
+    public static func validate(_ analysis: ThoughtAnalysis, against text: String,
+                                recent: RecentContext? = nil) throws -> [ValidThought] {
         let alone = analysis.thoughts.count == 1
         let valid = analysis.thoughts.compactMap { validate($0, against: text, alone: alone) }
         guard !valid.isEmpty else { throw AnalyzerError.invalidOutput }
