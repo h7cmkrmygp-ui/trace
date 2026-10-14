@@ -157,11 +157,13 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
                                           folderEvidence: neutralEvidence,
                                           categoryCounts: context.categoryCounts.filter { neutralRoots.contains($0.key) },
-                                          lists: PrivacyGate.neutralListNames(context.lists))
+                                          lists: PrivacyGate.neutralListNames(context.lists),
+                                          recent: context.recent.flatMap(PrivacyGate.neutralRecent))
         let personalContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
                                            categoryDescriptions: descriptions, folderEvidence: personalEvidence,
                                            categoryCounts: context.categoryCounts.filter { shareableNames.contains($0.key) },
-                                           lists: PrivacyGate.shareableCategoryNames(context.lists))
+                                           lists: PrivacyGate.shareableCategoryNames(context.lists),
+                                           recent: context.recent.flatMap(PrivacyGate.shareableRecent))
         var temporarilyMissing = false
         var notes: [String] = []
         for provider in candidates {

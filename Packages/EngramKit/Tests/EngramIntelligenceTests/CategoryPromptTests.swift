@@ -16,7 +16,7 @@ struct CategoryPromptTests {
         #expect(!system.contains("such as Santé, Travail"))
         #expect(system.localizedCaseInsensitiveContains("create a new category"))
         #expect(system.localizedCaseInsensitiveContains("birthday"))
-        #expect(CloudPrompt.version == "p41-cloud-v1")
+        #expect(CloudPrompt.version == "p42-cloud-v1")
     }
 
     @Test func whatEngramRecognizedIsGivenWithTheNote() {
@@ -59,7 +59,7 @@ struct CategoryPromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleInstructionsGiveNoReadyMadeCategoriesEither() {
-        #expect(AnalysisPrompt.version == "p41-v1")
+        #expect(AnalysisPrompt.version == "p42-v1")
         #expect(!AnalysisPrompt.instructions.contains("belongs to Santé"))
         #expect(AnalysisPrompt.instructions.localizedCaseInsensitiveContains("create a new category"))
         #expect(AnalysisPrompt.instructions.localizedCaseInsensitiveContains("birthday"))

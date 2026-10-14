@@ -51,7 +51,7 @@ struct FolderEvidencePromptTests {
         #expect(system.contains("at least 3 notes"))
         #expect(system.localizedCaseInsensitiveContains("most similar"))
         #expect(system.localizedCaseInsensitiveContains("few broad categories"))
-        #expect(CloudPrompt.version == "p41-cloud-v1")
+        #expect(CloudPrompt.version == "p42-cloud-v1")
     }
 
     func router(gemini: FakeCloud, groq: FakeCloud) -> RoutedAnalyzer {
@@ -107,7 +107,7 @@ struct FolderEvidencePromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelGetsTheSameEvidence() {
-        #expect(AnalysisPrompt.version == "p41-v1")
+        #expect(AnalysisPrompt.version == "p42-v1")
         #expect(AnalysisPrompt.instructions.contains("at least 3 notes"))
         let prompt = AnalysisPrompt.prompt(text: "x", categories: ["Automobile"], likely: [],
                                            evidence: [FolderEvidence(path: "Automobile", notes: 2, byOwner: 0)],

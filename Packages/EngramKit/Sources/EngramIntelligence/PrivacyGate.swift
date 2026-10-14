@@ -105,6 +105,20 @@ public enum PrivacyGate {
         }
     }
 
+    /// P42 — la dictée précédente pour Gemini : aucune personne, les listes sans nom propre, les grands dossiers seulement.
+    public static func neutralRecent(_ recent: RecentContext) -> RecentContext? {
+        let neutral = RecentContext(people: [], lists: neutralListNames(recent.lists),
+                                    folders: neutralCategoryNames(recent.folders), minutesAgo: recent.minutesAgo)
+        return neutral.isEmpty ? nil : neutral
+    }
+
+    /// P42 — pour Groq : les personnes (déjà dans les notes qu'il lit), les listes et dossiers sans rien de sensible.
+    public static func shareableRecent(_ recent: RecentContext) -> RecentContext? {
+        let shareable = RecentContext(people: recent.people, lists: shareableCategoryNames(recent.lists),
+                                      folders: shareableCategoryNames(recent.folders), minutesAgo: recent.minutesAgo)
+        return shareable.isEmpty ? nil : shareable
+    }
+
     static func unique(_ reasons: [String]) -> [String] {
         var seen: Set<String> = []
         return reasons.filter { seen.insert($0).inserted }

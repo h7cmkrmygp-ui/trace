@@ -77,7 +77,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p41-cloud-v1"
+    public static let version = "p42-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -110,6 +110,10 @@ public enum CloudPrompt {
         de », « peut-être que »: an idea, not a task. « j'ai décidé », « c'est décidé », « finalement on prend »: a decision.
         - Other lists the owner keeps (« idées de business », « films à voir », « choses à faire pour le chalet »): \
         things added to them go to that list.
+        - « Note précédente » tells what the owner said a few minutes before (its people, lists and folders). Use it only \
+        for a word that clearly points back to it: « elle », « lui », « sa fête » (that person, in people), « cette \
+        liste », « la même liste » (that list), « ce projet » (that folder). When the note does not clearly point back, \
+        or when several people, lists or folders could be meant, ignore it: never invent a link.
 
         For each item:
         - excerpt: the exact words of the note for this item, copied verbatim (same spelling, same language, \
@@ -193,14 +197,24 @@ public enum CloudPrompt {
             : "\nLes notes les plus semblables déjà rangées sont dans : \(SimilarFolders.describe(context.folderEvidence))"
         // P41 — les listes du propriétaire (leurs noms seulement), pour y ajouter plutôt que d'en créer d'autres.
         let lists = context.lists.isEmpty ? "" : "\nListes existantes : \(context.lists.joined(separator: " ; "))"
+        // P42 — ce qui vient d'être dit, pour comprendre « elle », « cette liste », « ce projet ».
+        let previous = context.recent.flatMap(describe).map { "\n\($0)" } ?? ""
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(lists)\(known)\(similar)
+            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(lists)\(known)\(similar)\(previous)
             Note à classer :
             <note>
             \(text)
             </note>
             """
+    }
+
+    /// « Note précédente (il y a 5 min) : personnes : Julie ; listes : souhaits ; dossiers : Projets › Chalet » ; nil si vide.
+    static func describe(_ recent: RecentContext) -> String? {
+        let parts = [("personnes", recent.people), ("listes", recent.lists), ("dossiers", recent.folders)]
+            .filter { !$0.1.isEmpty }
+            .map { "\($0.0) : \($0.1.joined(separator: ", "))" }
+        return parts.isEmpty ? nil : "Note précédente (il y a \(recent.minutesAgo) min) : \(parts.joined(separator: " ; "))"
     }
 }
 

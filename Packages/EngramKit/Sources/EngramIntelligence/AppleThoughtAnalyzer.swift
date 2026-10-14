@@ -50,7 +50,7 @@ enum GeneratedKind {
 // MARK: - Consignes versionnées
 
 enum AnalysisPrompt {
-    static let version = "p41-v1"
+    static let version = "p42-v1"
 
     static let instructions = """
         You are the filing engine of a personal memory app running on the owner's iPhone.
@@ -99,8 +99,19 @@ enum AnalysisPrompt {
         truly belongs to it; create one only for a subject that will gather at least 3 notes; otherwise leave it empty.
         - mentionedDates: an item that follows another one in time (« pis après ») also gets that item's date expression.
         - people and places: the named people and the specific places of the item, copied from the note; never « je » or « moi ».
+        - Previous note: what the owner said a few minutes before. Use it only for a word that clearly points back to it \
+        (« elle », « lui », « sa fête »: that person; « cette liste »: that list; « ce projet »: that folder); when \
+        several could be meant, ignore it.
         Never invent facts, dates or names that are not in the note.
         """
+
+    /// « Previous note (5 min ago): people: Julie; folders: Projets › Chalet » ; nil si vide.
+    static func describe(_ recent: RecentContext) -> String? {
+        let parts = [("people", recent.people), ("lists", recent.lists), ("folders", recent.folders)]
+            .filter { !$0.1.isEmpty }
+            .map { "\($0.0): \($0.1.joined(separator: ", "))" }
+        return parts.isEmpty ? nil : "Previous note (\(recent.minutesAgo) min ago): \(parts.joined(separator: "; "))"
+    }
 
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
                        facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
@@ -118,11 +129,13 @@ enum AnalysisPrompt {
         let date = today.map { "Today: \($0)\n" } ?? ""
         // P41 — les listes du propriétaire, pour y ajouter plutôt que d'en créer d'autres.
         let existingLists = lists.isEmpty ? "" : "\nExisting lists: \(lists.joined(separator: "; "))\n"
+        // P42 — ce qui vient d'être dit, pour comprendre « elle », « cette liste », « ce projet ».
+        let previous = recent.flatMap(describe).map { "\n\($0)\n" } ?? ""
         return """
             \(date)Existing categories ("Parent › Child" means a subcategory; in parentheses, its number of notes; \
             after « : », what it contains):
             \(existing)
-            \(hint)\(existingLists)\(known)\(similar)
+            \(hint)\(existingLists)\(known)\(similar)\(previous)
             Note to file:
             \(text)
             """
@@ -172,21 +185,21 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             thoughts += try await analyze(chunk: chunk, existingCategories: existingCategories, likely: likely, today: today,
                                           facts: context.facts, descriptions: context.categoryDescriptions,
                                           evidence: context.folderEvidence, counts: context.categoryCounts,
-                                          lists: context.lists, depth: 0)
+                                          lists: context.lists, recent: context.recent, depth: 0)
         }
         return ThoughtAnalysis(thoughts: thoughts)
     }
 
     func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?, facts: [String] = [],
                  descriptions: [String: String] = [:], evidence: [FolderEvidence] = [], counts: [String: Int] = [:],
-                 lists: [String] = [],
+                 lists: [String] = [], recent: RecentContext? = nil,
                  depth: Int) async throws -> [AnalyzedThought] {
         let session = LanguageModelSession(instructions: AnalysisPrompt.instructions)
         do {
             let response = try await session.respond(
                 to: AnalysisPrompt.prompt(text: chunk, categories: existingCategories, likely: likely, today: today,
                                           facts: facts, descriptions: descriptions, evidence: evidence, counts: counts,
-                                          lists: lists),
+                                          lists: lists, recent: recent),
                 generating: GeneratedThoughts.self)
             return response.content.thoughts.map(Self.convert)
         } catch let error as LanguageModelError {
@@ -194,7 +207,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             switch error {
             case .contextSizeExceeded where depth < 3:
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, recent: recent, depth: depth)
             case .unsupportedLanguageOrLocale, .guardrailViolation, .refusal:
                 // Problème propre à cette note : repli pour elle seule (ne bloque pas les suivantes).
                 throw AnalyzerError.refused
@@ -211,7 +224,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
             }
             if name.localizedCaseInsensitiveContains("exceededContextWindowSize"), depth < 3 {
                 return try await analyzeInHalves(chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth)
+                                                 facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, recent: recent, depth: depth)
             }
             throw AnalyzerError.invalidOutput
         }
@@ -219,14 +232,14 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
 
     func analyzeInHalves(_ chunk: String, existingCategories: [String], likely: [String], today: String?,
                          facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
-                         counts: [String: Int] = [:], lists: [String] = [],
+                         counts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil,
                          depth: Int) async throws -> [AnalyzedThought] {
         let halves = TextChunker.halves(of: chunk)
         guard halves.count == 2 else { throw AnalyzerError.invalidOutput }
         let first = try await analyze(chunk: halves[0], existingCategories: existingCategories, likely: likely, today: today,
-                                      facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth + 1)
+                                      facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, recent: recent, depth: depth + 1)
         let second = try await analyze(chunk: halves[1], existingCategories: existingCategories, likely: likely, today: today,
-                                       facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, depth: depth + 1)
+                                       facts: facts, descriptions: descriptions, evidence: evidence, counts: counts, lists: lists, recent: recent, depth: depth + 1)
         return first + second
     }
 

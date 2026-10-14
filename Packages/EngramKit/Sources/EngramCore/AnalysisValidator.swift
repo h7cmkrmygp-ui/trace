@@ -22,13 +22,26 @@ public enum AnalysisValidator {
     public static func validate(_ analysis: ThoughtAnalysis, against text: String,
                                 recent: RecentContext? = nil) throws -> [ValidThought] {
         let alone = analysis.thoughts.count == 1
-        let valid = analysis.thoughts.compactMap { validate($0, against: text, alone: alone) }
+        var valid: [ValidThought] = []
+        // Dans une même dictée, « elle » ou « la même liste » renvoient d'abord à la phrase d'avant (P42).
+        var context = recent
+        for thought in analysis.thoughts {
+            guard let checked = validate(thought, against: text, alone: alone, recent: context) else { continue }
+            valid.append(checked)
+            var next = context ?? RecentContext()
+            if !checked.people.isEmpty { next.people = checked.people }
+            if let list = checked.listName { next.lists = [list] }
+            context = next
+        }
         guard !valid.isEmpty else { throw AnalyzerError.invalidOutput }
         return valid
     }
 
-    /// - Parameter alone: seule pensée de la note (un extrait incomplet se relit alors avec la note entière).
-    static func validate(_ thought: AnalyzedThought, against text: String, alone: Bool = false) -> ValidThought? {
+    /// - Parameters:
+    ///   - alone: seule pensée de la note (un extrait incomplet se relit alors avec la note entière).
+    ///   - recent: P42 — ce qui vient d'être dit : « elle », « cette liste », « ce projet » n'y renvoient que sans ambiguïté.
+    static func validate(_ thought: AnalyzedThought, against text: String, alone: Bool = false,
+                         recent: RecentContext? = nil) -> ValidThought? {
         var excerpt = thought.excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
         if !TextNormalizer.containsPhrase(excerpt, in: text) {
             // L'IA a pu écrire « puis » pour « pis » ou corriger une faute : on reprend les vrais mots du passage.
@@ -46,6 +59,11 @@ public enum AnalysisValidator {
         if !MeasurementFolders.accepts(path, text: excerpt) { path = [] }
         var kind = thought.kind
         var reason = path.isEmpty ? nil : cleanReason(thought.categoryReason)
+        // « Pour ce projet, il faut aussi… » : le seul projet de la dictée précédente (P42).
+        if ContextReferences.refersToAProject(excerpt), let recent, let folder = projectFolder(in: recent) {
+            path = categoryPath(category: folder, subcategory: nil)
+            reason = "« Ce projet » : celui de ta note d'il y a \(recent.minutesAgo) min, rangée dans « \(folder) »."
+        }
         // Une note qui dit seulement une fête (P33) : une chose à retenir, dans le dossier des fêtes, sans échéance
         // (la page de la personne la rappelle chaque année). Une tâche autour d'une fête reste une tâche.
         let birthdayText = BirthdayParser.isOnlyABirthday(excerpt) ? excerpt
@@ -67,8 +85,20 @@ public enum AnalysisValidator {
         }
 
         // P41 — une liste n'est gardée qu'avec au moins une chose vraiment dite.
-        let items = listItems(thought.listItems, in: text)
-        let listName = items.isEmpty ? nil : thought.listName.flatMap(cleanListName)
+        var items = listItems(thought.listItems, in: text)
+        var listName = items.isEmpty ? nil : thought.listName.flatMap(cleanListName)
+        // « Ajoute un livre à cette liste » : la seule liste dont on vient de parler (P42).
+        if ContextReferences.refersToAList(excerpt), let list = recent?.lists.onlyOne {
+            if items.isEmpty { items = ContextReferences.listItems(in: excerpt) ?? [] }
+            if !items.isEmpty { listName = list }
+        }
+
+        // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus). « Elle », « lui »,
+        // « sa fête » sans nom : la seule personne dont on vient de parler (P42) ; plusieurs, aucun lien n'est inventé.
+        var people = EntityName.clean(thought.people, in: text, limit: maxNames)
+        if people.isEmpty, ContextReferences.refersToSomeone(excerpt), let person = recent?.people.onlyOne {
+            people = [person]
+        }
 
         let range = (text as NSString).range(of: excerpt)
         let found = range.location != NSNotFound
@@ -89,14 +119,22 @@ public enum AnalysisValidator {
             categoryDescription: birthday != nil ? birthdayFolderDescription : thought.categoryDescription
                 .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
                 .flatMap { $0.isEmpty ? nil : $0 },
-            // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus).
-            people: EntityName.clean(thought.people, in: text, limit: maxNames),
+            people: people,
             places: EntityName.clean(thought.places, in: text, limit: maxNames),
             // La raison du choix suit le chemin : un chemin refusé n'a plus de raison (P32).
             categoryReason: reason,
             birthdayOf: birthday?.person,
             listName: listName,
             listItems: listName == nil ? [] : items)
+    }
+
+    /// P42 — le dossier dont parle « ce projet » : le seul dossier de la dictée précédente, ou le seul qui est un projet.
+    static func projectFolder(in recent: RecentContext) -> String? {
+        if let only = recent.folders.onlyOne { return only }
+        return recent.folders.filter {
+            let form = TextNormalizer.normalizedName($0)
+            return form.contains("projet") || form.contains("project")
+        }.onlyOne
     }
 
     /// « Liste de Souhaits » → « souhaits » (la carte ajoute « Liste de ») ; nil si vide.

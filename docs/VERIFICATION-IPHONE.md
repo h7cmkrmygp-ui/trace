@@ -364,3 +364,9 @@ Toutes les phrases ci-dessous sont **inventées** : tu peux les dire telles quel
 177. **La même liste, dite autrement** : quelques jours plus tard, dicte « Ajoute des écouteurs à ma liste de souhaits » ou « J'aimerais aussi recevoir des écouteurs ». Les écouteurs rejoignent la même liste ; aucune deuxième liste n'est créée.
 178. **Acheter ou recevoir** : « Je dois acheter du lait » va dans l'épicerie ; « J'aimerais qu'on m'achète un livre » va dans les souhaits.
 179. **Corriger** : touche une carte du résumé : la liste s'ouvre et tu peux corriger une case.
+
+## AQ. P42 — La mémoire du contexte
+
+180. **Elle** : dicte « Julie aime les parfums. » Quelques minutes plus tard, dicte « Elle adore aussi le chocolat. » Ouvre la deuxième note : Julie est dans ses personnes. Sur la page de Julie, les deux notes apparaissent.
+181. **Cette liste** : dicte « Ajoute des chandelles à ma liste de souhaits ». Juste après, dicte « Ajoute aussi un livre à cette liste ». Le livre est dans la liste de souhaits.
+182. **Pas de lien inventé** : dicte une note qui nomme Julie et Marc. Juste après, dicte « Elle adore le thé ». Aucune personne n'est reliée à la note.

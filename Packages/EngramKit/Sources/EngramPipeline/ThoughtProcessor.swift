@@ -64,9 +64,12 @@ public actor ThoughtProcessor {
             let counts = try categories.categoryCounts().filter { paths.contains($0.key) }
             // Les listes du propriétaire (leurs noms) : l'IA y ajoute au lieu d'en créer d'autres (P41).
             let lists = try ListStore(database: memories.database, dates: memories.dates).names()
+            // Ce qui vient d'être dit (la dictée d'il y a quelques minutes) : « elle », « cette liste », « ce projet » (P42).
+            let recent = try memories.recentContext(before: sourceID)
             let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
                                           facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
-                                          folderEvidence: similar, categoryCounts: counts, lists: lists)
+                                          folderEvidence: similar, categoryCounts: counts, lists: lists,
+                                          recent: recent)
             var attempt = 0
             while true {
                 attempt += 1
@@ -77,7 +80,7 @@ public actor ThoughtProcessor {
                         try await analyzer.analyze(text: text, existingCategories: paths, context: context), in: text))
                     var valid: [ValidThought]
                     do {
-                        valid = try AnalysisValidator.validate(analysis, against: text)
+                        valid = try AnalysisValidator.validate(analysis, against: text, recent: recent)
                     } catch AnalyzerError.invalidOutput where attempt >= 2 {
                         // P35 : l'IA a reformulé au lieu de recopier, deux fois : la dictée entière devient une seule note,
                         // dans le dossier choisi par l'IA, plutôt que de rester « À classer ».

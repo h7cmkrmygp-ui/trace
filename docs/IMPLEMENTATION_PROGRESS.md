@@ -530,6 +530,16 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p41-comprendre-les-intentions-d
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
-| — | Une dictée mélangée : chaque morceau au bon endroit (liste de souhaits, d'achats ou de cadeaux sans le mot « liste », tâche, fête) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | l'IA reçoit les intentions et les listes existantes |
-| — | Liste existante retrouvée même dite autrement, jamais devinée | n/a | ✅ | ✅ | ⏳ | ⏳ | — | aussi pour « ajoute … à ma liste … » |
-| — | Résumé « Ajouté : … » après la dictée | ✅ | ✅ | ✅ | ⏳ | ⏳ | — | toucher ouvre la liste pour corriger |
+| — | Une dictée mélangée : chaque morceau au bon endroit (liste de souhaits, d'achats ou de cadeaux sans le mot « liste », tâche, fête) | n/a | ✅ | ✅ | ✅ | ⏳ | — | l'IA reçoit les intentions et les listes existantes |
+| — | Liste existante retrouvée même dite autrement, jamais devinée | n/a | ✅ | ✅ | ✅ | ⏳ | — | aussi pour « ajoute … à ma liste … » |
+| — | Résumé « Ajouté : … » après la dictée | ✅ | ✅ | ✅ | ✅ | ⏳ | — | toucher ouvre la liste pour corriger |
+
+## P42 — La mémoire du contexte (branche `p2-je-parle`)
+
+Spec : `docs/superpowers/specs/2026-10-14-engram-p42-memoire-du-contexte-design.md`
+
+| ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
+|---|---|---|---|---|---|---|---|---|
+| — | « elle », « lui », « sa fête » : la seule personne de la dictée d'il y a quelques minutes (ou de la phrase d'avant) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | ambigu : aucun lien |
+| — | « cette liste », « ce projet » : la seule liste, le seul projet dont on vient de parler | n/a | ✅ | ✅ | ⏳ | ⏳ | — | |
+| — | L'IA reçoit la note précédente (Gemini : sans personne) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | |
