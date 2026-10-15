@@ -43,6 +43,7 @@ Engram doit comprendre l'intention, pas seulement les mots-clés :
   - aucune note à part n'est créée pour elles ;
   - une liste existante complétée est reliée aux personnes nommées ;
   - deux passages d'une même dictée peuvent compléter la même liste. Une dictée reclassée n'ajoute rien deux fois.
+- **Une tâche datée reste une tâche** : « Je dois acheter du lait demain » garde son échéance et son rappel au lieu de disparaître dans la liste. Un souhait daté reste un souhait.
 - **Résumé après la dictée** : chaque liste complétée affiche « Ajouté : Gourde, Élastiques pour les cheveux ». Toucher la carte ouvre la liste pour corriger.
 
 ## Hors de portée (sous-projets suivants)

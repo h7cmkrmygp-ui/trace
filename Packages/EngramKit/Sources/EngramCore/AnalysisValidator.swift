@@ -100,6 +100,13 @@ public enum AnalysisValidator {
             people = [person]
         }
 
+        // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
+        let dates = thought.mentionedDates
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) }
+        // « Je dois acheter du lait demain » : une tâche ou un rendez-vous daté garde son échéance et son rappel (P41).
+        if kind == .task || kind == .appointment, !dates.isEmpty { listName = nil }
+
         let range = (text as NSString).range(of: excerpt)
         let found = range.location != NSNotFound
         return ValidThought(
@@ -111,10 +118,7 @@ public enum AnalysisValidator {
             kind: kind,
             tags: tags,
             categoryPath: path,
-            // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
-            mentionedDates: thought.mentionedDates
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) },
+            mentionedDates: dates,
             // Le dossier des fêtes a sa propre description (celle de l'IA parlait d'un autre dossier).
             categoryDescription: birthday != nil ? birthdayFolderDescription : thought.categoryDescription
                 .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
