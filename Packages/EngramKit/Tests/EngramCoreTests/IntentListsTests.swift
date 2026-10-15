@@ -26,6 +26,21 @@ struct IntentListsTests {
         return try #require(try AnalysisValidator.validate(ThoughtAnalysis(thoughts: [thought]), against: text).first)
     }
 
+    /// « Je dois acheter du lait demain » : une tâche datée garde son rappel au lieu de disparaître dans la liste.
+    @Test func somethingToDoOnADayStaysATaskWithItsReminder() throws {
+        let text = "Je dois acheter du lait demain"
+        let thought = AnalyzedThought(title: "Acheter du lait", summary: nil, excerpt: text, kind: .task, tags: [],
+                                      mentionedDates: ["demain"], category: "Épicerie", subcategory: nil,
+                                      listName: "épicerie", listItems: ["Lait"])
+        let valid = try #require(try AnalysisValidator.validate(ThoughtAnalysis(thoughts: [thought]), against: text).first)
+        #expect(valid.listName == nil)
+        #expect(valid.mentionedDates == ["demain"])
+        // Un souhait pour une date reste un souhait.
+        let wish = "J'aimerais recevoir des écouteurs le 3 mars"
+        let wished = try validated(wish, list: "souhaits", items: ["Écouteurs"])
+        #expect(wished.listName == "souhaits")
+    }
+
     @Test func onlyThingsActuallySaidGoInTheList() throws {
         let text = "J'aimerais qu'on m'achète une bouteille d'eau et des élastiques pour les cheveux"
         let valid = try validated(text, list: "Liste de souhaits", items: ["Bouteille d'eau", "Élastiques pour les cheveux", "Parfum"])
