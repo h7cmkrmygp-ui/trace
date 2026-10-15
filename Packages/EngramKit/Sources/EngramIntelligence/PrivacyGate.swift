@@ -112,9 +112,10 @@ public enum PrivacyGate {
         return neutral.isEmpty ? nil : neutral
     }
 
-    /// P42 — pour Groq : les personnes (déjà dans les notes qu'il lit), les listes et dossiers sans rien de sensible.
+    /// P42 — pour Groq : les listes et les dossiers sans rien de sensible, jamais les personnes d'une autre note (le choix
+    /// du propriétaire : seuls des noms de dossiers quittent l'iPhone ; « elle » est relié sur l'iPhone).
     public static func shareableRecent(_ recent: RecentContext) -> RecentContext? {
-        let shareable = RecentContext(people: recent.people, lists: shareableCategoryNames(recent.lists),
+        let shareable = RecentContext(people: [], lists: shareableCategoryNames(recent.lists),
                                       folders: shareableCategoryNames(recent.folders), minutesAgo: recent.minutesAgo)
         return shareable.isEmpty ? nil : shareable
     }

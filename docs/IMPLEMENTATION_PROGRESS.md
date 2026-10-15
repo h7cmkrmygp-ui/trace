@@ -542,7 +542,7 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p42-memoire-du-contexte-design.
 |---|---|---|---|---|---|---|---|---|
 | — | « elle », « lui », « sa fête » : la seule personne de la dictée d'il y a quelques minutes (ou de la phrase d'avant) | n/a | ✅ | ✅ | ✅ | ⏳ | — | ambigu : aucun lien |
 | — | « cette liste », « ce projet » : la seule liste, le seul projet dont on vient de parler | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
-| — | L'IA reçoit la note précédente (Gemini : sans personne) | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
+| — | L'IA reçoit la note précédente (aucune personne pour Gemini ni Groq) | n/a | ✅ | ✅ | ✅ | ⏳ | — | |
 
 ## P43 — Retrouver répond comme un deuxième cerveau (branche `p2-je-parle`)
 
@@ -568,4 +568,4 @@ Spec : `docs/superpowers/specs/2026-10-14-engram-p45-ce-projet-design.md`
 
 | ID | Fonctionnalité | Dessiné | Simulé | Implémenté | CI | iPhone | Prêt | Notes |
 |---|---|---|---|---|---|---|---|---|
-| — | Ce qui reste à faire pour un projet (nommé, ou celui de la dernière dictée) | n/a | ✅ | ✅ | ⏳ | ⏳ | — | Retrouver et Siri |
+| — | Ce qui reste à faire pour un projet (nommé, ou celui de la dernière dictée) | n/a | ✅ | ✅ | ✅ | ⏳ | — | Retrouver et Siri |

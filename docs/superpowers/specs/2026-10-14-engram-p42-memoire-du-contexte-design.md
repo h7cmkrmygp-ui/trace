@@ -25,9 +25,10 @@ Règle d'or : **jamais de lien inventé**. Engram ne fait le lien que s'il y a u
   - Une note qui parle de quelqu'un sans le nommer est reliée à la seule personne du contexte. S'il y a plusieurs personnes, rien n'est relié.
   - « Cette liste » renvoie à la seule liste du contexte. Les choses dites y vont.
   - « Ce projet » renvoie au seul dossier du contexte, ou au seul dont le nom parle d'un projet. La raison est montrée dans « Pourquoi ce dossier ».
-- **L'IA reçoit la note précédente**, par exemple : « Note précédente (il y a 5 min) : personnes : Julie ; listes : … ; dossiers : … ».
+- **L'IA reçoit la note précédente**, par exemple : « Note précédente (il y a 5 min) : listes : … ; dossiers : … ».
   - Gemini (palier gratuit) ne reçoit aucune personne, seulement les listes sans nom propre et les grands dossiers.
-  - Groq et le modèle d'Apple reçoivent tout.
+  - Groq reçoit les listes et les dossiers, mais jamais les personnes d'une autre note. C'est ton choix : seuls des noms de dossiers (et de listes) quittent l'iPhone. Le lien « elle » vers la bonne personne se fait sur l'iPhone.
+  - Le modèle d'Apple, sur l'iPhone, reçoit tout.
   - Versions des consignes : `p42-cloud-v1` et `p42-v1`.
 
 ## Tests

@@ -110,10 +110,10 @@ public enum CloudPrompt {
         de », « peut-être que »: an idea, not a task. « j'ai décidé », « c'est décidé », « finalement on prend »: a decision.
         - Other lists the owner keeps (« idées de business », « films à voir », « choses à faire pour le chalet »): \
         things added to them go to that list.
-        - « Note précédente » tells what the owner said a few minutes before (its people, lists and folders). Use it only \
-        for a word that clearly points back to it: « elle », « lui », « sa fête » (that person, in people), « cette \
-        liste », « la même liste » (that list), « ce projet » (that folder). When the note does not clearly point back, \
-        or when several people, lists or folders could be meant, ignore it: never invent a link.
+        - « Note précédente » tells what the owner said a few minutes before (its lists and folders). Use it only for a \
+        word that clearly points back to it: « cette liste », « la même liste » (that list), « ce projet » (that \
+        folder). When the note does not clearly point back, or when several lists or folders could be meant, ignore it: \
+        never invent a link. Engram itself links « elle », « lui », « sa fête » to the right person on the iPhone.
 
         For each item:
         - excerpt: the exact words of the note for this item, copied verbatim (same spelling, same language, \
