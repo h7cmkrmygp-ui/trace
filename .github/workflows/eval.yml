@@ -1,0 +1,44 @@
+name: Apple evaluation
+# Mesure le modèle d'Apple (classement et confidentialité) sur des phrases inventées, dans un iPhone simulé.
+# Rapport seulement : rien ne bloque la CI.
+# Lancement manuel seulement : le 2026-10-08, le simulateur de la CI annonçait le modèle « disponible » mais chaque
+# génération échouait (ModelManagerError 1026, modèle absent de la machine virtuelle). À relancer si GitHub change ses Mac.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  evaluate:
+    name: Évaluation du modèle d'Apple (simulateur)
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Simulateur iPhone
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "iOS 27"; then xcodebuild -downloadPlatform iOS; fi
+          LINE="$(xcrun simctl list devices available | awk '/^-- iOS 27/{f=1; next} /^--/{f=0} f && /iPhone/{print; exit}')"
+          UDID="$(echo "$LINE" | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')"
+          [ -n "$UDID" ] || { echo "Aucun iPhone iOS 27 disponible"; exit 1; }
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Évaluer
+        working-directory: Packages/EngramKit
+        env:
+          # xcodebuild transmet au test les variables préfixées par TEST_RUNNER_ (sans le préfixe).
+          TEST_RUNNER_ENGRAM_RUN_APPLE_EVAL: "1"
+        run: |
+          xcodebuild test -scheme EngramKit-Package -destination "id=$UDID" \
+            -only-testing:EngramIntelligenceTests/AppleEvaluationTests -test-timeouts-enabled YES -default-test-execution-time-allowance 2400 2>&1 | tail -n 15 || true
+          REPORT="$(find ~/Library/Developer/CoreSimulator/Devices/$UDID -name engram-eval.txt 2>/dev/null | head -1)"
+          if [ -n "$REPORT" ]; then cp "$REPORT" "$RUNNER_TEMP/rapport.txt"; cat "$REPORT"; else echo "Aucun rapport trouvé"; fi
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: evaluation-${{ github.run_number }}
+          path: ${{ runner.temp }}/rapport.txt
+          retention-days: 7

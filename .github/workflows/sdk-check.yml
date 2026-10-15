@@ -1,0 +1,30 @@
+name: SDK check
+on:
+  push:
+    paths: [".github/workflows/sdk-check.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  inspect:
+    runs-on: xcode-27
+    steps:
+      - name: API ciblées (P3 Cerveau et Calendrier)
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          iface() { find "$SDK/System/Library/Frameworks/$1.framework" -name '*.swiftinterface' -path '*arm64e-apple-ios*' | head -1; }
+          clean() { sed -E 's/(FoundationModels|EventKit|Swift|Foundation)::/ /g' | cut -c1-220; }
+          FM="$(iface FoundationModels)"
+          echo "::group::FoundationModels — LanguageModelError (remplace GenerationError)"
+          grep -nE "LanguageModelError|deprecated.*GenerationError|GenerationError.*deprecated" "$FM" | clean | head -20
+          awk '/enum LanguageModelError|struct LanguageModelError/{f=1} f{print NR": "$0} f&&/^  }$/{exit}' "$FM" | grep -E "case |static (let|var)|enum |struct " | clean | head -40
+          echo "::endgroup::"
+          echo "::group::EventKit (Objective-C) — en-têtes"
+          H="$SDK/System/Library/Frameworks/EventKit.framework/Headers"
+          grep -hnE "requestFullAccessToEvents|requestWriteOnlyAccessToEvents|EKAuthorizationStatusFullAccess|EKAuthorizationStatusWriteOnly|defaultCalendarForNewEvents|allowsContentModifications|predicateForEventsWithStartDate|saveEvent:span" "$H"/*.h | cut -c1-200 | head -30
+          ls "$SDK/System/Library/Frameworks/EventKit.framework/Modules" 2>/dev/null || true
+          EK="$(iface EventKit)"; [ -n "$EK" ] && grep -nE "func requestFullAccessToEvents|func requestWriteOnlyAccessToEvents" "$EK" | clean | head -10 || true
+          echo "::endgroup::"
