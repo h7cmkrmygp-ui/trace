@@ -121,7 +121,7 @@ public enum LinguisticGuards {
 
         let negated = words.contains(where: negators.contains)
             || ((words.contains("ne") || words.contains("n")) && (words.contains("plus") || words.contains("pu")))
-            || englishNegations.contains(where: phrase.contains)
+            || englishNegations.contains { phrase.contains($0) }
 
         let spaced = " " + tokens.joined(separator: " ") + " "
         let conditional = conditions.contains { matches($0, spaced) }

@@ -67,7 +67,7 @@ public enum AnalysisValidator {
         let title = TitleMaker.fallbackTitle(
             from: proposedTitle.isEmpty || !isGrounded(proposedTitle, in: passage, dated: dated) ? excerpt : proposedTitle)
 
-        let summary = thought.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = (thought.summary?.trimmingCharacters(in: .whitespacesAndNewlines))
             .flatMap { isGrounded($0, in: passage, dated: dated) ? $0 : nil }
 
         var path = categoryPath(category: thought.category, subcategory: thought.subcategory)
