@@ -19,28 +19,48 @@ public struct SilenceDetector: Sendable {
     /// Silence qui doit précéder un éclat pour qu'il soit isolé (la parole, elle, a des creux bien plus courts).
     public var burstIsolation: TimeInterval = 0.5
     static let floorWindow: TimeInterval = 10
-    /// F27 — mesures gardées au plus.
+    /// F27 — mesures gardées au plus (20 s à une mesure toutes les 50 ms) : assez pour le bruit de fond (10 s) et le
+    /// silence final (4 s), quelle que soit la durée de l'enregistrement.
     public static let retentionLimit = 400
     /// F27 — combien de mesures sont gardées en mémoire.
     var retainedSamples: Int { samples.count }
 
+    /// Les mesures récentes (fenêtre bornée).
     private var samples: [(time: TimeInterval, level: Float)] = []
+    /// F27 — tous les niveaux de l'enregistrement, comptés par pas de 0,001 : ta voix est estimée sur toute la dictée
+    /// sans garder chaque mesure.
+    private var histogram = [Int](repeating: 0, count: 1_001)
 
     public init() {}
+
+    static func bin(_ level: Float) -> Int { min(1_000, max(0, Int((level * 1_000).rounded()))) }
+    static func value(ofBin index: Int) -> Float { Float(index) / 1_000 }
 
     /// Ajoute une mesure du micro ; renvoie vrai quand on peut arrêter l'enregistrement.
     public mutating func add(level: Float, at time: TimeInterval, interval: TimeInterval) -> Bool {
         samples.append((time, level))
+        if samples.count > Self.retentionLimit { samples.removeFirst(samples.count - Self.retentionLimit) }
+        histogram[Self.bin(level)] += 1
         let recent = samples.filter { $0.time > time - Self.floorWindow }.map(\.level).sorted()
         guard !recent.isEmpty else { return false }
         let floor = recent[Int(Double(recent.count - 1) * 0.1)]
         // Ta voix : les sons au-dessus du bruit de fond, dont on garde les plus forts (9 sur 10 sont plus faibles).
-        // Recalculée sur tout l'enregistrement : si tu as parlé tout de suite, elle est reconnue dès le premier silence.
-        let loud = samples.map(\.level).filter { $0 > floor + speechMargin }.sorted()
-        guard !loud.isEmpty else { return false }
-        let voice = loud[Int(Double(loud.count - 1) * 0.9)]
+        // Estimée sur tout l'enregistrement : si tu as parlé tout de suite, elle est reconnue dès le premier silence.
+        let loudBins = (0...1_000).filter { Self.value(ofBin: $0) > floor + speechMargin }
+        let loudCount = loudBins.reduce(0) { $0 + histogram[$1] }
+        guard loudCount > 0 else { return false }
+        let rank = Int(Double(loudCount - 1) * 0.9)
+        var seen = 0
+        var voice = floor + speechMargin
+        for index in loudBins {
+            seen += histogram[index]
+            if seen > rank {
+                voice = Self.value(ofBin: index)
+                break
+            }
+        }
         let threshold = max(floor + speechMargin, voice - voiceDrop)
-        let spoken = samples.reduce(0) { $1.level >= threshold ? $0 + 1 : $0 }
+        let spoken = (0...1_000).filter { Self.value(ofBin: $0) >= threshold }.reduce(0) { $0 + histogram[$1] }
         guard Double(spoken) * interval >= minimumSpeech - 1e-9 else { return false }
         // Un son fort en ce moment : peut-être le début d'une phrase, on attend de voir.
         if let last = samples.last, last.level >= threshold { return false }

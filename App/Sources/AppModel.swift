@@ -719,9 +719,14 @@ final class AppModel {
         }
         do {
             let (transcript, engine) = try await runTranscription(url: url)
+            // F26 — une transcription incertaine dont le sens dépend d'un mot fragile (négation, nombre, date, nom) passe
+            // par « Vérifie ta note », même si la revue n'est pas activée ; sa confiance est gardée avec la dictée.
+            let needsReview = TranscriptReview.needsReview(text: transcript.text,
+                                                           averageLogProbability: transcript.averageLogProbability,
+                                                           ownerWantsReview: reviewsBeforeFiling)
             try memories.attachTranscript(sourceID: sourceID, transcript: transcript.text,
                                           languages: Self.languages(of: transcript), engine: engine,
-                                          needsReview: reviewsBeforeFiling)
+                                          needsReview: needsReview, confidence: transcript.averageLogProbability)
             return true
         } catch {
             return false
@@ -761,9 +766,14 @@ final class AppModel {
         return calendar
     }
 
+    /// F27 — vrai si la dernière recherche n'a pas pu lire toutes les notes (seulement les plus récentes).
+    private(set) var recallLimited = false
+
     /// Les notes qui répondent à une question. Rien ne quitte l'iPhone : ni la question ni les notes.
     /// - Parameter previous: la question d'avant, pour affiner (« Et la semaine passée ? »).
     func recallSearch(_ question: String, after previous: RecallQuery? = nil) async -> RecallResult {
+        // F27 — la recherche ne lit que les notes les plus récentes : l'interface le dit quand il y en a davantage.
+        recallLimited = (try? memories.recallIsLimited()) ?? false
         guard let documents = try? memories.recallDocuments() else { return RecallResult(query: RecallQuery(), hits: []) }
         let engine = recall
         let now = Date()

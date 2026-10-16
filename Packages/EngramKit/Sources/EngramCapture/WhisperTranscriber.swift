@@ -74,7 +74,10 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
 
     private let store: WhisperModelStore
     private let lock = NSLock()
-    private var pipeline: WhisperKit?
+    /// F27 — le modèle, chargé une seule fois même demandé deux fois en même temps.
+    private let loader = SingleFlight<LoadedWhisper>()
+    /// F27 — une seule transcription Whisper à la fois sur l'iPhone (dictées et banc d'essai).
+    public static let inference = SerialGate()
     private var strategyValue: TranscriptionStrategy
 
     /// Fenêtre de Whisper : 30 s à 16 kHz.
@@ -106,6 +109,10 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
 
     /// Transcription avec une stratégie précise (le banc d'essai compare les trois avec le même modèle chargé).
     public func transcribe(url: URL, strategy: TranscriptionStrategy) async throws -> Transcript {
+        try await Self.inference.run { [self] in try await self.decode(url: url, strategy: strategy) }
+    }
+
+    private func decode(url: URL, strategy: TranscriptionStrategy) async throws -> Transcript {
         let kit = try await loadedPipeline()
         let audio: [Float]
         do {
@@ -164,29 +171,25 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
 
     /// Libère la mémoire du modèle (par exemple avant d'en charger un autre pour le banc d'essai).
     public func unload() async {
-        let loaded = lock.withLock { () -> WhisperKit? in
-            defer { pipeline = nil }
-            return pipeline
-        }
-        await loaded?.unloadModels()
+        let loaded = await loader.current()
+        await loader.reset()
+        await loaded?.kit.unloadModels()
     }
 
     private func loadedPipeline() async throws -> WhisperKit {
-        if let pipeline = lock.withLock({ self.pipeline }) { return pipeline }
-        guard let folder = store.folder(for: model) else {
-            throw TranscriptionError.modelUnavailable("Le modèle \(model.label) n'est pas encore téléchargé.")
-        }
-        let config = WhisperKitConfig(model: model.rawValue, downloadBase: store.directory, modelFolder: folder.path,
-                                      tokenizerFolder: store.directory, verbose: false, logLevel: .none,
-                                      prewarm: false, load: true, download: false)
-        let loaded: WhisperKit
-        do {
-            loaded = try await WhisperKit(config)
-        } catch {
-            throw TranscriptionError.modelUnavailable("Impossible de charger \(model.label) sur cet iPhone.")
-        }
-        lock.withLock { self.pipeline = loaded }
-        return loaded
+        try await loader.value { [self] in
+            guard let folder = self.store.folder(for: self.model) else {
+                throw TranscriptionError.modelUnavailable("Le modèle \(self.model.label) n'est pas encore téléchargé.")
+            }
+            let config = WhisperKitConfig(model: self.model.rawValue, downloadBase: self.store.directory,
+                                          modelFolder: folder.path, tokenizerFolder: self.store.directory, verbose: false,
+                                          logLevel: .none, prewarm: false, load: true, download: false)
+            do {
+                return LoadedWhisper(kit: try await WhisperKit(config))
+            } catch {
+                throw TranscriptionError.modelUnavailable("Impossible de charger \(self.model.label) sur cet iPhone.")
+            }
+        }.kit
     }
 
     /// `language` nil : détection par Whisper lui-même. La tâche reste toujours `transcribe` (jamais de traduction).
@@ -211,4 +214,9 @@ public final class WhisperTranscriber: AudioTranscriber, @unchecked Sendable {
         return Hypothesis(language: language, text: results.map(\.text).joined(separator: " "),
                           averageLogProbability: average)
     }
+}
+
+/// F27 — le modèle chargé, gardé par `SingleFlight` (WhisperKit n'est pas marqué `Sendable` ; son accès reste sérialisé).
+struct LoadedWhisper: @unchecked Sendable {
+    let kit: WhisperKit
 }

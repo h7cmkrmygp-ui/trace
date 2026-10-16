@@ -116,6 +116,8 @@ extension MemoryStore {
         try database.writer.read { db in
             let memories = try Memory
                 .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                // F21, F22 — une note remplacée par une correction n'est plus une réponse (elle reste dans l'historique).
+                .filter(Column("superseded_by") == nil)
                 .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
                 .order(Column("captured_at").desc)
                 .limit(limit)
@@ -176,5 +178,13 @@ extension MemoryStore {
 
 extension MemoryStore {
     /// F27 — « Retrouver » ne lit que les `limit` notes les plus récentes : vrai s'il y en a davantage (à signaler).
-    public func recallIsLimited(limit: Int = 5_000) throws -> Bool { false }
+    public func recallIsLimited(limit: Int = 5_000) throws -> Bool {
+        try database.writer.read { db in
+            try Memory
+                .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                .filter(Column("superseded_by") == nil)
+                .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
+                .fetchCount(db) > limit
+        }
+    }
 }

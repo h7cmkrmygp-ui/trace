@@ -38,12 +38,12 @@ extension MemoryStore {
         let now = dates.now()
         return try database.writer.write { db in
             try attachTranscript(db, sourceID: sourceID, transcript: transcript, languages: languages, engine: engine,
-                                 needsReview: needsReview, now: now)
+                                 needsReview: needsReview, confidence: confidence, now: now)
         }
     }
 
     func attachTranscript(_ db: Database, sourceID: UUID, transcript: String, languages: [String],
-                          engine: String?, needsReview: Bool = false, now: Date) throws -> Memory? {
+                          engine: String?, needsReview: Bool = false, confidence: Double? = nil, now: Date) throws -> Memory? {
         guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
         // Une transcription tardive (traitement en double) ne rouvre jamais une source déjà transcrite ou classée.
         guard source.processingStatus == .pending else {
@@ -55,6 +55,8 @@ extension MemoryStore {
         source.originalText = text.isEmpty ? nil : text
         source.languages = languages
         source.transcriptionEngine = engine
+        // F26 — la confiance du modèle reste avec la dictée.
+        source.transcriptConfidence = confidence
         source.processingStatus = .waiting
         // Rien à vérifier quand aucune parole n'a été reconnue.
         source.needsReview = needsReview && !text.isEmpty

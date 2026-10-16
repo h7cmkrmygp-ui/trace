@@ -47,6 +47,8 @@ public final class RecallEngine: @unchecked Sendable {
     private var vectors: [UUID: (text: String, vector: [Double]?)] = [:]
     /// F27 — vecteurs gardés au plus.
     public static let maxCachedVectors = 2_000
+    /// Ordre d'entrée des vecteurs, pour retirer les plus anciens.
+    private var order: [UUID] = []
     var cachedVectorCount: Int { lock.withLock { vectors.count } }
 
     public init(embedder: any SentenceEmbedder, neighbors: (any WordNeighbors)?) {
@@ -97,7 +99,16 @@ public final class RecallEngine: @unchecked Sendable {
         let text = document.meaningText
         if let cached = lock.withLock({ vectors[document.id] }), cached.text == text { return cached.vector }
         let vector = embedder.vector(for: text)
-        lock.withLock { vectors[document.id] = (text, vector) }
+        lock.withLock {
+            if vectors[document.id] == nil { order.append(document.id) }
+            vectors[document.id] = (text, vector)
+            // F27 — au-delà de la limite, les vecteurs les plus anciens partent (ils seront recalculés au besoin).
+            if order.count > Self.maxCachedVectors {
+                let excess = order.count - Self.maxCachedVectors
+                for id in order.prefix(excess) { vectors[id] = nil }
+                order.removeFirst(excess)
+            }
+        }
         return vector
     }
 }
