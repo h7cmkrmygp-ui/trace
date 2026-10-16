@@ -24,7 +24,7 @@ struct TemporalRolesStoreTests {
         let calendar = Fixtures.calendar
         // Le rendez-vous : mardi 19 janvier à 14 h (la capture est le vendredi 15).
         let due = try #require(memory.dueAt)
-        #expect(calendar.dateComponents([.weekday, .day, .hour], from: due) == DateComponents(weekday: 3, day: 19, hour: 14))
+        #expect(calendar.dateComponents([.weekday, .day, .hour], from: due) == DateComponents(day: 19, hour: 14, weekday: 3))
         #expect(try env.memories.temporalMentions(of: memory.id).map(\.role) == [.event, .reminder])
         // Deux rappels : 1 h avant le rendez-vous, et celui demandé, lundi 18 janvier à 18 h.
         let item = try #require(try env.memories.reminderItems().first)
