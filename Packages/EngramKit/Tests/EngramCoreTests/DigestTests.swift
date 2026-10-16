@@ -99,8 +99,11 @@ struct SharedInboxTests {
         try inbox.add(SharedItem(text: "Recette de soupe à essayer", link: nil, createdAt: Date(timeIntervalSince1970: 10)))
         try inbox.add(SharedItem(text: "Article sur les jardins", link: "https://example.com/jardins",
                                  createdAt: Date(timeIntervalSince1970: 20)))
-        #expect(inbox.drain().map(\.text) == ["Recette de soupe à essayer", "Article sur les jardins"])
-        #expect(inbox.drain().isEmpty)
+        // F19 : lus dans l'ordre, sans être retirés ; chacun quitte la boîte une fois acquitté (après son enregistrement).
+        let pending = inbox.pending().items
+        #expect(pending.map(\.item.text) == ["Recette de soupe à essayer", "Article sur les jardins"])
+        for share in pending { try inbox.acknowledge(share.id) }
+        #expect(inbox.pending().items.isEmpty)
     }
 
     @Test func aSharedLinkBecomesTheNoteText() {
