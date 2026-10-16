@@ -5,8 +5,8 @@ import Foundation
 import Testing
 @testable import EngramPipeline
 
-/// P35 — moins de « À classer » : une réponse reformulée classe quand même la dictée entière, et une pensée sans dossier
-/// va là où sont rangées les notes semblables quand elles sont d'accord.
+/// P35 — moins de « À classer » : une pensée sans dossier va là où sont rangées les notes semblables quand elles sont
+/// d'accord ; F07 : une réponse reformulée ne classe plus la dictée dans son dossier.
 struct UnsortedFixesPipelineTests {
     struct Env {
         let memories: MemoryStore
@@ -33,16 +33,20 @@ struct UnsortedFixesPipelineTests {
         }
     }
 
-    @Test func aRephrasedAnswerStillFilesTheNote() async throws {
+    /// F07 (remplace le sauvetage de P35) : une réponse reformulée deux fois n'est pas classée dans son dossier ; la dictée
+    /// entière reste « À classer », intacte.
+    @Test func aRephrasedAnswerLeavesTheNoteUnsorted() async throws {
         let text = "Faut que j'appelle le garage pour les pneus d'hiver"
         let env = try Env(ThoughtAnalysis(thoughts: [
             AnalyzedThought(title: "Appeler le garage", summary: nil, excerpt: "Call the garage about winter tires",
                             kind: .task, tags: [], mentionedDates: [], category: "Automobile", subcategory: nil),
         ]))
-        let memory = try await env.process(text)
+        guard case .saved(let interim) = try env.memories.saveTextNoteWithoutAnalysis(text) else { throw CancellationError() }
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
+        let memory = try #require(try env.memories.memory(id: interim.id))
         #expect(memory.content == text)
-        #expect(memory.status == .active)
-        #expect(try env.categories.categories(for: memory.id).map(\.name) == ["Automobile"])
+        #expect(memory.status == .unsorted)
+        #expect(try env.categories.categories(for: memory.id).isEmpty)
     }
 
     @Test func aThoughtWithoutAFolderGoesWhereSimilarNotesAre() async throws {
