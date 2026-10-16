@@ -47,16 +47,73 @@ public actor ThoughtProcessor {
         return outcome
     }
 
+    /// F14 — bail d'un travail d'analyse : au-delà, un traitement interrompu (app arrêtée) est repris.
+    static let analysisLease: TimeInterval = 10 * 60
+    /// F10 — relectures au plus quand la source change pendant l'analyse.
+    static let maxStaleReruns = 2
+
+    /// Le résultat d'un essai : un résultat à rendre, une source changée pendant l'analyse (à relire), ou un échec typé.
+    private enum Attempt {
+        case done(ProcessingOutcome)
+        case stale
+        case failed(AnalysisJob.ErrorKind, String)
+    }
+
     private func run(sourceID: UUID) async -> ProcessingOutcome {
         do {
             guard let source = try memories.source(id: sourceID) else { return .fallback }
             // « Vérifie ta note » : rien n'est envoyé à une IA avant la confirmation du propriétaire.
             guard !source.needsReview else { return .waiting("La note attend ta vérification.") }
-            let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else {
-                try filer.markFallback(sourceID: sourceID)
+            // F14 — le travail est pris pour un temps (bail) ; tenu par un autre traitement, la note attend son tour.
+            guard try memories.beginAnalysis(sourceID: sourceID, revision: source.revision, lease: Self.analysisLease) else {
+                return .deferred("La note est déjà en cours de classement.")
+            }
+        } catch {
+            return .deferred("La note n'a pas pu être lue : Engram réessaiera.")
+        }
+        for _ in 0...Self.maxStaleReruns {
+            switch await attempt(sourceID: sourceID) {
+            case .done(let outcome):
+                switch outcome {
+                case .filed: finish(sourceID, .succeeded)
+                case .waiting(let reason): finish(sourceID, .waiting, .providerWait, reason)
+                case .deferred(let reason): finish(sourceID, .waiting, .stale, reason)
+                case .fallback: finish(sourceID, .failed, .technical, nil)
+                }
+                return outcome
+            case .stale:
+                // F10 — la source a changé pendant l'analyse : l'ancien résultat n'est pas écrit, la source est relue.
+                continue
+            case .failed(let kind, let detail):
+                do {
+                    try filer.markFallback(sourceID: sourceID)
+                } catch {
+                    finish(sourceID, .failed, .technical, String(describing: error))
+                    return .fallback
+                }
+                finish(sourceID, .failed, kind, detail)
                 return .fallback
             }
+        }
+        finish(sourceID, .waiting, .stale, "La note a changé pendant l'analyse.")
+        return .deferred("La note a changé pendant l'analyse : elle sera relue.")
+    }
+
+    /// F14 — l'état du travail est gardé (son échec, typé, ne passe jamais pour un succès).
+    private func finish(_ sourceID: UUID, _ status: AnalysisJob.Status, _ kind: AnalysisJob.ErrorKind? = nil,
+                        _ detail: String? = nil) {
+        try? memories.finishAnalysis(sourceID: sourceID, status: status, errorKind: kind, detail: detail)
+    }
+
+    /// Un essai complet sur la version actuelle de la source (F10 : sa révision et sa politique sont relues ici, et vérifiées
+    /// à l'écriture).
+    private func attempt(sourceID: UUID) async -> Attempt {
+        do {
+            guard let source = try memories.source(id: sourceID) else { return .failed(.technical, "Source introuvable.") }
+            guard !source.needsReview else { return .done(.waiting("La note attend ta vérification.")) }
+            let snapshot = source.snapshot
+            let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return .failed(.quality, "Aucun texte à classer.") }
             let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
             // Ce qu'Engram reconnaît déjà (une fête, une mesure, une liste) est dit à l'IA avec la note (P31).
             // Ce que contient chaque catégorie, pour que l'IA juge par le sens et pas par le nom (P32).
@@ -74,13 +131,13 @@ public actor ThoughtProcessor {
                 categories: try categories.provenanceMasks(),
                 lists: try ListStore(database: memories.database, dates: memories.dates).provenanceMasks(),
                 recent: try memories.recentProvenance(before: sourceID))
-            let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
+            let context = AnalysisContext(keepLocal: snapshot.keepLocal, capturedAt: source.capturedAt,
                                           facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
                                           folderEvidence: similar, categoryCounts: counts, lists: lists,
                                           recent: recent, sourceID: sourceID, provenance: provenance)
-            var attempt = 0
+            var tries = 0
             while true {
-                attempt += 1
+                tries += 1
                 do {
                     // Un simple « rappelle-moi ça demain » rejoint la note précédente au lieu d'en créer une deuxième,
                     // et deux pensées au même extrait n'en font qu'une.
@@ -89,7 +146,7 @@ public actor ThoughtProcessor {
                     var valid: [ValidThought]
                     do {
                         valid = try AnalysisValidator.validate(analysis, against: text, recent: recent)
-                    } catch AnalyzerError.invalidOutput where attempt >= 2 {
+                    } catch AnalyzerError.invalidOutput where tries >= 2 {
                         // P35 : l'IA a reformulé au lieu de recopier, deux fois : la dictée entière devient une seule note,
                         // dans le dossier choisi par l'IA, plutôt que de rester « À classer ».
                         guard let whole = AnalysisValidator.salvage(analysis, against: text) else {
@@ -99,23 +156,30 @@ public actor ThoughtProcessor {
                     }
                     valid = await withSimilarNotesFolder(valid)
                     // Des pensées rejetées ou un texte mal couvert : chaque passage oublié reste « À classer » (F05). La
-                    // décision de confidentialité est écrite dans la même transaction que les notes (F13).
-                    let summary = try filer.file(valid, sourceID: sourceID, route: analysis.route, keepInterimIfUncovered: true,
+                    // décision de confidentialité est écrite dans la même transaction que les notes (F13), seulement si
+                    // la source est encore celle qui a été lue (F10).
+                    let summary = try filer.file(valid, sourceID: sourceID, route: analysis.route, expected: snapshot,
+                                                 keepInterimIfUncovered: true,
                                                  forceKeepInterim: valid.count < analysis.thoughts.count)
-                    return .filed(summary)
+                    return .done(.filed(summary))
                 } catch AnalyzerError.unavailable(let reason) {
-                    return .waiting(reason)
-                } catch AnalyzerError.invalidOutput where attempt < 2 {
+                    return .done(.waiting(reason))
+                } catch AnalyzerError.invalidOutput where tries < 2 {
                     continue
                 } catch AnalyzerError.busy {
                     // Modèle occupé (souvent quand l'app passe en arrière-plan) : un nouvel essai, puis on réessaiera plus tard.
-                    if attempt < 2 { continue }
-                    return .waiting("Le modèle est occupé : la note sera classée au prochain retour dans l'app.")
+                    if tries < 2 { continue }
+                    return .done(.waiting("Le modèle est occupé : la note sera classée au prochain retour dans l'app."))
                 }
             }
+        } catch StoreError.staleRevision {
+            return .stale
+        } catch AnalyzerError.refused {
+            return .failed(.policy, "Le modèle a refusé de classer cette note.")
+        } catch AnalyzerError.invalidOutput {
+            return .failed(.quality, "La réponse de l'IA ne respectait pas le contrat.")
         } catch {
-            try? filer.markFallback(sourceID: sourceID)
-            return .fallback
+            return .failed(.technical, String(describing: error))
         }
     }
 

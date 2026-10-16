@@ -600,14 +600,17 @@ final class AppModel {
         }
     }
 
-    /// Notes classées sur l'iPhone faute de service : reclassées par le bon service dès qu'il répond,
-    /// seulement si le propriétaire n'y a pas touché (10 au plus à chaque retour dans l'app).
+    /// F12 — nouveaux essais, espacés et bornés (10 au plus à chaque retour dans l'app) : les analyses ratées, même sans
+    /// service en ligne (le modèle de l'iPhone réessaie), et les notes classées sur l'iPhone faute de service, par le bon
+    /// service dès qu'il répond. Les bons résultats restent en place jusqu'à ce qu'un nouveau classement les remplace.
     func retryCloudClassifications() async {
         let (neutral, personal) = Self.cloudProviders(settings: settings)
-        guard neutral != nil || personal != nil else { return }
-        for source in (try? memories.sourcesNeedingCloudRetry(limit: 10)) ?? [] {
-            let provider = source.privacyLevel == .neutral ? (neutral ?? personal) : personal
-            guard let provider, !quota.isPaused(provider.name) else { continue }
+        let cloudAvailable = neutral != nil || personal != nil
+        for source in (try? memories.sourcesToRetry(cloudAvailable: cloudAvailable, limit: 10)) ?? [] {
+            if source.needsCloudRetry && cloudAvailable {
+                let provider = source.privacyLevel == .neutral ? (neutral ?? personal) : personal
+                guard let provider, !quota.isPaused(provider.name) else { continue }
+            }
             guard (try? memories.reopenForCloudRetry(sourceID: source.id)) == true else { continue }
             _ = await processor.process(sourceID: source.id)
         }

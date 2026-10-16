@@ -54,7 +54,7 @@ public struct MemoryStore: Sendable {
         if let importID {
             if let existing = try Source.filter(Column("import_id") == importID).fetchOne(db) { return .duplicate(of: existing) }
             let source = Source(kind: .text, originalText: trimmed, contentHash: hash, capturedAt: now, createdAt: now,
-                                updatedAt: now, importID: importID)
+                                updatedAt: now, importID: importID, capturedTimeZone: calendar.timeZone.identifier)
             try source.insert(db)
             return .created(source)
         }
@@ -66,7 +66,7 @@ public struct MemoryStore: Sendable {
             return .duplicate(of: existing)
         }
         let source = Source(kind: .text, originalText: trimmed, contentHash: hash,
-                            capturedAt: now, createdAt: now, updatedAt: now)
+                            capturedAt: now, createdAt: now, updatedAt: now, capturedTimeZone: calendar.timeZone.identifier)
         try source.insert(db)
         return .created(source)
     }

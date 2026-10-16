@@ -55,6 +55,13 @@ public struct ThoughtFiler: Sendable {
                 let existing = try Memory.filter(Column("source_id") == sourceID).order(Column("created_at")).fetchAll(db)
                 return FilingSummary(memories: existing, categoryPaths: [], pathByMemory: [:])
             }
+            // F10 — le résultat doit porter sur la version de la source telle qu'elle est maintenant (texte, révision,
+            // confidentialité) : sinon il est obsolète et rien n'est écrit.
+            if let expected {
+                let current = source.snapshot
+                guard current.revision == expected.revision, current.textHash == expected.textHash,
+                      current.policyVersion == expected.policyVersion else { throw StoreError.staleRevision }
+            }
             // F13 — la décision de confidentialité d'abord, dans cette même transaction : aucun dérivé (note, liste,
             // rappel) n'est jamais visible sans elle.
             if let route {
@@ -74,6 +81,17 @@ public struct ThoughtFiler: Sendable {
             var untouched: [Memory] = []
             for memory in interims {
                 if try Self.isTouchedByOwner(db, memory) { touched.append(memory) } else { untouched.append(memory) }
+            }
+            // F11, F12 — les notes d'une analyse précédente de cette source (retranscription, nouvel essai) : celles que le
+            // propriétaire a modifiées, archivées ou liées au calendrier sont gardées et ne sont pas recréées ; les autres
+            // sont remplacées maintenant, d'un coup, par la nouvelle analyse (jamais avant qu'elle réussisse). Une liste reste.
+            let listMemoryIDs = Set(try UUID.fetchAll(db, sql: "SELECT memory_id FROM memory_list"))
+            var protectedPrevious: [Memory] = []
+            for memory in try Memory
+                .filter(Column("source_id") == sourceID && Column("status") != MemoryStatus.trashed.rawValue
+                        && Column("analysis_version") != MemoryStore.interimAnalysisVersion)
+                .fetchAll(db) where !listMemoryIDs.contains(memory.id) {
+                if try Self.isTouchedByOwner(db, memory) { protectedPrevious.append(memory) } else { _ = try memory.delete(db) }
             }
             // F05 : chaque passage qu'aucune pensée ne reprend (positions exactes, négations et commandes courtes comprises)
             // reste « À classer », à sa place ; jamais une copie de toute la dictée, et pas pour des « euh ». Sans
@@ -153,7 +171,8 @@ public struct ThoughtFiler: Sendable {
                     // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19). « J'ai
                     // acheté une tondeuse », sans case qui corresponde, reste une note.
                     if let action = ListActionParser.parse(thought.excerpt),
-                       let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now), !outcome.changed.isEmpty || action.isExplicit {
+                       let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now),
+                       !outcome.changed.isEmpty || action.isExplicit || outcome.replayed {
                         if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
                         continue
                     }
@@ -165,8 +184,9 @@ public struct ThoughtFiler: Sendable {
                         thought.listItems.isEmpty ? nil : ListCommand(listName: name, items: thought.listItems)
                     }
                     if let command = spoken ?? understood {
-                        let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
-                                                     memoryStore: memoryStore, now: now, perExcerpt: spoken == nil)
+                        // Déjà fait par cette dictée, et la liste jetée depuis par le propriétaire : rien n'est recréé.
+                        guard let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
+                                                           memoryStore: memoryStore, now: now) else { continue }
                         if list.created {
                             try classify(list.memory.id, with: thought)
                         } else {
@@ -176,6 +196,11 @@ public struct ThoughtFiler: Sendable {
                         }
                         if !list.added.isEmpty { listAdditions[list.memory.id, default: []].append(contentsOf: list.added) }
                         if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
+                        continue
+                    }
+                    // F11 — la même intention qu'une note gardée d'une analyse précédente : elle n'est pas recréée à côté.
+                    if let match = protectedPrevious.first(where: { IntentionMatch.same(thought, as: $0) }) {
+                        if !filedIDs.contains(match.id) { filedIDs.append(match.id) }
                         continue
                     }
                     // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33).
@@ -264,13 +289,16 @@ public struct ThoughtFiler: Sendable {
 
     /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close ; P35 : elle sera
     /// réessayée plus tard, `maxAnalysisAttempts` fois au plus.
+    /// F12 : un essai compte une seule fois (une reprise l'a déjà compté) ; le suivant attend un délai croissant, et les
+    /// notes déjà tirées d'une analyse précédente restent en place.
     public func markFallback(sourceID: UUID) throws {
         let now = dates.now()
         try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             source.processingStatus = .done
-            source.analysisAttempts += 1
+            source.analysisAttempts = max(source.analysisAttempts, 1)
             source.needsCloudRetry = source.analysisAttempts < Self.maxAnalysisAttempts
+            source.retryAfter = now.addingTimeInterval(MemoryStore.retryDelay(afterAttempt: source.analysisAttempts))
             source.updatedAt = now
             try source.update(db)
         }
