@@ -101,14 +101,14 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     /// F10 — revérifie, juste avant chaque envoi, que la source peut encore partir (nil : pas de revérification).
     let sourceAllowsCloud: (@Sendable (UUID) -> Bool)?
     /// F13 — reçus d'envoi : appelé avant l'envoi, puis avec son résultat.
-    let onTransmission: (@Sendable (TransmissionEvent) -> Void)?
+    let onTransmission: (@Sendable (TransmissionEvent) throws -> Void)?
     let timeZone: TimeZone
 
     public init(local: any MemoryAnalyzer, judge: (any PrivacyJudge)?, neutral: CloudProvider?, personal: CloudProvider?,
                 healthStaysLocal: @escaping @Sendable () -> Bool = { false },
                 keepEverythingLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
                 sourceAllowsCloud: (@Sendable (UUID) -> Bool)? = nil,
-                onTransmission: (@Sendable (TransmissionEvent) -> Void)? = nil,
+                onTransmission: (@Sendable (TransmissionEvent) throws -> Void)? = nil,
                 timeZone: TimeZone = .current) {
         self.init(local: local, judge: judge, providers: { (neutral, personal) }, healthStaysLocal: healthStaysLocal,
                   keepEverythingLocal: keepEverythingLocal, quota: quota, sourceAllowsCloud: sourceAllowsCloud,
@@ -119,7 +119,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                 healthStaysLocal: @escaping @Sendable () -> Bool = { false },
                 keepEverythingLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
                 sourceAllowsCloud: (@Sendable (UUID) -> Bool)? = nil,
-                onTransmission: (@Sendable (TransmissionEvent) -> Void)? = nil,
+                onTransmission: (@Sendable (TransmissionEvent) throws -> Void)? = nil,
                 timeZone: TimeZone = .current) {
         self.local = local
         self.judge = judge
@@ -158,30 +158,14 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         case .personal: [personal].compactMap { $0 }
         case .secret: []
         }
-        let shareable = PrivacyGate.shareableCategoryNames(existingCategories)
-        // Ce que contient chaque catégorie (P32) : seulement vers Groq, et seulement des descriptions sans coordonnées,
-        // numéros ni montants. Gemini (palier gratuit) n'en reçoit aucune.
-        let descriptions = PrivacyGate.shareableDescriptions(context.categoryDescriptions, for: shareable)
-        // Où sont rangées les notes semblables et la taille des dossiers (P34) : des noms de dossiers seulement. Gemini ne
-        // voit que les grands dossiers (sans nom de personne), comme pour la liste des catégories.
-        let neutralRoots = Set(PrivacyGate.neutralCategoryNames(existingCategories))
-        let neutralEvidence = SimilarFolders.roots(context.folderEvidence)
-            .filter { !PrivacyGate.neutralCategoryNames([$0.path]).isEmpty }
-        let personalEvidence = context.folderEvidence.filter { !PrivacyGate.shareableCategoryNames([$0.path]).isEmpty }
-        let shareableNames = Set(shareable)
-        // Les noms des listes (P41) : Gemini ne voit que ceux sans nom de personne.
-        let neutralContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
-                                          folderEvidence: neutralEvidence,
-                                          categoryCounts: context.categoryCounts.filter { neutralRoots.contains($0.key) },
-                                          lists: PrivacyGate.neutralListNames(context.lists),
-                                          recent: context.recent.flatMap(PrivacyGate.neutralRecent))
-        let personalContext = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
-                                           categoryDescriptions: descriptions, folderEvidence: personalEvidence,
-                                           categoryCounts: context.categoryCounts.filter { shareableNames.contains($0.key) },
-                                           lists: PrivacyGate.shareableCategoryNames(context.lists),
-                                           recent: context.recent.flatMap(PrivacyGate.shareableRecent))
+        // F02 — l'enveloppe de chaque destination : chaque métadonnée n'y entre que si sa provenance l'autorise (une note
+        // locale ne produit jamais de dérivé partageable ; sans provenance connue, rien de dérivé ne sort), puis les
+        // filtres de mots s'ajoutent comme défense supplémentaire.
+        let neutralEnvelope = envelope(for: .cloudNeutral, existingCategories: existingCategories, context: context)
+        let personalEnvelope = envelope(for: .cloudPersonal, existingCategories: existingCategories, context: context)
         var temporarilyMissing = false
         var notes: [String] = []
+        var stoppedBasis: PrivacyBasis?
         for provider in candidates {
             let label = Self.label(provider.name)
             guard !quota.isPaused(provider.name) else {
@@ -189,18 +173,41 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                 notes.append("\(label) : quota gratuit atteint pour l'instant.")
                 continue
             }
-            // Gemini (palier gratuit) ne voit que les grandes catégories ; Groq peut voir les chemins complets.
+            // F10 — juste avant l'envoi : le réglage global et la note elle-même sont relus.
+            if keepEverythingLocal() {
+                stoppedBasis = .everythingLocal
+                notes.append(RouteReasons.keepEverythingLocal)
+                break
+            }
+            if let id = context.sourceID, let allows = sourceAllowsCloud, !allows(id) {
+                stoppedBasis = .ownerKeepLocal
+                notes.append("La note doit maintenant rester sur l'iPhone : rien n'a été envoyé.")
+                break
+            }
             let isNeutral = provider.name == neutral?.name
-            let categories = isNeutral ? PrivacyGate.neutralCategoryNames(existingCategories) : shareable
+            let sent = isNeutral ? neutralEnvelope : personalEnvelope
+            // F13 — le reçu est écrit avant l'envoi ; sans reçu possible, rien ne part.
+            let receipt = UUID()
             do {
-                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: categories,
-                                                                   context: isNeutral ? neutralContext : personalContext)
+                try onTransmission?(TransmissionEvent(id: receipt, sourceID: context.sourceID, provider: provider.name,
+                                                      status: .sending))
+            } catch {
+                notes.append("\(label) : envoi annulé (reçu impossible à écrire).")
+                continue
+            }
+            do {
+                var analysis = try await provider.analyzer.analyze(text: text, existingCategories: sent.categories,
+                                                                   context: sent.context)
+                try? onTransmission?(TransmissionEvent(id: receipt, sourceID: context.sourceID, provider: provider.name,
+                                                       status: .succeeded))
                 quota.recordUse(provider.name)
                 analysis.route = AnalysisRoute(level: decision.level, provider: provider.name,
                                                reason: decision.reasons.joined(separator: " "), needsCloudRetry: false,
                                                basis: basis)
                 return analysis
             } catch let error as CloudError {
+                try? onTransmission?(TransmissionEvent(id: receipt, sourceID: context.sourceID, provider: provider.name,
+                                                       status: .failed, detail: String(describing: error)))
                 switch error {
                 case .quotaExceeded(let retryAfter):
                     quota.pause(provider.name, until: Date().addingTimeInterval(retryAfter ?? 60))
@@ -217,16 +224,55 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                     notes.append("\(label) a refusé cette note.")
                 }
             } catch {
+                try? onTransmission?(TransmissionEvent(id: receipt, sourceID: context.sourceID, provider: provider.name,
+                                                       status: .failed, detail: String(describing: error)))
                 temporarilyMissing = true
                 notes.append("\(label) injoignable.")
             }
         }
         var analysis = try await local.analyze(text: text, existingCategories: existingCategories, context: context)
         let fallback = candidates.isEmpty ? [] : ["Classée sur l'iPhone."]
-        analysis.route = AnalysisRoute(level: decision.level, provider: Self.localProvider,
+        // Arrêté juste avant l'envoi : la note est désormais locale (aucun nouvel essai en ligne).
+        analysis.route = AnalysisRoute(level: stoppedBasis == nil ? decision.level : .secret, provider: Self.localProvider,
                                        reason: (decision.reasons + notes + fallback).joined(separator: " "),
-                                       needsCloudRetry: temporarilyMissing, basis: basis)
+                                       needsCloudRetry: stoppedBasis == nil && temporarilyMissing,
+                                       basis: stoppedBasis ?? basis)
         return analysis
+    }
+
+    /// F02 — ce qui peut partir vers une destination : les catégories et le contexte dont la provenance l'autorise.
+    func envelope(for destination: PrivacyDestination, existingCategories: [String],
+                  context: AnalysisContext) -> (categories: [String], context: CloudContext) {
+        let provenance = context.provenance
+        func category(_ path: String) -> Bool { provenance?.allowsCategory(path, destination) ?? false }
+        func list(_ name: String) -> Bool { provenance?.allowsList(name, destination) ?? false }
+        let isNeutral = destination == .cloudNeutral
+        // Gemini (palier gratuit) ne voit que les grandes catégories, sans nom de personne ; Groq peut voir les chemins.
+        let categories = (isNeutral ? PrivacyGate.neutralCategoryNames(existingCategories)
+                                    : PrivacyGate.shareableCategoryNames(existingCategories)).filter(category)
+        let allowed = Set(categories)
+        // Ce que contient chaque catégorie (P32) : seulement vers Groq, et seulement des descriptions sans coordonnées,
+        // numéros ni montants.
+        let descriptions = isNeutral ? [:] : PrivacyGate.shareableDescriptions(context.categoryDescriptions, for: categories)
+        // Où sont rangées les notes semblables et la taille des dossiers (P34) : des noms de dossiers seulement.
+        let evidence = isNeutral
+            ? SimilarFolders.roots(context.folderEvidence).filter { !PrivacyGate.neutralCategoryNames([$0.path]).isEmpty }
+            : context.folderEvidence.filter { !PrivacyGate.shareableCategoryNames([$0.path]).isEmpty }
+        // Les noms des listes (P41) : Gemini ne voit que ceux sans nom de personne.
+        let lists = (isNeutral ? PrivacyGate.neutralListNames(context.lists)
+                               : PrivacyGate.shareableCategoryNames(context.lists)).filter(list)
+        var recent: RecentContext?
+        if let previous = context.recent, provenance?.allowsRecent(destination) == true,
+           var filtered = isNeutral ? PrivacyGate.neutralRecent(previous) : PrivacyGate.shareableRecent(previous) {
+            filtered.lists = filtered.lists.filter(list)
+            filtered.folders = filtered.folders.filter(category)
+            recent = filtered.isEmpty ? nil : filtered
+        }
+        let cloud = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
+                                 categoryDescriptions: descriptions, folderEvidence: evidence.filter { category($0.path) },
+                                 categoryCounts: context.categoryCounts.filter { allowed.contains($0.key) },
+                                 lists: lists, recent: recent)
+        return (categories, cloud)
     }
 
     static func label(_ provider: String) -> String {

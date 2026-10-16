@@ -106,12 +106,20 @@ final class AppModel {
         self.quota = quota
         lock = AppLock(settings: settings)
         let settings = self.settings
+        let memoryStore = memories
         // Neutre → Gemini, personnel → Groq, secret → l'iPhone ; le contrôleur de confidentialité décide sur l'iPhone.
+        // F10 : juste avant chaque envoi, la note est relue (gardée sur l'iPhone, en attente de vérification) ; F13 : un reçu
+        // est écrit avant l'envoi (sans reçu, rien ne part).
         let router = RoutedAnalyzer(local: AppleThoughtAnalyzer(), judge: ApplePrivacyJudge(),
                                     providers: { AppModel.cloudProviders(settings: settings) },
                                     healthStaysLocal: { (try? settings.bool(.healthStaysLocal, default: false)) ?? false },
-                                    keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? false },
-                                    quota: quota)
+                                    keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? true },
+                                    quota: quota,
+                                    sourceAllowsCloud: { id in
+                                        guard let source = (try? memoryStore.source(id: id)) ?? nil else { return false }
+                                        return !source.keepLocal && !source.needsReview
+                                    },
+                                    onTransmission: { event in try memoryStore.recordTransmission(event) })
         // P34 : avant chaque classement, l'iPhone regarde où sont rangées les notes les plus semblables (rien ne sort
         // de l'iPhone, sauf les noms de ces dossiers).
         let categoryStore = categories
@@ -1056,6 +1064,22 @@ final class AppModel {
         }
     }
 
+    /// F17 — ce rendez-vous n'est pas copié dans le calendrier synchronisé à cause de la confidentialité de sa note
+    /// (gardée sur l'iPhone, secrète, ou pas encore évaluée).
+    func isKeptOutOfCalendar(_ memoryID: UUID) -> Bool {
+        guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true,
+              ((try? calendarLinks.link(for: memoryID)) ?? nil) == nil else { return false }
+        let target = (try? settings.string(.calendarTarget)) ?? nil
+        guard !calendarService.isLocalCalendar(target) else { return false }
+        return ((try? calendarLinks.blockedAppointments(for: .syncedCalendar)) ?? []).contains { $0.id == memoryID }
+    }
+
+    /// F17 — décision ciblée du propriétaire : ce rendez-vous peut aller dans son calendrier synchronisé.
+    func addToCalendarAnyway(_ memoryID: UUID) async {
+        perform { try calendarLinks.allowOutput(memoryID: memoryID, to: .syncedCalendar) }
+        await syncAppointments(askPermission: true)
+    }
+
     /// Ajoute au calendrier de l'iPhone les rendez-vous datés pas encore ajoutés, si l'option est active.
     /// `askPermission` : demander l'accès au calendrier s'il n'a jamais été demandé (juste après une dictée).
     func syncAppointments(askPermission: Bool) async {
@@ -1063,14 +1087,18 @@ final class AppModel {
         isSyncingCalendar = true
         defer { isSyncingCalendar = false }
         guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true else { return }
-        guard let waiting = try? calendarLinks.unlinkedAppointments(), !waiting.isEmpty else { return }
+        // F17 : rien à proposer si aucun rendez-vous ne peut aller même dans un calendrier de l'iPhone.
+        guard let waiting = try? calendarLinks.unlinkedAppointments(for: .localCalendar), !waiting.isEmpty else { return }
         if calendarService.access == .notDetermined {
             guard askPermission, await calendarService.requestAccess() else { return }
         }
         guard calendarService.access == .granted || calendarService.access == .writeOnly else { return }
         let target = (try? settings.string(.calendarTarget)) ?? nil
         // Relire la liste après l'attente de l'autorisation, et revérifier chaque lien juste avant d'ajouter.
-        guard let pending = try? calendarLinks.unlinkedAppointments() else { return }
+        // F17 : un calendrier synchronisé (iCloud, Google…) est une destination externe : seulement ce que la politique de
+        // chaque note permet (ou ce que le propriétaire a autorisé pour cette note).
+        let destination: PrivacyDestination = calendarService.isLocalCalendar(target) ? .localCalendar : .syncedCalendar
+        guard let pending = try? calendarLinks.unlinkedAppointments(for: destination) else { return }
         for memory in pending {
             guard let start = memory.dueAt, (try? calendarLinks.link(for: memory.id)) == nil else { continue }
             guard let added = try? calendarService.addAppointment(title: memory.title, start: start,

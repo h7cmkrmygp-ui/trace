@@ -32,6 +32,11 @@ struct PassageCoverageTests {
         #expect(AnalysisValidator.uncoveredPassages(of: text, thoughts: [call]).isEmpty)
         #expect(uncovered("Appeler le garage pour les pneus. Aussi, bon.", ["Appeler le garage pour les pneus"]).isEmpty)
         #expect(uncovered("J'aimerais une gourde. Ah, et.", ["J'aimerais une gourde"]).isEmpty)
+        // Le cadre d'une intention reprise n'est pas une autre intention.
+        #expect(uncovered("Rappeler d'acheter des wipers pour ma Corolla", ["acheter des wipers pour ma Corolla"]).isEmpty)
+        #expect(uncovered("Rappelle-moi de payer le loyer", ["payer le loyer"]).isEmpty)
+        // Mais une autre personne dans le même cadre en est une.
+        #expect(uncovered("Rappelle-moi d'appeler Paul et Marc", ["appeler Paul"]) == ["et Marc"])
     }
 
     @Test func eachPassageKeepsItsExactPosition() throws {

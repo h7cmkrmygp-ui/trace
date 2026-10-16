@@ -336,6 +336,10 @@ extension AnalysisValidator {
         "ok", "ah", "oh", "eh", "hein", "le", "la", "les", "l", "un", "une", "de", "d", "du", "des", "et", "ou", "a", "au",
         "aux", "en", "y", "je", "j", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles", "me", "m", "te", "t", "se",
         "s", "ce", "c", "ca", "qu", "que", "qui", "est", "suis", "ai", "mais", "puis", "ensuite", "apres",
+        // Le cadre d'une intention déjà reprise (« Rappeler d'acheter… », « Rappelle-moi de… », « Pense à… ») n'est pas
+        // une autre intention.
+        "rappeler", "rappelle", "rappelles", "rappel", "moi", "toi", "penser", "pense", "oublie", "oublier", "oublies",
+        "dois", "doit", "devrais", "faudra", "falloir", "remind", "need", "must", "should", "to",
     ]).subtracting(negations)
 
     /// F05 — les passages exacts de la dictée qu'aucune pensée validée ne couvre (positions UTF-16 dans `text`), y compris

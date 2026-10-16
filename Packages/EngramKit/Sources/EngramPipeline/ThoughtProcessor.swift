@@ -66,10 +66,16 @@ public actor ThoughtProcessor {
             let lists = try ListStore(database: memories.database, dates: memories.dates).names()
             // Ce qui vient d'être dit (la dictée d'il y a quelques minutes) : « elle », « cette liste », « ce projet » (P42).
             let recent = try memories.recentContext(before: sourceID)
+            // F02 — d'où vient chaque dossier, chaque liste et la dictée précédente : un dérivé d'une note locale (ou de
+            // provenance inconnue) ne part vers aucun service.
+            let provenance = ContextProvenance(
+                categories: try categories.provenanceMasks(),
+                lists: try ListStore(database: memories.database, dates: memories.dates).provenanceMasks(),
+                recent: try memories.recentProvenance(before: sourceID))
             let context = AnalysisContext(keepLocal: source.keepLocal, capturedAt: source.capturedAt,
                                           facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
                                           folderEvidence: similar, categoryCounts: counts, lists: lists,
-                                          recent: recent)
+                                          recent: recent, sourceID: sourceID, provenance: provenance)
             var attempt = 0
             while true {
                 attempt += 1

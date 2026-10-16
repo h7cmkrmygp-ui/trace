@@ -65,6 +65,15 @@ public final class CalendarService {
         }
     }
 
+    /// F17 — le calendrier cible reste sur l'iPhone (« Sur mon iPhone ») ; sinon il est synchronisé (iCloud, Google…),
+    /// donc une destination externe. Sans calendrier connu : considéré comme synchronisé (le plus prudent).
+    public func isLocalCalendar(_ identifier: String?) -> Bool {
+        guard access == .granted || access == .writeOnly,
+              let calendar = identifier.flatMap({ store.calendar(withIdentifier: $0) }) ?? store.defaultCalendarForNewEvents
+        else { return false }
+        return calendar.source?.sourceType == .local
+    }
+
     /// Ajoute un rendez-vous : 1 h si l'heure est connue (durée signalée comme estimée), sinon journée entière.
     public func addAppointment(title: String, start: Date, hasTime: Bool, notes: String?,
                                calendarIdentifier: String?) throws -> (eventID: String, calendarID: String) {
