@@ -32,11 +32,14 @@ public struct TidyNote: Sendable, Equatable {
     public let id: UUID
     public let paths: [String]
     public let evidence: [FolderEvidence]
+    /// F24 — le texte de la note : un suivi qui la refuserait n'est jamais visé.
+    public let text: String
 
-    public init(id: UUID, paths: [String], evidence: [FolderEvidence]) {
+    public init(id: UUID, paths: [String], evidence: [FolderEvidence], text: String = "") {
         self.id = id
         self.paths = paths
         self.evidence = evidence
+        self.text = text
     }
 }
 

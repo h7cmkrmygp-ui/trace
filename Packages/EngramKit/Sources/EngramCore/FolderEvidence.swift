@@ -81,6 +81,9 @@ public enum SimilarFolders {
             .map { FolderEvidence(path: $0.element, notes: notes[$0.element] ?? 0, byOwner: byOwner[$0.element] ?? 0) }
     }
 
+    /// F24 — le dossier que le voisinage peut imposer : nil sauf exemple du propriétaire et marge nette.
+    public static func confidentChoice(_ evidence: [FolderEvidence]) -> FolderEvidence? { evidence.first }
+
     /// Pour Gemini : seulement les grands dossiers, additionnés, dans l'ordre du vote.
     public static func roots(_ evidence: [FolderEvidence]) -> [FolderEvidence] {
         var order: [String] = []

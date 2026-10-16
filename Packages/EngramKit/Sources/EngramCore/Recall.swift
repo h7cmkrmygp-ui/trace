@@ -151,10 +151,13 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
 public struct RecallHit: Sendable, Equatable {
     public let document: RecallDocument
     public let score: Double
+    /// F22 — la note répond aux mots, mais pas à la période demandée : apparentée, jamais présentée comme la réponse.
+    public let outsidePeriod: Bool
 
-    public init(document: RecallDocument, score: Double) {
+    public init(document: RecallDocument, score: Double, outsidePeriod: Bool = false) {
         self.document = document
         self.score = score
+        self.outsidePeriod = outsidePeriod
     }
 }
 
