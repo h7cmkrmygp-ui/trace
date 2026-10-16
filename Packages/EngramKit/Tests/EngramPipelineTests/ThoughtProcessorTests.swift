@@ -109,24 +109,25 @@ struct ThoughtProcessorTests {
         #expect(env.analyzer.callCount == 2)
     }
 
-    /// P35 : après un nouvel essai, les vrais mots du propriétaire sont classés comme une seule note ; rien d'inventé n'est
-    /// gardé (ni l'extrait, ni le titre « Pneus », ni un texte rédigé).
-    @Test func anInventedExcerptStillFilesTheOwnersWordsAfterOneRetry() async throws {
+    /// F07 (remplace le sauvetage de P35) : après un nouvel essai qui reçoit ses erreurs, une réponse encore inventée n'est
+    /// pas classée dans le dossier qu'elle proposait ; les vrais mots du propriétaire restent « À classer », sans rien
+    /// d'inventé (ni l'extrait, ni le titre « Pneus », ni un texte rédigé).
+    @Test func anInventedExcerptKeepsTheOwnersWordsUnsortedAfterOneRepair() async throws {
         let invented = ThoughtAnalysis(thoughts: [
             AnalyzedThought(title: "Pneus", summary: "Changer les pneus d'hiver", excerpt: "changer les pneus d'hiver",
                             kind: .task, tags: [], mentionedDates: [], category: "Automobile", subcategory: nil),
         ])
         let env = try Env([.success(invented), .success(invented)])
         let interim = try env.saveNote(Self.text)
-        guard case .filed(let summary) = await env.processor.process(sourceID: interim.sourceID) else {
-            Issue.record("la note devait être classée")
-            return
-        }
+        #expect(await env.processor.process(sourceID: interim.sourceID) == .fallback)
         #expect(env.analyzer.callCount == 2)
-        let memory = try #require(summary.memories.first)
+        #expect(env.analyzer.receivedContexts.last?.repairNotes.isEmpty == false)
+        let memory = try #require(try env.memories.memory(id: interim.id))
+        #expect(memory.status == .unsorted)
         #expect(memory.content == Self.text)
         #expect(memory.title != "Pneus")
         #expect(memory.summary == nil)
+        #expect(try env.categories.categories(for: memory.id).isEmpty)
     }
 
     @Test func aRefusalFallsBackWithoutRetrying() async throws {
