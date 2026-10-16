@@ -36,11 +36,12 @@ enum UITestSeed {
         @discardableResult
         func file(_ text: String, kind: MemoryKind, path: [String], description: String? = nil, dates: [String] = [],
                   summary: String? = nil, people: [String] = [], places: [String] = [],
-                  provider: String = "gemini", level: PrivacyLevel = .neutral) throws -> Memory? {
+                  provider: String = "gemini", level: PrivacyLevel = .neutral,
+                  intent: IntentType? = nil) throws -> Memory? {
             guard case .saved(let interim) = try memories.saveTextNoteWithoutAnalysis(text) else { return nil }
             let thought = ValidThought(title: text, summary: summary, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
                                        kind: kind, tags: [], categoryPath: path, mentionedDates: dates,
-                                       categoryDescription: description, people: people, places: places)
+                                       categoryDescription: description, people: people, places: places, intent: intent)
             let filed = try filer.file([thought], sourceID: interim.sourceID)
             try memories.recordRoute(sourceID: interim.sourceID,
                                      route: AnalysisRoute(level: level, provider: provider,
@@ -52,7 +53,8 @@ enum UITestSeed {
                  dates: ["samedi"],
                  summary: "Tailler la haie du devant samedi matin.\n☐ Sortir le taille-haie\n☐ Ramasser les branches\n☑ Acheter des sacs")
         try file("Réparer la poignée de la porte", kind: .task, path: ["Maison", "Réparations"])
-        try file("Acheter du lait et du pain", kind: .task, path: ["Achats"], description: "Courses et achats du quotidien")
+        try file("Acheter du lait et du pain", kind: .task, path: ["Achats"], description: "Courses et achats du quotidien",
+                 intent: .purchase)
         try file("Dentiste vendredi à 14 h", kind: .appointment, path: ["Santé"],
                  description: "Rendez-vous, forme et bien-être", dates: ["vendredi à 14 h"], provider: "groq", level: .personal)
         try file("Faire mon workout jeudi", kind: .task, path: ["Santé"], dates: ["jeudi"], provider: "groq", level: .personal)
@@ -65,7 +67,8 @@ enum UITestSeed {
                  provider: "groq", level: .personal)
         try file("Rapporter le livre de Julie", kind: .task, path: ["Famille"], people: ["Julie"],
                  provider: "groq", level: .personal)
-        try file("Rapporter les bouteilles au Costco", kind: .task, path: ["Achats"], places: ["au Costco"])
+        try file("Rapporter les bouteilles au Costco", kind: .task, path: ["Maison"], places: ["au Costco"],
+                 intent: .obligation)
         // P10 : des mesures inventées, sur trois jours, pour les suivis.
         try file("Je pèse 166 livres avant-hier", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
         try file("Je pèse 165,4 livres hier", kind: .info, path: ["Santé"], provider: "apple", level: .personal)
@@ -88,13 +91,13 @@ enum UITestSeed {
         // P16 : une tâche qui revient (inventée).
         try file("Sortir les poubelles tous les lundis", kind: .task, path: ["Maison"])
         // P15 : une liste d'épicerie inventée, complétée par une deuxième dictée.
-        try file("Ajoute du lait et des œufs à ma liste d'épicerie", kind: .task, path: ["Achats"])
-        try file("Mets du pain sur la liste d'épicerie", kind: .task, path: ["Achats"])
+        try file("Ajoute du lait et des œufs à ma liste d'épicerie", kind: .task, path: ["Achats"], intent: .listAdd)
+        try file("Mets du pain sur la liste d'épicerie", kind: .task, path: ["Achats"], intent: .listAdd)
         // P19 : une case cochée à la voix.
-        try file("J'ai acheté le lait", kind: .info, path: ["Achats"])
+        try file("J'ai acheté le lait", kind: .info, path: ["Achats"], intent: .listCheck)
         // P14 : un rappel de lieu, et une adresse inventée (un point quelconque du centre-ville de Montréal).
         if let piles = try file("Acheter des piles quand j'arrive chez Costco", kind: .task, path: ["Achats"],
-                                places: ["Costco"]),
+                                places: ["Costco"], intent: .purchase),
            let costco = try model.entities.placeTrigger(for: piles.id)?.place {
             try model.entities.setLocation(costco.id, latitude: 45.5017, longitude: -73.5673, radius: 200,
                                            label: "Adresse inventée")

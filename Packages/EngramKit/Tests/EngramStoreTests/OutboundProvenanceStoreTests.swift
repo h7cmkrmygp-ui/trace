@@ -23,12 +23,12 @@ struct OutboundProvenanceStoreTests {
 
     @discardableResult
     func file(_ env: StoreTestEnvironment, _ text: String, path: [String], kind: MemoryKind = .task, dates: [String] = [],
-              keepLocal: Bool = false, route: AnalysisRoute?) throws -> Memory {
+              keepLocal: Bool = false, intent: IntentType? = nil, route: AnalysisRoute?) throws -> Memory {
         guard case .saved(let interim) = try env.memories.saveTextNoteWithoutAnalysis(text, keepLocal: keepLocal) else {
             throw StoreTestFailure.unexpectedDuplicate
         }
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind, tags: [],
-                                   categoryPath: path, mentionedDates: dates)
+                                   categoryPath: path, mentionedDates: dates, intent: intent)
         let summary = try env.filer.file([thought], sourceID: interim.sourceID, route: route)
         env.dates.advance(by: 60)
         return try #require(summary.memories.first)
@@ -55,8 +55,9 @@ struct OutboundProvenanceStoreTests {
 
     @Test func eachListCarriesWhatItsContributionsForbid() throws {
         let env = try StoreTestEnvironment()
-        try file(env, "Ajoute du lait à ma liste d'épicerie", path: ["Achats"], route: Self.neutral)
-        try file(env, "Ajoute des pansements à ma liste de pharmacie", path: ["Achats"], keepLocal: true, route: Self.local)
+        try file(env, "Ajoute du lait à ma liste d'épicerie", path: ["Achats"], intent: .listAdd, route: Self.neutral)
+        try file(env, "Ajoute des pansements à ma liste de pharmacie", path: ["Achats"], keepLocal: true, intent: .listAdd,
+                 route: Self.local)
         let masks = try ListStore(database: env.database, dates: env.dates).provenanceMasks()
         #expect(masks["épicerie"] == 0)
         #expect(masks["pharmacie"].map { !PrivacyPolicy.allows(mask: $0, .cloudPersonal) } == true)

@@ -14,16 +14,17 @@ struct PrivacyBoundaryStoreTests {
     static let localRoute = AnalysisRoute(level: .secret, provider: "apple", reason: RouteReasons.ownerKeepLocal,
                                           needsCloudRetry: false, basis: .ownerKeepLocal)
 
-    func thought(_ text: String, kind: MemoryKind = .task, path: [String] = ["Achats"], dates: [String] = []) -> ValidThought {
+    func thought(_ text: String, kind: MemoryKind = .task, path: [String] = ["Achats"], dates: [String] = [],
+                 intent: IntentType? = nil) -> ValidThought {
         ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind, tags: [],
-                     categoryPath: path, mentionedDates: dates)
+                     categoryPath: path, mentionedDates: dates, intent: intent)
     }
 
     func dictate(_ env: StoreTestEnvironment, _ text: String, keepLocal: Bool = false, route: AnalysisRoute?) throws {
         guard case .saved(let interim) = try env.memories.saveTextNoteWithoutAnalysis(text, keepLocal: keepLocal) else {
             throw StoreTestFailure.unexpectedDuplicate
         }
-        _ = try env.filer.file([thought(text)], sourceID: interim.sourceID, route: route)
+        _ = try env.filer.file([thought(text, intent: .listAdd)], sourceID: interim.sourceID, route: route)
         env.dates.advance(by: 60)
     }
 

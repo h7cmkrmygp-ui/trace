@@ -167,44 +167,64 @@ public struct ThoughtFiler: Sendable {
 
             if kept.isEmpty {
                 if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
-                for thought in thoughts {
-                    // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19). « J'ai
-                    // acheté une tondeuse », sans case qui corresponde, reste une note.
-                    if let action = ListActionParser.parse(thought.excerpt),
-                       let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now),
-                       !outcome.changed.isEmpty || action.isExplicit || outcome.replayed {
-                        if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
-                        continue
+                for proposed in thoughts {
+                    // F03, F04 — l'intention, sa polarité et la forme de la phrase décident de l'opération ; les analyseurs
+                    // de listes ne font que fournir ses arguments. Un dossier dont le rôle ne convient pas est refusé.
+                    let plan = ActionPlanner.plan(proposed)
+                    var thought = proposed
+                    if !plan.keepsFolder {
+                        thought.categoryPath = []
+                        thought.categoryReason = nil
                     }
-                    // « ajoute du lait à ma liste d'épicerie » : la liste est complétée, sans nouvelle note (P15).
-                    // P41 : l'IA a reconnu des choses à recevoir, à acheter ou à offrir, même sans le mot « liste » : elles
-                    // vont dans leur liste (retrouvée même dite autrement), sans note à part.
-                    let spoken = ListCommandParser.parse(thought.excerpt)
-                    let understood = thought.listName.flatMap { name in
-                        thought.listItems.isEmpty ? nil : ListCommand(listName: name, items: thought.listItems)
-                    }
-                    if let command = spoken ?? understood {
-                        // Déjà fait par cette dictée, et la liste jetée depuis par le propriétaire : rien n'est recréé.
-                        guard let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
-                                                           memoryStore: memoryStore, now: now) else { continue }
-                        if list.created {
-                            try classify(list.memory.id, with: thought)
-                        } else {
-                            // « des écouteurs pour Julie » : la liste est reliée à la personne nommée.
-                            try entityStore.linkNames(db, people: thought.people, places: thought.places,
-                                                      to: list.memory.id, now: now)
+                    var noteKind = thought.kind
+                    var handled = false
+                    for operation in plan.operations {
+                        switch operation {
+                        case .note(let kind):
+                            noteKind = kind
+                        case .checkInList(let name, let items), .removeFromList(let name, let items):
+                            // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19).
+                            // « J'ai acheté une tondeuse », sans case qui corresponde, reste une note.
+                            var isCheck = false
+                            if case .checkInList = operation { isCheck = true }
+                            let explicit = ListActionParser.parse(thought.excerpt)?.isExplicit ?? false
+                            let action = ListAction(kind: isCheck ? .check : .remove, listName: name, items: items,
+                                                    isExplicit: explicit)
+                            if let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now),
+                               !outcome.changed.isEmpty || explicit || outcome.replayed {
+                                if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
+                                handled = true
+                            }
+                        case .appendToList(let name, let items):
+                            // « ajoute du lait à ma liste d'épicerie » (P15), des choses à recevoir, à acheter ou à offrir
+                            // (P41) : elles vont dans leur liste (retrouvée même dite autrement), sans note à part.
+                            handled = true
+                            // Déjà fait par cette dictée, et la liste jetée depuis par le propriétaire : rien n'est recréé.
+                            guard let list = try listStore.add(db, ListCommand(listName: name, items: items),
+                                                               sourceID: sourceID, excerpt: thought.excerpt,
+                                                               memoryStore: memoryStore, now: now) else { continue }
+                            if list.created {
+                                try classify(list.memory.id, with: thought)
+                            } else {
+                                // « des écouteurs pour Julie » : la liste est reliée à la personne nommée.
+                                try entityStore.linkNames(db, people: thought.people, places: thought.places,
+                                                          to: list.memory.id, now: now)
+                            }
+                            if !list.added.isEmpty {
+                                listAdditions[list.memory.id, default: []].append(contentsOf: list.added)
+                            }
+                            if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
                         }
-                        if !list.added.isEmpty { listAdditions[list.memory.id, default: []].append(contentsOf: list.added) }
-                        if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
-                        continue
                     }
+                    if handled { continue }
                     // F11 — la même intention qu'une note gardée d'une analyse précédente : elle n'est pas recréée à côté.
                     if let match = protectedPrevious.first(where: { IntentionMatch.same(thought, as: $0) }) {
                         if !filedIDs.contains(match.id) { filedIDs.append(match.id) }
                         continue
                     }
-                    // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33).
-                    let due = thought.birthdayOf != nil ? nil
+                    // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33). F03 : une
+                    // négation, une hypothèse, une question, une citation ou un récit ne donnent ni échéance ni rappel.
+                    let due = thought.birthdayOf != nil || !plan.schedules ? nil
                         : DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
                                                  relativeTo: source.capturedAt, calendar: calendar)
                     // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots
@@ -217,43 +237,58 @@ public struct ThoughtFiler: Sendable {
                     let draft = MemoryDraft(
                         sourceID: sourceID, excerpt: thought.excerpt, spanStart: thought.spanStart, spanEnd: thought.spanEnd,
                         spanTextVersion: source.correctedText == nil ? .original : .corrected,
-                        title: title, summary: summary, content: thought.excerpt, kind: thought.kind,
+                        title: title, summary: summary, content: thought.excerpt, kind: noteKind,
                         status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion,
                         dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
                     try classify(memory.id, with: thought)
-                    // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
-                    try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt, capturedAt: source.capturedAt,
-                                                now: now)
-                    // « j'ai médité 10 minutes » : l'habitude du jour (P17).
-                    try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
-                                                      capturedAt: source.capturedAt, now: now)
-                    // « mon objectif : méditer 5 fois par semaine » (P21).
-                    try measurementStore.recordHabitGoals(db, memoryID: memory.id, text: thought.excerpt,
-                                                          capturedAt: source.capturedAt)
-                    // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
-                    try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
-                                                     capturedAt: source.capturedAt)
-                    // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
-                    try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
-                    // « l'anniversaire de Julie est le 12 mars » : la fête va sur la page de Julie (P20).
-                    // Une seule pensée : si son extrait a perdu le début de la phrase, la dictée entière est relue (P31).
-                    try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt,
-                                                   fallback: thoughts.count == 1 ? source.referenceText : nil,
-                                                   saidOn: source.capturedAt, calendar: calendar, now: now)
-                    // « tous les lundis » : la tâche revient (P16).
-                    try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
-                                                     capturedAt: source.capturedAt, now: now)
+                    // F03 — une phrase niée (« je ne pèse plus 180 livres ») n'enregistre ni mesure, ni habitude, ni
+                    // objectif, ni fête ; une négation, une hypothèse, une question, une citation ou un récit ne posent ni
+                    // rappel de lieu ni récurrence.
+                    let affirmed = thought.polarity != .negative
+                    if affirmed {
+                        // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
+                        try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt,
+                                                    capturedAt: source.capturedAt, now: now)
+                        // « j'ai médité 10 minutes » : l'habitude du jour (P17).
+                        try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
+                                                          capturedAt: source.capturedAt, now: now)
+                        // « mon objectif : méditer 5 fois par semaine » (P21).
+                        try measurementStore.recordHabitGoals(db, memoryID: memory.id, text: thought.excerpt,
+                                                              capturedAt: source.capturedAt)
+                        // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
+                        try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
+                                                         capturedAt: source.capturedAt)
+                        // « l'anniversaire de Julie est le 12 mars » : la fête va sur la page de Julie (P20).
+                        // Une seule pensée : si son extrait a perdu le début de la phrase, la dictée entière est relue (P31).
+                        try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt,
+                                                       fallback: thoughts.count == 1 ? source.referenceText : nil,
+                                                       saidOn: source.capturedAt, calendar: calendar, now: now)
+                    }
+                    if plan.schedules {
+                        // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
+                        try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
+                        // « tous les lundis » : la tâche revient (P16).
+                        try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
+                                                         capturedAt: source.capturedAt, now: now)
+                    }
                     filedIDs.append(memory.id)
                 }
             } else {
                 // Le propriétaire a déjà touché sa note : on ne la remplace pas. Si elle est encore en usage,
                 // on la classe seulement ; si elle est archivée ou à la corbeille, on n'y touche pas du tout.
                 for memory in kept {
-                    if memory.status == .active || memory.status == .unsorted, let first = thoughts.first {
+                    if memory.status == .active || memory.status == .unsorted, var first = thoughts.first {
+                        // F03 — le même plan décide du dossier et de l'échéance.
+                        let plan = ActionPlanner.plan(first)
+                        if !plan.keepsFolder {
+                            first.categoryPath = []
+                            first.categoryReason = nil
+                        }
                         try classify(memory.id, with: first)
                         // Le texte du propriétaire n'est pas touché, mais l'échéance dictée est posée si la note n'en a pas.
-                        if memory.dueAt == nil, first.birthdayOf == nil, var current = try Memory.fetchOne(db, key: memory.id),
+                        if memory.dueAt == nil, first.birthdayOf == nil, plan.schedules,
+                           var current = try Memory.fetchOne(db, key: memory.id),
                            let due = DateResolver.firstDate(in: first.mentionedDates, excerpt: first.excerpt,
                                                             relativeTo: source.capturedAt, calendar: calendar) {
                             current.dueAt = due.date

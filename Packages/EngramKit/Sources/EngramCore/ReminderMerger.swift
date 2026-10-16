@@ -64,6 +64,8 @@ public enum ReminderMerger {
         var dates: [String] = []
         for date in ordered where !dates.contains(date) { dates.append(date) }
         result.mentionedDates = dates
+        // F16 — les dates avec leur rôle suivent aussi : le rappel garde le sien.
+        for mention in reminder.temporal where !result.temporal.contains(mention) { result.temporal.append(mention) }
         let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
         if let first = text.range(of: previous.excerpt, options: options),
            let second = text.range(of: reminder.excerpt, options: options, range: first.upperBound..<text.endIndex) {

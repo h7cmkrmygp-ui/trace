@@ -48,11 +48,27 @@ public enum AnalysisValidator {
             guard let passage = closestPassage(to: excerpt, in: text) else { return nil }
             excerpt = passage
         }
+        // F06 — le passage de cette pensée : la ou les phrases de la note où se trouve son extrait. Chaque chose, personne,
+        // lieu, date et détail rédigé doit y figurer ; un mot dit ailleurs dans la dictée ne suffit pas.
+        let located = (text as NSString).range(of: excerpt, options: [.caseInsensitive])
+        let passage = located.location == NSNotFound ? excerpt : sentences(around: located, in: text)
 
+        // Une date n'est gardée que si l'expression figure dans le passage : l'IA relève, elle n'invente pas.
+        let dates = thought.mentionedDates
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: passage) }
+        let temporal = thought.temporal
+            .map { TemporalMention(role: $0.role, phrase: $0.phrase.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            .filter { !$0.phrase.isEmpty && TextNormalizer.containsPhrase($0.phrase, in: passage) }
+        let dated = !dates.isEmpty || !temporal.isEmpty
+
+        // Un titre ou un résumé qui ajoute un montant, un nombre ou un nom absent du passage n'est pas gardé (F06).
         let proposedTitle = thought.title.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        let title = TitleMaker.fallbackTitle(from: proposedTitle.isEmpty ? excerpt : proposedTitle)
+        let title = TitleMaker.fallbackTitle(
+            from: proposedTitle.isEmpty || !isGrounded(proposedTitle, in: passage, dated: dated) ? excerpt : proposedTitle)
 
         let summary = thought.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
+            .flatMap { isGrounded($0, in: passage, dated: dated) ? $0 : nil }
 
         var path = categoryPath(category: thought.category, subcategory: thought.subcategory)
         // Un suivi (« Santé › Poids ») ne reçoit que sa mesure : sinon la note reste « À classer » plutôt que mal rangée (P31).
@@ -84,26 +100,24 @@ public enum AnalysisValidator {
             if tags.count == maxTags { break }
         }
 
-        // P41 — une liste n'est gardée qu'avec au moins une chose vraiment dite.
-        var items = listItems(thought.listItems, in: text)
+        // P41 — une liste n'est gardée qu'avec au moins une chose vraiment dite, dans le passage de cette pensée (F06).
+        var items = listItems(thought.listItems, in: passage)
         var listName = items.isEmpty ? nil : thought.listName.flatMap(cleanListName)
         // « Ajoute un livre à cette liste » : la seule liste dont on vient de parler (P42).
         if ContextReferences.refersToAList(excerpt), let list = recent?.lists.onlyOne {
             if items.isEmpty { items = ContextReferences.listItems(in: excerpt) ?? [] }
             if !items.isEmpty { listName = list }
         }
+        // Cocher ou retirer vise la liste qui contient ces choses : le nom n'est pas obligatoire.
+        let keepsItemsWithoutList = thought.intent == .listCheck || thought.intent == .listRemove
 
-        // Une personne ou un lieu n'est gardé que s'il est nommé dans le texte (4 de chaque au plus). « Elle », « lui »,
+        // Une personne ou un lieu n'est gardé que s'il est nommé dans le passage (4 de chaque au plus). « Elle », « lui »,
         // « sa fête » sans nom : la seule personne dont on vient de parler (P42) ; plusieurs, aucun lien n'est inventé.
-        var people = EntityName.clean(thought.people, in: text, limit: maxNames)
+        var people = EntityName.clean(thought.people, in: passage, limit: maxNames)
         if people.isEmpty, ContextReferences.refersToSomeone(excerpt), let person = recent?.people.onlyOne {
             people = [person]
         }
 
-        // Une date n'est gardée que si l'expression figure dans le texte : l'IA relève, elle n'invente pas.
-        let dates = thought.mentionedDates
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && TextNormalizer.containsPhrase($0, in: text) }
         // « Je dois acheter du lait demain » : une tâche ou un rendez-vous daté garde son échéance et son rappel (P41).
         if kind == .task || kind == .appointment, !dates.isEmpty { listName = nil }
 
@@ -124,12 +138,20 @@ public enum AnalysisValidator {
                 .map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)) }
                 .flatMap { $0.isEmpty ? nil : $0 },
             people: people,
-            places: EntityName.clean(thought.places, in: text, limit: maxNames),
+            places: EntityName.clean(thought.places, in: passage, limit: maxNames),
             // La raison du choix suit le chemin : un chemin refusé n'a plus de raison (P32).
             categoryReason: reason,
             birthdayOf: birthday?.person,
             listName: listName,
-            listItems: listName == nil ? [] : items)
+            listItems: listName == nil && !keepsItemsWithoutList ? [] : items,
+            // F03 — l'intention et ses arguments : l'objet et le bénéficiaire doivent être dits dans le passage.
+            intent: thought.intent,
+            polarity: thought.polarity,
+            subject: cleanArgument(thought.subject),
+            action: cleanArgument(thought.action),
+            object: cleanArgument(thought.object).flatMap { isSaid($0, in: passage) ? $0 : nil },
+            beneficiary: cleanArgument(thought.beneficiary).flatMap { isSaid($0, in: passage) ? $0 : nil },
+            temporal: temporal)
     }
 
     /// P42 — le dossier dont parle « ce projet » : le seul dossier de la dictée précédente, ou le seul qui est un projet.
@@ -149,10 +171,11 @@ public enum AnalysisValidator {
         return startsASentence ? name.prefix(1).lowercased() + name.dropFirst() : name
     }
 
-    /// Les choses d'une liste, nettoyées (une majuscule, sans doublon, 20 au plus) ; une chose n'est gardée que si la moitié
-    /// au moins de ses mots porteurs de sens sont dans le texte : l'IA range ce qui est dit, elle n'ajoute rien.
+    /// Les choses d'une liste, nettoyées (une majuscule, sans doublon, 20 au plus) ; F06 : une chose n'est gardée que si
+    /// tous ses mots porteurs de sens et tous ses nombres sont dans le passage : l'IA range ce qui est dit, elle n'ajoute
+    /// rien (« lait chocolaté » n'est pas « lait »).
     static func listItems(_ raw: [String], in text: String) -> [String] {
-        let said = Set(meaningfulWords(text).map(TextNormalizer.singularize))
+        let said = Set(groundingWords(text))
         var seen = Set<String>()
         var items: [String] = []
         for proposed in raw {
@@ -160,9 +183,11 @@ public enum AnalysisValidator {
                 .trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?-–•☐☑ "))
             guard !collapsed.isEmpty, collapsed.count <= maxListItemLength,
                   seen.insert(TextNormalizer.normalizedName(collapsed)).inserted else { continue }
-            let words = Set(meaningfulWords(collapsed).map(TextNormalizer.singularize))
+            let words = Set(groundingWords(collapsed).filter { $0.count >= 3 && !functionWords.contains($0)
+                && !fillerWords.contains($0) })
+            let numbers = TextNormalizer.words(of: collapsed).filter { $0.allSatisfy(\.isNumber) }
             let grounded = words.isEmpty ? TextNormalizer.containsPhrase(collapsed, in: text)
-                : words.filter(said.contains).count * 2 >= words.count
+                : words.allSatisfy(said.contains) && numbers.allSatisfy(said.contains)
             guard grounded else { continue }
             items.append(collapsed.prefix(1).uppercased() + collapsed.dropFirst())
             if items.count == maxListItems { break }
@@ -292,26 +317,6 @@ public enum AnalysisValidator {
             .filter { !$0.isEmpty }
     }
 
-    /// P35 — l'IA a reformulé au lieu de recopier (aucun extrait ne se retrouve) : la dictée entière devient une seule note,
-    /// avec le titre, le type et le dossier choisis par l'IA.
-    public static func salvage(_ analysis: ThoughtAnalysis, against text: String) -> ValidThought? {
-        let whole = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !whole.isEmpty,
-              let first = analysis.thoughts.first(where: { !$0.category.trimmingCharacters(in: .whitespaces).isEmpty })
-                ?? analysis.thoughts.first else { return nil }
-        // Les dates, étiquettes, personnes et lieux de toutes les pensées (chacun est revérifié dans le texte).
-        var thought = first
-        thought.excerpt = whole
-        // Rien d'inventé n'est gardé : pas de texte rédigé, et le titre de l'IA seulement s'il parle de la note.
-        thought.summary = nil
-        if Set(meaningfulWords(first.title)).isDisjoint(with: meaningfulWords(whole)) { thought.title = "" }
-        thought.mentionedDates = analysis.thoughts.flatMap(\.mentionedDates)
-        thought.tags = analysis.thoughts.flatMap(\.tags)
-        thought.people = analysis.thoughts.flatMap(\.people)
-        thought.places = analysis.thoughts.flatMap(\.places)
-        return validate(thought, against: whole, alone: true)
-    }
-
     /// Part des mots du texte (0 à 1) que l'on retrouve dans les extraits.
     public static func coverage(of excerpts: [String], in text: String) -> Double {
         let words = TextNormalizer.matchingForm(text).split(separator: " ")
@@ -427,7 +432,78 @@ extension AnalysisValidator {
 }
 
 extension AnalysisValidator {
+    /// F07 — la correction demandée quand la réponse précédente n'était pas lisible selon le schéma.
+    public static let unreadableAnswer = "La réponse précédente ne respectait pas le schéma demandé : réponds uniquement"
+        + " avec le JSON du schéma, chaque pensée avec ses mots exacts de la note."
+
     /// F07 — pourquoi chaque pensée d'une réponse est refusée (extrait introuvable…), en phrases à renvoyer au modèle pour
-    /// un seul nouvel essai.
-    public static func problems(in analysis: ThoughtAnalysis, against text: String) -> [String] { [] }
+    /// un seul nouvel essai (5 au plus).
+    public static func problems(in analysis: ThoughtAnalysis, against text: String) -> [String] {
+        guard !analysis.thoughts.isEmpty else {
+            return ["La réponse ne contient aucune pensée : chaque sujet de la note doit en avoir une, avec ses mots exacts."]
+        }
+        var problems: [String] = []
+        for thought in analysis.thoughts {
+            let excerpt = thought.excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
+            if excerpt.isEmpty {
+                problems.append("Une pensée n'a pas d'extrait : recopie les mots exacts de la note.")
+            } else if !TextNormalizer.containsPhrase(excerpt, in: text), closestPassage(to: excerpt, in: text) == nil {
+                problems.append("L'extrait « \(String(excerpt.prefix(120))) » n'est pas dans la note : recopie les mots"
+                    + " exacts de la note, sans les traduire, les corriger ni les reformuler.")
+            }
+        }
+        return Array(problems.prefix(5))
+    }
+
+    /// F06 — la ou les phrases (coupées sur . ! ? ; et les retours à la ligne) qui contiennent `range`.
+    static func sentences(around range: NSRange, in text: String) -> String {
+        let source = text as NSString
+        let touching = clauseRanges(in: source).filter { NSIntersectionRange($0, range).length > 0 }
+        guard let first = touching.first, let last = touching.last else { return source.substring(with: range) }
+        return source.substring(with: NSRange(location: first.location, length: NSMaxRange(last) - first.location))
+    }
+
+    /// Les mots d'un texte pour l'ancrage : sans accents ni ligatures (« œufs » = « oeufs »), au singulier.
+    static func groundingWords(_ text: String) -> [String] {
+        TextNormalizer.words(of: text.replacingOccurrences(of: "œ", with: "oe").replacingOccurrences(of: "Œ", with: "Oe")
+            .replacingOccurrences(of: "æ", with: "ae").replacingOccurrences(of: "Æ", with: "Ae"))
+            .map(TextNormalizer.singularize)
+    }
+
+    /// F06 — un titre ou un résumé n'ajoute ni nombre (montant, quantité) ni nom propre absent du passage. Une pensée datée
+    /// peut écrire le jour, le mois, l'heure ou l'année de sa date (« le 16 janvier » pour « demain »).
+    static func isGrounded(_ written: String, in passage: String, dated: Bool) -> Bool {
+        let said = Set(groundingWords(passage))
+        for number in TextNormalizer.words(of: written) where number.allSatisfy(\.isNumber) && !said.contains(number) {
+            guard dated, let value = Int(number), (0...59).contains(value) || (1900...2100).contains(value) else {
+                return false
+            }
+        }
+        // Un mot à majuscule au milieu d'une phrase est un nom : il doit avoir été dit.
+        var startsSentence = true
+        for piece in written.split(whereSeparator: \.isWhitespace) {
+            let word = piece.trimmingCharacters(in: CharacterSet.punctuationCharacters.union(.symbols))
+            defer { startsSentence = piece.last.map { ".!?:☐☑•\n".contains($0) } ?? false }
+            guard !startsSentence, !word.isEmpty else { continue }
+            // « l'Assurance » : le mot après l'apostrophe.
+            let name = word.split(whereSeparator: { $0 == "'" || $0 == "’" }).last.map(String.init) ?? word
+            guard let initial = name.first, initial.isUppercase, name.count >= 2 else { continue }
+            if !groundingWords(name).allSatisfy(said.contains) { return false }
+        }
+        return true
+    }
+
+    /// Un argument d'intention (sujet, action, objet, bénéficiaire) : une ligne de 60 caractères au plus ; nil si vide.
+    static func cleanArgument(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let collapsed = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return collapsed.isEmpty ? nil : String(collapsed.prefix(60))
+    }
+
+    /// Tous les mots porteurs de sens de `value` sont dits dans le passage.
+    static func isSaid(_ value: String, in passage: String) -> Bool {
+        let said = Set(groundingWords(passage))
+        let words = groundingWords(value).filter { !coverageIgnored.contains($0) }
+        return words.isEmpty ? TextNormalizer.containsPhrase(value, in: passage) : words.allSatisfy(said.contains)
+    }
 }

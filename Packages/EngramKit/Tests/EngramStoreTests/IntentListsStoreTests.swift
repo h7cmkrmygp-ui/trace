@@ -8,11 +8,13 @@ import Testing
 /// P41 — les choses à recevoir, à acheter ou à offrir vont dans leur liste (créée la première fois, retrouvée ensuite même
 /// dite autrement), sans note à part ; le résumé dit ce qui a été ajouté.
 struct IntentListsStoreTests {
-    func file(_ env: StoreTestEnvironment, _ text: String, list: String?, items: [String], path: [String] = ["Listes"])
+    func file(_ env: StoreTestEnvironment, _ text: String, list: String?, items: [String], path: [String] = ["Listes"],
+              intent: IntentType = .wish)
         throws -> FilingSummary {
         let interim = try env.saveNote(text)
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: .other, tags: [],
-                                   categoryPath: path, mentionedDates: [], listName: list, listItems: items)
+                                   categoryPath: path, mentionedDates: [], listName: list, listItems: items,
+                                   intent: intent)
         return try env.filer.file([thought], sourceID: interim.sourceID)
     }
 
@@ -36,7 +38,7 @@ struct IntentListsStoreTests {
         let command = try env.saveNote("Ajoute un livre à ma liste d'anniversaire")
         _ = try env.filer.file([ValidThought(title: "Livre", summary: nil, excerpt: "Ajoute un livre à ma liste d'anniversaire",
                                              spanStart: nil, spanEnd: nil, kind: .task, tags: [], categoryPath: [],
-                                             mentionedDates: [])], sourceID: command.sourceID)
+                                             mentionedDates: [], intent: .listAdd)], sourceID: command.sourceID)
         let lists = try ListStore(database: env.database, dates: env.dates).lists()
         try #require(lists.count == 1)
         #expect(try env.memories.memory(id: lists[0].memoryID)?.summary == "☐ Bouteille d'eau\n☐ Écouteurs\n☐ Livre")

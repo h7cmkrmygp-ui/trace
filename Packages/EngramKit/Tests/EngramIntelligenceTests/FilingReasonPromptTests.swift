@@ -23,7 +23,7 @@ struct FilingReasonPromptTests {
         let category = try #require(order.firstIndex(of: "category"))
         #expect(reason < category)
         #expect(CloudPrompt.system.contains("categoryReason"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
     }
 
     @Test func theReasonIsReadFromTheAnswer() throws {
@@ -85,7 +85,7 @@ struct FilingReasonPromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelExplainsAndReadsTheDescriptionsToo() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("categoryReason"))
         #expect(AnalysisPrompt.prompt(text: "x", categories: ["Automobile"], likely: [],
                                       descriptions: ["Automobile": "Entretien de la voiture"])

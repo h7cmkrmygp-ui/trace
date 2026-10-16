@@ -18,7 +18,8 @@ public enum NoteFacts {
         for measurement in MeasurementParser.parse(text) {
             if let fact = measurements[measurement.metric], !facts.contains(fact) { facts.append(fact) }
         }
-        if let command = ListCommandParser.parse(text) {
+        // F04 — une commande niée, conditionnelle, interrogative ou rapportée n'est pas annoncée comme un ajout.
+        if LinguisticGuards.inspect(text).isPlainRequest, let command = ListCommandParser.parse(text) {
             let first = MeasurementParser.normalized(String(command.listName.prefix(1)))
             let of = !first.isEmpty && "aeiouyh".contains(first) ? "d'" : "de "
             facts.append("un ajout à la liste \(of)\(command.listName)")

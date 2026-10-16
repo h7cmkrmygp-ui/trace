@@ -16,7 +16,7 @@ struct IntentPromptTests {
         #expect(system.contains("je dois acheter"))
         #expect(system.localizedCaseInsensitiveContains("gift idea"))
         #expect(system.localizedCaseInsensitiveContains("preference"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
     }
 
     @Test func theAIKnowsTheExistingLists() {
@@ -56,7 +56,7 @@ struct IntentPromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelKnowsTheListsToo() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("listItems"))
         #expect(AnalysisPrompt.prompt(text: "x", categories: [], likely: [], lists: ["épicerie"]).contains("Existing lists: épicerie"))
     }

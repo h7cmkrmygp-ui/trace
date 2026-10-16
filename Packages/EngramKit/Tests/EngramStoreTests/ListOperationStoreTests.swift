@@ -12,12 +12,12 @@ struct ListOperationStoreTests {
     static let route = AnalysisRoute(level: .neutral, provider: "gemini", reason: "Neutre.", needsCloudRetry: false,
                                      basis: .judged)
 
-    func thoughts(_ excerpts: [String], in text: String) -> [ValidThought] {
+    func thoughts(_ excerpts: [String], in text: String, intent: IntentType = .listAdd) -> [ValidThought] {
         excerpts.map { excerpt in
             let range = (text as NSString).range(of: excerpt)
             return ValidThought(title: excerpt, summary: nil, excerpt: excerpt, spanStart: range.location,
                                 spanEnd: range.location + range.length, kind: .task, tags: [], categoryPath: ["Achats"],
-                                mentionedDates: [])
+                                mentionedDates: [], intent: intent)
         }
     }
 
@@ -48,7 +48,7 @@ struct ListOperationStoreTests {
         _ = try env.filer.file(thoughts([text], in: text), sourceID: interim.sourceID, route: Self.route)
         // Le lait est acheté entre-temps.
         let check = try env.saveNote("Coche le lait")
-        _ = try env.filer.file(thoughts(["Coche le lait"], in: "Coche le lait"), sourceID: check.sourceID, route: Self.route)
+        _ = try env.filer.file(thoughts(["Coche le lait"], in: "Coche le lait", intent: .listCheck), sourceID: check.sourceID, route: Self.route)
         #expect(try groceries(env) == "☑ Lait")
         // Le même classement rejoué (reprise après un arrêt) : rien n'est refait, le lait reste coché.
         try refile(env, interim.sourceID)
@@ -63,7 +63,7 @@ struct ListOperationStoreTests {
         _ = try env.filer.file(thoughts(["Ajoute du lait à ma liste d'épicerie"], in: "Ajoute du lait à ma liste d'épicerie"),
                                sourceID: voice.sourceID, route: Self.route)
         let check = try env.saveNote("Coche le lait")
-        _ = try env.filer.file(thoughts(["Coche le lait"], in: "Coche le lait"), sourceID: check.sourceID, route: Self.route)
+        _ = try env.filer.file(thoughts(["Coche le lait"], in: "Coche le lait", intent: .listCheck), sourceID: check.sourceID, route: Self.route)
         let retranscribed = "Euh, ajoute du lait à ma liste d'épicerie"
         try env.memories.retranscribe(sourceID: voice.sourceID, transcript: retranscribed, languages: [], engine: "whisperkit")
         _ = try env.filer.file(thoughts([retranscribed], in: retranscribed), sourceID: voice.sourceID, route: Self.route)

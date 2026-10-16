@@ -20,6 +20,12 @@ public enum DuplicateThoughts {
             for tag in thought.tags where !kept.tags.contains(tag) && kept.tags.count < maxTags { kept.tags.append(tag) }
             if kept.summary == nil { kept.summary = thought.summary }
             if kept.categoryDescription == nil { kept.categoryDescription = thought.categoryDescription }
+            for mention in thought.temporal where !kept.temporal.contains(mention) { kept.temporal.append(mention) }
+            // F03 — l'intention reste celle de la première ; sans intention, elle prend celle de l'autre (et sa polarité).
+            if kept.intent == nil {
+                kept.intent = thought.intent
+                kept.polarity = thought.polarity
+            }
             // Les choses de l'autre pour la même liste la rejoignent (P41).
             if kept.listName == nil {
                 kept.listName = thought.listName

@@ -80,7 +80,7 @@ public struct CloudContext: Sendable {
 // MARK: - Consignes
 
 public enum CloudPrompt {
-    public static let version = "p42-cloud-v1"
+    public static let version = "p50-cloud-v1"
 
     public static let system = """
         You are the filing engine of Engram, a personal memory app. The owner dictates or types notes in Québec French, \
@@ -121,6 +121,20 @@ public enum CloudPrompt {
         For each item:
         - excerpt: the exact words of the note for this item, copied verbatim (same spelling, same language, \
         no translation, no correction, « pis » stays « pis »).
+        - intent: what the owner means, decided BEFORE the kind, the list and the category: obligation (something the \
+        owner must do: « je dois laver l'auto » is an obligation, not a purchase), appointment, purchase (the owner \
+        must buy or get something: « il me faut du savon à vaisselle »), wish (the owner wishes to RECEIVE something), \
+        gift_idea (something to give to someone), list_add (add things to a named list), list_check (things bought or \
+        done on a list), list_remove (remove things from a list), fact, preference, goal, idea, decision, narrative \
+        (something that happened), question, hypothesis (a supposition or a condition: « si… », « je pourrais »), quote \
+        (what someone else said), correction (the owner corrects something said before). An action on something the \
+        owner already has (wash, repair, call, tidy) is never a purchase; buying is not receiving; wanting to do \
+        something is an idea, not an obligation.
+        - polarity: negative only when the owner says the thing must not happen or did not happen (« n'ajoute pas », \
+        « je ne dois pas »); « n'oublie pas de » and « on n'a plus de lait » are affirmative.
+        - subject, action, object, beneficiary: who does or wants it (« moi » for the owner, or a name), the action \
+        (a French verb, « laver »), its object as said in the note (« l'auto »), and for whom (empty when it is the \
+        owner or nobody). Copy names and things from the note; never invent them.
         - title: at most 8 words of clear, natural French keeping only the essential, the action first \
         (« Appeler l'assurance », not « Rappelle-moi de euh appeler l'assurance ok »). Translate English and slang words \
         into standard French (call → appeler, shift → quart de travail, meeting → réunion, booker → réserver, \
@@ -132,13 +146,15 @@ public enum CloudPrompt {
         Empty when the title already says everything.
         - kind: task (something to do), appointment (something at a given time or place), idea, decision, preference, \
         info (a fact to remember, such as a measurement), other.
-        - list: when the item only adds things to a list (to buy, to receive, to give, or « ajoute … à ma liste de … »), \
-        the list name in lowercase French without « liste de » (« épicerie », « souhaits », « souhaits d'anniversaire », \
-        « cadeaux pour Julie », « idées de business »). When one of the owner's existing lists (given with the note) is \
-        the same list said differently (« ma liste d'anniversaire » for « souhaits d'anniversaire »), write it exactly as \
-        given. Otherwise empty: a task, an appointment, an idea, a preference or a fact is never a list.
-        - listItems: the things to add to that list, one per entry, a few French words taken from the note (« Gourde », \
-        « Élastiques pour les cheveux »), never a thing the note does not say; empty when list is empty.
+        - list: only for the intents purchase (without a date: « acheter du lait lundi » is an obligation with its \
+        date, list empty), wish, gift_idea, list_add, list_check and list_remove: the list name in lowercase French \
+        without « liste de » (« épicerie », « souhaits », « souhaits d'anniversaire », « cadeaux pour Julie », « idées de \
+        business »). When one of the owner's existing lists (given with the note) is the same list said differently \
+        (« ma liste d'anniversaire » for « souhaits d'anniversaire »), write it exactly as given. Empty for every other \
+        intent, and for a negative polarity, a question, a condition or someone else's words: Engram writes nothing then.
+        - listItems: the things for that list, one per entry, copied from this item's own words in the note \
+        (« Gourde », « Élastiques pour les cheveux »), never a word the note does not say (no added adjective, \
+        quantity or brand); empty when list is empty.
         - categoryReason: written BEFORE choosing the category, one short French sentence for the owner: what this item \
         is really about, then either which existing category it truly belongs to and why (« Un entretien de la \
         voiture : il va dans Automobile. »), or why none of the existing categories fits and a new one is needed. \
@@ -171,8 +187,9 @@ public enum CloudPrompt {
         (already several similar notes, or clearly recurring); otherwise leave it empty and the broad category is enough. \
         Never a one-off detail, never an English word.
         - tags: up to 3 short French tags.
-        - dates: every date or time expression copied verbatim from the note, with its role: reminder (when to remind the owner), \
-        deadline, event (when something happens), other. An item that follows another one in time (« pis après », \
+        - dates: every date or time expression of this item copied verbatim from the note, with its role: reminder \
+        (when to remind the owner), deadline, event (when something happens), start, end, recurrence (« tous les \
+        lundis »), other. An item that follows another one in time (« pis après », \
         « ensuite ») also gets the date expression of that earlier item.
         - people: the people this item involves, as named in the note: first names or names (« Julie », « Marc Tremblay »), \
         or words for a specific person in the owner's life (« maman », « mon frère », « mon manager »). Never « je », \
@@ -181,7 +198,9 @@ public enum CloudPrompt {
         « Québec », « chez le dentiste »). Never a vague place (« dehors », « quelque part ») or the owner's own home. \
         Empty when none.
 
-        Never invent facts, dates, names or amounts that are not in the note.
+        Never invent facts, dates, names or amounts that are not in the note: the title and the summary only say what \
+        this item's own words say.
+        When the prompt lists « Corrections demandées », your previous answer was refused for those reasons: fix them.
         """
 
     public static func user(text: String, categories: [String], context: CloudContext) -> String {
@@ -202,9 +221,13 @@ public enum CloudPrompt {
         let lists = context.lists.isEmpty ? "" : "\nListes existantes : \(context.lists.joined(separator: " ; "))"
         // P42 — ce qui vient d'être dit, pour comprendre « elle », « cette liste », « ce projet ».
         let previous = context.recent.flatMap(describe).map { "\n\($0)" } ?? ""
+        // F07 — les raisons précises du refus de la réponse précédente (un seul nouvel essai).
+        let repairs = context.repairNotes.isEmpty ? ""
+            : "\nCorrections demandées (ta réponse précédente a été refusée) :\n"
+                + context.repairNotes.map { "- \($0)" }.joined(separator: "\n")
         return """
             Aujourd'hui : \(formatter.string(from: context.now)) (fuseau \(context.timeZone.identifier)).
-            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(lists)\(known)\(similar)\(previous)
+            Catégories existantes (nombre de notes, et ce qu'elles contiennent) :\(existing)\(lists)\(known)\(similar)\(previous)\(repairs)
             Note à classer :
             <note>
             \(text)
@@ -229,12 +252,19 @@ enum CloudSchema {
     static func response(_ style: Style) -> [String: Any] {
         let date = object(style, [
             ("phrase", string(style)),
-            ("role", string(style, allowed: ["reminder", "deadline", "event", "other"])),
+            ("role", string(style, allowed: TemporalRole.allCases.map(\.rawValue))),
         ])
         let note = object(style, [
+            ("excerpt", string(style)),
+            // F03 — comprendre d'abord (intention, polarité, arguments), puis rédiger, ranger et écrire dans une liste.
+            ("intent", string(style, allowed: IntentType.allCases.map(\.rawValue))),
+            ("polarity", string(style, allowed: Polarity.allCases.map(\.rawValue))),
+            ("subject", string(style)),
+            ("action", string(style)),
+            ("object", string(style)),
+            ("beneficiary", string(style)),
             ("title", string(style)),
             ("summary", string(style)),
-            ("excerpt", string(style)),
             ("kind", string(style, allowed: ["idea", "task", "appointment", "decision", "preference", "info", "other"])),
             // P41 — la liste où vont les choses dites, et ces choses.
             ("list", string(style)),
@@ -296,6 +326,12 @@ public enum CloudDecoder {
         let places: [String]?
         let list: String?
         let listItems: [String]?
+        let intent: String?
+        let polarity: String?
+        let subject: String?
+        let action: String?
+        let object: String?
+        let beneficiary: String?
     }
 
     struct Mention: Decodable {
@@ -337,7 +373,18 @@ public enum CloudDecoder {
                                categoryDescription: clean(note.categoryDescription),
                                people: note.people ?? [], places: note.places ?? [],
                                categoryReason: clean(note.categoryReason), listName: clean(note.list),
-                               listItems: (note.listItems ?? []).compactMap(clean))
+                               listItems: (note.listItems ?? []).compactMap(clean),
+                               // F03 — une intention inconnue reste inconnue (aucune opération de liste n'en découle).
+                               intent: IntentType(rawValue: note.intent ?? ""),
+                               polarity: Polarity(rawValue: note.polarity ?? ""),
+                               subject: clean(note.subject), action: clean(note.action), object: clean(note.object),
+                               beneficiary: clean(note.beneficiary),
+                               // F16 — chaque date garde son rôle, dans l'ordre de la réponse.
+                               temporal: (note.dates ?? []).compactMap { mention in
+                                   clean(mention.phrase).map {
+                                       TemporalMention(role: TemporalRole(rawValue: mention.role ?? "") ?? .other, phrase: $0)
+                                   }
+                               })
     }
 }
 

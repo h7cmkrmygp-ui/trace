@@ -5,10 +5,11 @@ import Testing
 
 /// P29 — une liste qui porte le nom d'un lieu (« Liste de Costco ») t'attend à ce lieu, sans rien régler.
 struct ListPlaceStoreTests {
-    func dictate(_ env: StoreTestEnvironment, _ text: String, places: [String] = []) throws -> Memory {
+    func dictate(_ env: StoreTestEnvironment, _ text: String, places: [String] = [],
+                 intent: IntentType = .listAdd) throws -> Memory {
         let interim = try env.saveNote(text)
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: .task, tags: [],
-                                   categoryPath: ["Achats"], mentionedDates: [], places: places)
+                                   categoryPath: ["Achats"], mentionedDates: [], places: places, intent: intent)
         return try #require(try env.filer.file([thought], sourceID: interim.sourceID).memories.first)
     }
 
@@ -18,7 +19,7 @@ struct ListPlaceStoreTests {
         let env = try StoreTestEnvironment()
         let list = try dictate(env, "Ajoute des piles et du papier de toilette à ma liste de Costco")
         // Le lieu existe avec une adresse (posée depuis une autre note).
-        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"])
+        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"], intent: .obligation)
         let costco = try #require(try store(env).entities(for: other.id).first { $0.kind == .place })
         try store(env).setLocation(costco.id, latitude: 45.5, longitude: -73.6, radius: 200, label: nil)
 
@@ -34,7 +35,7 @@ struct ListPlaceStoreTests {
         let list = try dictate(env, "Ajoute des piles à ma liste de Costco")
         // Pas encore de lieu « Costco » : rien.
         #expect(try store(env).placeReminderItems().contains { $0.memoryID == list.id } == false)
-        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"])
+        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"], intent: .obligation)
         let costco = try #require(try store(env).entities(for: other.id).first { $0.kind == .place })
         try store(env).setLocation(costco.id, latitude: 45.5, longitude: -73.6, radius: 200, label: nil)
         #expect(try store(env).placeReminderItems().contains { $0.memoryID == list.id })
@@ -46,7 +47,7 @@ struct ListPlaceStoreTests {
     @Test func aManualPlaceReminderIsNotDoubled() throws {
         let env = try StoreTestEnvironment()
         let list = try dictate(env, "Ajoute des piles à ma liste de Costco")
-        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"])
+        let other = try dictate(env, "Rapporter les bouteilles au Costco", places: ["Costco"], intent: .obligation)
         let costco = try #require(try store(env).entities(for: other.id).first { $0.kind == .place })
         try store(env).setLocation(costco.id, latitude: 45.5, longitude: -73.6, radius: 200, label: nil)
         try store(env).setPlaceTrigger(for: list.id, placeID: costco.id, event: .leave)

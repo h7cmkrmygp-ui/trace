@@ -47,6 +47,17 @@ struct IntentPlannerTests {
                                                           items: ["Marc"]))).isEmpty)
     }
 
+    /// « Des écouteurs aussi », juste après une liste : une suite courte, sans verbe d'action, la complète ; une phrase
+    /// avec une autre action, même courte, non.
+    @Test func aShortContinuationCompletesTheNamedList() {
+        #expect(ActionPlanner.plan(thought("Des écouteurs aussi", intent: .wish, kind: .other, list: "souhaits",
+                                           items: ["Écouteurs"])).operations
+            == [.appendToList(name: "souhaits", items: ["Écouteurs"])])
+        #expect(listOperations(ActionPlanner.plan(thought("Laver l'auto aussi", intent: .purchase, list: "achats",
+                                                          items: ["Auto"]))).isEmpty)
+        #expect(listOperations(ActionPlanner.plan(thought("Des écouteurs aussi", intent: .wish, kind: .other))).isEmpty)
+    }
+
     @Test func aNegationAQuestionAConditionOrAQuoteWritesNothing() {
         let requests = [
             ("N'ajoute pas du lait à ma liste d'épicerie", Polarity.affirmative),

@@ -271,7 +271,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         let cloud = CloudContext(now: context.capturedAt, timeZone: timeZone, facts: context.facts,
                                  categoryDescriptions: descriptions, folderEvidence: evidence.filter { category($0.path) },
                                  categoryCounts: context.categoryCounts.filter { allowed.contains($0.key) },
-                                 lists: lists, recent: recent)
+                                 lists: lists, recent: recent, repairNotes: context.repairNotes)
         return (categories, cloud)
     }
 

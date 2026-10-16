@@ -131,7 +131,7 @@ public actor ThoughtProcessor {
                 categories: try categories.provenanceMasks(),
                 lists: try ListStore(database: memories.database, dates: memories.dates).provenanceMasks(),
                 recent: try memories.recentProvenance(before: sourceID))
-            let context = AnalysisContext(keepLocal: snapshot.keepLocal, capturedAt: source.capturedAt,
+            var context = AnalysisContext(keepLocal: snapshot.keepLocal, capturedAt: source.capturedAt,
                                           facts: NoteFacts.describe(text), categoryDescriptions: descriptions,
                                           folderEvidence: similar, categoryCounts: counts, lists: lists,
                                           recent: recent, sourceID: sourceID, provenance: provenance)
@@ -146,13 +146,12 @@ public actor ThoughtProcessor {
                     var valid: [ValidThought]
                     do {
                         valid = try AnalysisValidator.validate(analysis, against: text, recent: recent)
-                    } catch AnalyzerError.invalidOutput where tries >= 2 {
-                        // P35 : l'IA a reformulé au lieu de recopier, deux fois : la dictée entière devient une seule note,
-                        // dans le dossier choisi par l'IA, plutôt que de rester « À classer ».
-                        guard let whole = AnalysisValidator.salvage(analysis, against: text) else {
-                            throw AnalyzerError.invalidOutput
-                        }
-                        valid = [whole]
+                    } catch AnalyzerError.invalidOutput where tries < 2 {
+                        // F07 — une réponse hors contrat n'obtient aucune confiance : un seul nouvel essai, qui reçoit les
+                        // erreurs précises à corriger ; un deuxième refus laisse la dictée « À classer » (aucun sauvetage
+                        // dans le dossier ou la liste de la réponse refusée).
+                        context.repairNotes = AnalysisValidator.problems(in: analysis, against: text)
+                        continue
                     }
                     valid = await withSimilarNotesFolder(valid)
                     // Des pensées rejetées ou un texte mal couvert : chaque passage oublié reste « À classer » (F05). La
@@ -165,6 +164,8 @@ public actor ThoughtProcessor {
                 } catch AnalyzerError.unavailable(let reason) {
                     return .done(.waiting(reason))
                 } catch AnalyzerError.invalidOutput where tries < 2 {
+                    // La réponse ne respectait pas le schéma (illisible) : le nouvel essai le sait.
+                    context.repairNotes = [AnalysisValidator.unreadableAnswer]
                     continue
                 } catch AnalyzerError.busy {
                     // Modèle occupé (souvent quand l'app passe en arrière-plan) : un nouvel essai, puis on réessaiera plus tard.

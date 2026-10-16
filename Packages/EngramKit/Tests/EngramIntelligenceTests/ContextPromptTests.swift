@@ -19,7 +19,7 @@ struct ContextPromptTests {
         let system = CloudPrompt.system
         #expect(system.contains("Note précédente"))
         #expect(system.contains("cette liste"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
         let context = CloudContext(now: Date(timeIntervalSince1970: 1_791_475_200), timeZone: Self.toronto,
                                    recent: RecentContext(people: ["Julie"], lists: ["souhaits d'anniversaire"],
                                                          folders: ["Projets › Chalet"], minutesAgo: 5))
@@ -66,7 +66,7 @@ struct ContextPromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelKnowsWhatWasJustSaidToo() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("Previous note"))
         let prompt = AnalysisPrompt.prompt(text: "x", categories: [], likely: [],
                                            recent: RecentContext(people: ["Julie"], lists: [], folders: ["Projets › Chalet"],
