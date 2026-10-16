@@ -107,7 +107,7 @@ struct PrivacyBoundaryStoreTests {
         let ids = try env.database.writer.read { db in try String.fetchAll(db, sql: "SELECT import_id FROM source") }
         #expect(Set(ids) == Set(report.saved))
         // Le même identifiant d'import ne recrée rien.
-        let again = try env.memories.saveTextNoteWithoutAnalysis("Lire cet article", importID: report.saved[0])
+        let again = try env.memories.saveTextNoteWithoutAnalysis("Lire cet article", importID: try #require(report.saved.first))
         guard case .duplicate = again else {
             Issue.record("un import rejoué ne doit pas créer une deuxième capture")
             return

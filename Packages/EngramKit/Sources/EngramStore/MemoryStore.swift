@@ -45,10 +45,19 @@ public struct MemoryStore: Sendable {
         return try database.writer.write { db in try insertTextSource(db, text: text, now: now) }
     }
 
-    func insertTextSource(_ db: Database, text: String, now: Date) throws -> SourceInsertion {
+    func insertTextSource(_ db: Database, text: String, importID: String? = nil, now: Date) throws -> SourceInsertion {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw StoreError.emptyContent }
         let hash = ContentHasher.textHash(trimmed)
+        // F19 : un élément importé se reconnaît à son identifiant (un rejeu ne le recrée pas) ; deux partages distincts
+        // du même texte sont deux gestes du propriétaire.
+        if let importID {
+            if let existing = try Source.filter(Column("import_id") == importID).fetchOne(db) { return .duplicate(of: existing) }
+            let source = Source(kind: .text, originalText: trimmed, contentHash: hash, capturedAt: now, createdAt: now,
+                                updatedAt: now, importID: importID)
+            try source.insert(db)
+            return .created(source)
+        }
         let windowStart = now.addingTimeInterval(-Self.technicalDuplicateWindow)
         if let existing = try Source
             .filter(Column("content_hash") == hash && Column("captured_at") >= windowStart)
@@ -75,7 +84,7 @@ public struct MemoryStore: Sendable {
     public func saveTextNoteWithoutAnalysis(_ text: String, keepLocal: Bool = false, importID: String? = nil) throws -> TextNoteSave {
         let now = dates.now()
         return try database.writer.write { db in
-            switch try insertTextSource(db, text: text, now: now) {
+            switch try insertTextSource(db, text: text, importID: importID, now: now) {
             case .duplicate(let existing):
                 return .duplicate(of: existing)
             case .created(var source):

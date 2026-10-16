@@ -19,7 +19,7 @@ extension MemoryStore {
         let rows = try Row.fetchAll(db, sql: """
             SELECT m.id AS id, m.title AS title, m.kind AS kind, m.status AS status, m.due_at AS due_at,
                    m.due_has_time AS due_has_time, s.keep_local AS keep_local, s.privacy_level AS privacy_level,
-                   s.route_reason AS route_reason
+                   s.privacy_basis AS privacy_basis
             FROM memory m JOIN source s ON s.id = m.source_id
             WHERE m.due_at IS NOT NULL AND m.status IN ('active', 'unsorted') AND m.kind IN ('task', 'appointment')
               AND s.needs_review = 0
@@ -42,14 +42,12 @@ extension MemoryStore {
                             basis: basis.flatMap(PrivacyBasis.init(rawValue:)))
     }
 
-    /// Lit `keep_local`, `privacy_level` et `route_reason` de la source (voir `reminderItems`). Aussi pour les rappels de lieu.
+    /// Rien sur l'écran verrouillé (F01, F13) : selon la politique commune de la source (`keep_local`, `privacy_level`,
+    /// `privacy_basis` ; inconnue = privée) et, pour une liste, selon toutes ses contributions (`list_mask`, jamais abaissé).
+    /// Aussi pour les rappels de lieu.
     static func isPrivate(_ row: Row) -> Bool {
-        let reason: String? = row["route_reason"]
-        let level: String? = row["privacy_level"]
-        let judgedSecret = level == PrivacyLevel.secret.rawValue
-            && reason != RouteReasons.noCloudService && reason != RouteReasons.keepEverythingLocal
-        let keepLocal: Bool = row["keep_local"] ?? false
-        return keepLocal || judgedSecret
+        let mask: Int = row["list_mask"] ?? 0
+        return !PrivacyPolicy.allows(privacyFacts(row), .lockScreen) || !PrivacyPolicy.allows(mask: mask, .lockScreen)
     }
 }
 

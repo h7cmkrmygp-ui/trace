@@ -262,23 +262,15 @@ public enum AnalysisValidator {
         return best?.passage
     }
 
-    /// P35 — la partie de la dictée qu'aucun extrait ne reprend (des propositions entières, sans les « euh ») ; nil s'il
-    /// ne reste rien qui dise quelque chose.
+    /// P35, F05 — la partie de la dictée qu'aucun extrait ne reprend, mesurée par passages (voir `uncoveredPassages`) ;
+    /// nil s'il ne reste rien qui dise quelque chose.
     public static func leftover(of text: String, excerpts: [String]) -> String? {
-        let covered = Set(excerpts.flatMap { meaningfulWords($0) })
-        var kept: [String] = []
-        var words = 0
-        for clause in clauses(of: text) {
-            let meaning = meaningfulWords(clause)
-            // Un bout sans sujet (« Aussi, bon ») ne compte pas ; une proposition surtout reprise ailleurs non plus.
-            guard meaning.count >= 2 else { continue }
-            let found = meaning.filter { covered.contains($0) }.count
-            guard Double(found) < Double(meaning.count) / 2 else { continue }
-            kept.append(clause)
-            words += meaning.count
+        let thoughts = excerpts.map { excerpt in
+            ValidThought(title: excerpt, summary: nil, excerpt: excerpt, spanStart: nil, spanEnd: nil, kind: .other, tags: [],
+                         categoryPath: [], mentionedDates: [])
         }
-        guard words >= 3 else { return nil }
-        return kept.joined(separator: ". ")
+        let passages = uncoveredPassages(of: text, thoughts: thoughts)
+        return passages.isEmpty ? nil : passages.map(\.text).joined(separator: ". ")
     }
 
     /// Mots qui n'apportent rien au sujet : hésitations, liaisons, petites formules de dictée.
@@ -337,7 +329,95 @@ public enum AnalysisValidator {
 }
 
 extension AnalysisValidator {
+    /// Négations et refus : jamais négligeables dans un passage oublié (« pas Marc »).
+    static let negations: Set<String> = ["pas", "ne", "n", "non", "jamais", "plus", "rien", "aucun", "aucune", "sans", "ni"]
+    /// Mots qui, seuls, ne disent rien : hésitations, liaisons, pronoms, articles.
+    static let coverageIgnored: Set<String> = fillerWords.union(functionWords).union([
+        "ok", "ah", "oh", "eh", "hein", "le", "la", "les", "l", "un", "une", "de", "d", "du", "des", "et", "ou", "a", "au",
+        "aux", "en", "y", "je", "j", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles", "me", "m", "te", "t", "se",
+        "s", "ce", "c", "ca", "qu", "que", "qui", "est", "suis", "ai", "mais", "puis", "ensuite", "apres",
+    ]).subtracting(negations)
+
     /// F05 — les passages exacts de la dictée qu'aucune pensée validée ne couvre (positions UTF-16 dans `text`), y compris
-    /// une négation ou une commande courte ; les hésitations seules ne comptent pas.
-    public static func uncoveredPassages(of text: String, thoughts: [ValidThought]) -> [EvidenceSpan] { [] }
+    /// une négation ou une commande courte ; les hésitations seules, et les dates, personnes et lieux déjà repris par la
+    /// pensée de la même proposition, ne comptent pas. Une pensée sans position est cherchée par son extrait.
+    public static func uncoveredPassages(of text: String, thoughts: [ValidThought]) -> [EvidenceSpan] {
+        let source = text as NSString
+        let covered: [(range: NSRange, details: Set<String>)] = thoughts.compactMap { thought in
+            var range: NSRange?
+            if let start = thought.spanStart, let end = thought.spanEnd, start >= 0, end <= source.length, start < end {
+                range = NSRange(location: start, length: end - start)
+            } else {
+                let found = source.range(of: thought.excerpt, options: [.caseInsensitive])
+                if found.location != NSNotFound, found.length > 0 { range = found }
+            }
+            guard let range else { return nil }
+            let details = Set((thought.mentionedDates + thought.people + thought.places)
+                .flatMap { TextNormalizer.matchingForm($0).split(separator: " ").map(String.init) })
+            return (range, details)
+        }
+        var passages: [EvidenceSpan] = []
+        for clause in clauseRanges(in: source) {
+            let overlapping = covered.filter { NSIntersectionRange($0.range, clause).length > 0 }
+            let details = overlapping.reduce(into: Set<String>()) { $0.formUnion($1.details) }
+            for piece in subtract(overlapping.map(\.range), from: clause) {
+                guard let kept = trimmed(piece, in: source) else { continue }
+                let words = TextNormalizer.matchingForm(source.substring(with: kept)).split(separator: " ").map(String.init)
+                let meaningful = words.filter { word in
+                    !coverageIgnored.contains(word) && !details.contains(word) && (word.count >= 2 || negations.contains(word))
+                }
+                guard !meaningful.isEmpty else { continue }
+                passages.append(EvidenceSpan(start: kept.location, end: NSMaxRange(kept), text: source.substring(with: kept)))
+            }
+        }
+        return passages
+    }
+
+    /// Les propositions (coupées sur . ! ? ; et les retours à la ligne), en positions UTF-16.
+    static func clauseRanges(in source: NSString) -> [NSRange] {
+        var ranges: [NSRange] = []
+        var start = 0
+        let separators = CharacterSet(charactersIn: ".!?;\n")
+        for index in 0...source.length {
+            let atEnd = index == source.length
+            if atEnd || (UnicodeScalar(source.character(at: index)).map { separators.contains($0) } ?? false) {
+                if index > start { ranges.append(NSRange(location: start, length: index - start)) }
+                start = index + 1
+            }
+        }
+        return ranges
+    }
+
+    /// Les morceaux d'une proposition qu'aucun des intervalles ne touche.
+    static func subtract(_ cuts: [NSRange], from clause: NSRange) -> [NSRange] {
+        var pieces = [clause]
+        for cut in cuts {
+            pieces = pieces.flatMap { piece -> [NSRange] in
+                let overlap = NSIntersectionRange(piece, cut)
+                guard overlap.length > 0 else { return [piece] }
+                var result: [NSRange] = []
+                if overlap.location > piece.location {
+                    result.append(NSRange(location: piece.location, length: overlap.location - piece.location))
+                }
+                if NSMaxRange(overlap) < NSMaxRange(piece) {
+                    result.append(NSRange(location: NSMaxRange(overlap), length: NSMaxRange(piece) - NSMaxRange(overlap)))
+                }
+                return result
+            }
+        }
+        return pieces
+    }
+
+    /// Sans espaces ni ponctuation aux deux bouts ; nil s'il ne reste rien.
+    static func trimmed(_ range: NSRange, in source: NSString) -> NSRange? {
+        let skipped = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        func isSkipped(_ index: Int) -> Bool {
+            UnicodeScalar(source.character(at: index)).map { skipped.contains($0) } ?? false
+        }
+        var start = range.location
+        var end = NSMaxRange(range)
+        while start < end, isSkipped(start) { start += 1 }
+        while end > start, isSkipped(end - 1) { end -= 1 }
+        return end > start ? NSRange(location: start, length: end - start) : nil
+    }
 }

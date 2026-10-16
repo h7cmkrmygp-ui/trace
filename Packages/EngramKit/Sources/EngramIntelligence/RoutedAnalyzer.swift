@@ -98,19 +98,28 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     /// Réglage « Tout garder sur l'iPhone » : aucune note n'est envoyée.
     let keepEverythingLocal: @Sendable () -> Bool
     let quota: CloudQuota
+    /// F10 — revérifie, juste avant chaque envoi, que la source peut encore partir (nil : pas de revérification).
+    let sourceAllowsCloud: (@Sendable (UUID) -> Bool)?
+    /// F13 — reçus d'envoi : appelé avant l'envoi, puis avec son résultat.
+    let onTransmission: (@Sendable (TransmissionEvent) -> Void)?
     let timeZone: TimeZone
 
     public init(local: any MemoryAnalyzer, judge: (any PrivacyJudge)?, neutral: CloudProvider?, personal: CloudProvider?,
                 healthStaysLocal: @escaping @Sendable () -> Bool = { false },
                 keepEverythingLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
+                sourceAllowsCloud: (@Sendable (UUID) -> Bool)? = nil,
+                onTransmission: (@Sendable (TransmissionEvent) -> Void)? = nil,
                 timeZone: TimeZone = .current) {
         self.init(local: local, judge: judge, providers: { (neutral, personal) }, healthStaysLocal: healthStaysLocal,
-                  keepEverythingLocal: keepEverythingLocal, quota: quota, timeZone: timeZone)
+                  keepEverythingLocal: keepEverythingLocal, quota: quota, sourceAllowsCloud: sourceAllowsCloud,
+                  onTransmission: onTransmission, timeZone: timeZone)
     }
 
     public init(local: any MemoryAnalyzer, judge: (any PrivacyJudge)?, providers: @escaping @Sendable () -> Providers,
                 healthStaysLocal: @escaping @Sendable () -> Bool = { false },
                 keepEverythingLocal: @escaping @Sendable () -> Bool = { false }, quota: CloudQuota = CloudQuota(),
+                sourceAllowsCloud: (@Sendable (UUID) -> Bool)? = nil,
+                onTransmission: (@Sendable (TransmissionEvent) -> Void)? = nil,
                 timeZone: TimeZone = .current) {
         self.local = local
         self.judge = judge
@@ -118,6 +127,8 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         self.healthStaysLocal = healthStaysLocal
         self.keepEverythingLocal = keepEverythingLocal
         self.quota = quota
+        self.sourceAllowsCloud = sourceAllowsCloud
+        self.onTransmission = onTransmission
         self.timeZone = timeZone
     }
 
@@ -128,14 +139,19 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
     public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
         let (neutral, personal) = providers()
         let decision: PrivacyDecision
+        // F13 — sur quoi repose le niveau, enregistré avec la route.
+        let basis: PrivacyBasis
         if keepEverythingLocal() {
             decision = PrivacyDecision(level: .secret, reasons: [RouteReasons.keepEverythingLocal])
+            basis = .everythingLocal
         } else if neutral == nil && personal == nil {
             // Aucun service en ligne : la note reste sur l'iPhone, inutile de faire juger sa confidentialité.
             decision = PrivacyDecision(level: .secret, reasons: [RouteReasons.noCloudService])
+            basis = .noCloudService
         } else {
             decision = await PrivacyGate.evaluate(text, keepLocal: context.keepLocal, healthStaysLocal: healthStaysLocal(),
                                                   judge: judge)
+            basis = context.keepLocal ? .ownerKeepLocal : .judged
         }
         let candidates: [CloudProvider] = switch decision.level {
         case .neutral: [neutral, personal].compactMap { $0 }
@@ -181,7 +197,8 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                                                                    context: isNeutral ? neutralContext : personalContext)
                 quota.recordUse(provider.name)
                 analysis.route = AnalysisRoute(level: decision.level, provider: provider.name,
-                                               reason: decision.reasons.joined(separator: " "), needsCloudRetry: false)
+                                               reason: decision.reasons.joined(separator: " "), needsCloudRetry: false,
+                                               basis: basis)
                 return analysis
             } catch let error as CloudError {
                 switch error {
@@ -208,7 +225,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         let fallback = candidates.isEmpty ? [] : ["Classée sur l'iPhone."]
         analysis.route = AnalysisRoute(level: decision.level, provider: Self.localProvider,
                                        reason: (decision.reasons + notes + fallback).joined(separator: " "),
-                                       needsCloudRetry: temporarilyMissing)
+                                       needsCloudRetry: temporarilyMissing, basis: basis)
         return analysis
     }
 

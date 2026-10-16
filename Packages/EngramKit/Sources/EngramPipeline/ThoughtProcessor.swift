@@ -90,10 +90,10 @@ public actor ThoughtProcessor {
                         valid = [whole]
                     }
                     valid = await withSimilarNotesFolder(valid)
-                    // Des pensées rejetées ou un texte mal couvert : seule la partie oubliée reste « À classer » (P35).
-                    let summary = try filer.file(valid, sourceID: sourceID, keepInterimIfUncovered: true,
+                    // Des pensées rejetées ou un texte mal couvert : chaque passage oublié reste « À classer » (F05). La
+                    // décision de confidentialité est écrite dans la même transaction que les notes (F13).
+                    let summary = try filer.file(valid, sourceID: sourceID, route: analysis.route, keepInterimIfUncovered: true,
                                                  forceKeepInterim: valid.count < analysis.thoughts.count)
-                    if let route = analysis.route { try memories.recordRoute(sourceID: sourceID, route: route) }
                     return .filed(summary)
                 } catch AnalyzerError.unavailable(let reason) {
                     return .waiting(reason)

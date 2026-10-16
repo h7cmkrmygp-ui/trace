@@ -4,7 +4,7 @@ import Foundation
 /// dans un raccourci. Une note gardée sur l'iPhone ou jugée secrète n'y figure jamais.
 public enum AssistantExport {
     public static func text(question: String, hits: [RecallHit], limit: Int = 5, calendar: Calendar, now: Date) -> String {
-        let shared = hits.filter { !$0.document.isPrivate }
+        let shared = hits.filter { $0.document.isExportable }
         let hidden = hits.count - shared.count
         let asked = question.trimmingCharacters(in: .whitespacesAndNewlines)
         var lines: [String] = []

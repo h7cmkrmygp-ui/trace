@@ -122,11 +122,15 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
     /// Dossiers (chemins complets, du plus large au plus précis).
     public let categories: [String]
     public let tags: [String]
-    /// Gardée sur l'iPhone ou jugée secrète : jamais donnée à un assistant extérieur.
+    /// Rien sur l'écran verrouillé (notifications « Te souviens-tu ? », « Ce jour-là ») : gardée sur l'iPhone, jugée
+    /// secrète, ou de confidentialité inconnue.
     public let isPrivate: Bool
+    /// F01/F17 — peut être donnée à un assistant extérieur (raccourci d'export) : jamais une note privée, ni une note du
+    /// réglage « Tout garder sur l'iPhone », ni une liste qu'un ajout protégé a complétée.
+    public let isExportable: Bool
 
     public init(id: UUID, title: String, text: String, kind: MemoryKind?, status: MemoryStatus, capturedAt: Date,
-                dueAt: Date?, categories: [String], tags: [String], isPrivate: Bool = false) {
+                dueAt: Date?, categories: [String], tags: [String], isPrivate: Bool = false, isExportable: Bool? = nil) {
         self.id = id
         self.title = title
         self.text = text
@@ -137,6 +141,7 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
         self.categories = categories
         self.tags = tags
         self.isPrivate = isPrivate
+        self.isExportable = isExportable ?? !isPrivate
     }
 
     /// Ce que le sens compare à la question.

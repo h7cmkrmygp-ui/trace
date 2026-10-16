@@ -9,6 +9,7 @@ extension MemoryStore {
         try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             source.privacyLevel = route.level
+            source.privacyBasis = source.keepLocal ? .ownerKeepLocal : route.effectiveBasis
             source.analysisProvider = route.provider
             source.routeReason = route.reason
             source.needsCloudRetry = route.needsCloudRetry

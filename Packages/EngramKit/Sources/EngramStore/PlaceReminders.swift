@@ -136,7 +136,8 @@ extension EntityStore {
             SELECT m.id AS memory_id, m.title AS title, m.status AS status, t.event AS event, t.created_at AS created_at,
                    e.id AS place_id, e.name AS place_name, l.latitude AS latitude, l.longitude AS longitude,
                    l.radius AS radius, s.keep_local AS keep_local, s.privacy_level AS privacy_level,
-                   s.route_reason AS route_reason
+                   s.privacy_basis AS privacy_basis,
+                   (SELECT forbidden_mask FROM memory_list WHERE memory_id = m.id) AS list_mask
             FROM place_trigger t
             JOIN memory m ON m.id = t.memory_id
             JOIN source s ON s.id = m.source_id
@@ -177,7 +178,7 @@ extension EntityStore {
         let rows = try Row.fetchAll(db, sql: """
             SELECT l.name AS name, m.id AS memory_id, m.title AS title, m.summary AS summary, m.status AS status,
                    m.updated_at AS updated_at, s.keep_local AS keep_local, s.privacy_level AS privacy_level,
-                   s.route_reason AS route_reason
+                   s.privacy_basis AS privacy_basis, l.forbidden_mask AS list_mask
             FROM memory_list l JOIN memory m ON m.id = l.memory_id JOIN source s ON s.id = m.source_id
             WHERE m.status IN ('active','unsorted')
             """)

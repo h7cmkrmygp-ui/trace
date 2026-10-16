@@ -110,6 +110,7 @@ public struct ListStore: Sendable {
                 try MemoryVersion(memory: memory, changedBy: .user, reason: "ajouté à la liste", at: now).insert(db)
             }
             try ListAddition(sourceID: sourceID, normalizedName: additionKey, addedAt: now).insert(db, onConflict: .ignore)
+            try Self.restrict(db, key: key, by: sourceID)
             return (memory, false, merged.added)
         }
         let body = ListMerge.adding(command.items, to: "")
@@ -121,6 +122,7 @@ public struct ListStore: Sendable {
         try memory.update(db)
         try ListRecord(normalizedName: key, name: name, memoryID: memory.id, createdAt: now).save(db)
         try ListAddition(sourceID: sourceID, normalizedName: additionKey, addedAt: now).insert(db, onConflict: .ignore)
+        try Self.restrict(db, key: key, by: sourceID)
         return (memory, true, body.added)
     }
 
@@ -151,7 +153,8 @@ extension ListStore {
         try database.writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT l.name AS name, m.id AS memory_id, m.title AS title, m.summary AS summary,
-                       s.keep_local AS keep_local, s.privacy_level AS privacy_level, s.route_reason AS route_reason
+                       s.keep_local AS keep_local, s.privacy_level AS privacy_level, s.privacy_basis AS privacy_basis,
+                       l.forbidden_mask AS list_mask
                 FROM memory_list l JOIN memory m ON m.id = l.memory_id JOIN source s ON s.id = m.source_id
                 WHERE m.status IN ('active','unsorted')
                 ORDER BY m.updated_at DESC
@@ -189,5 +192,15 @@ extension ListStore {
             return PrivacyPolicy.forbiddenMask(PrivacyFacts(keepLocal: false, level: nil, basis: nil))
         }
         return PrivacyPolicy.forbiddenMask(MemoryStore.privacyFacts(row))
+    }
+}
+
+extension ListStore {
+    /// F01 — la liste prend les interdictions de cette dictée (jamais retirées ensuite).
+    static func restrict(_ db: Database, key: String, by sourceID: UUID) throws {
+        let mask = try forbiddenMask(db, sourceID: sourceID)
+        guard mask != 0 else { return }
+        try db.execute(sql: "UPDATE memory_list SET forbidden_mask = forbidden_mask | ? WHERE normalized_name = ?",
+                       arguments: [mask, key])
     }
 }

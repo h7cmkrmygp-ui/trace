@@ -23,7 +23,7 @@ struct SharedImportTests {
         let again = box.pending().items
         #expect(again.map(\.item.text) == ["Premier", "Deuxième"])
         #expect(again.map(\.id) == box.pending().items.map(\.id))
-        try box.acknowledge(again[0].id)
+        try box.acknowledge(try #require(again.first).id)
         #expect(box.pending().items.map(\.item.text) == ["Deuxième"])
     }
 

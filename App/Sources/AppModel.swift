@@ -408,11 +408,17 @@ final class AppModel {
         }
     }
 
-    /// Éléments partagés vers Engram depuis d'autres apps : enregistrés puis classés comme une note écrite.
+    /// Éléments partagés vers Engram depuis d'autres apps (F19) : chacun est d'abord enregistré (identifiant d'import
+    /// stable), puis retiré de la boîte. L'analyse suit, indépendamment, avec les autres notes en attente
+    /// (`resumePendingWork`). Un arrêt de l'app ne perd rien et ne double rien.
     func importSharedItems() async {
         guard let inbox = SharedContainer.inbox else { return }
-        for item in inbox.drain() where !item.noteText.isEmpty {
-            await captureText(item.noteText, keepLocal: false)
+        let report = memories.importShares(from: inbox)
+        if !report.failed.isEmpty {
+            errorMessage = report.failed.count == 1 ? "Un partage n'a pas pu être enregistré : Engram réessaiera."
+                : "\(report.failed.count) partages n'ont pas pu être enregistrés : Engram réessaiera."
+        } else if !report.quarantined.isEmpty {
+            errorMessage = "Un partage illisible a été mis de côté (rien n'a été effacé)."
         }
     }
 

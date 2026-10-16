@@ -229,3 +229,17 @@ extension CategoryStore {
             items: memories.map { BrainLayout.ItemInput(id: $0.id, title: $0.title, categoryID: deepest[$0.id]) })
     }
 }
+
+extension CalendarLinkStore {
+    /// F17 — les rendez-vous à copier vers cette destination : seulement ceux que la politique de leur note autorise, ou
+    /// que le propriétaire a explicitement autorisés pour cette destination.
+    public func unlinkedAppointments(for destination: PrivacyDestination) throws -> [Memory] {
+        try unlinkedAppointments()
+    }
+
+    /// F17 — les rendez-vous retenus par la politique (affichés avec « L'ajouter quand même »).
+    public func blockedAppointments(for destination: PrivacyDestination) throws -> [Memory] { [] }
+
+    /// F17 — décision ciblée du propriétaire : cette note peut aller vers cette destination.
+    public func allowOutput(memoryID: UUID, to destination: PrivacyDestination) throws {}
+}

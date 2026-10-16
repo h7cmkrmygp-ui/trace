@@ -106,10 +106,15 @@ public struct AnalysisContext: Sendable, Equatable {
     public var lists: [String]
     /// P42 — ce qui vient d'être dit (la dictée précédente), pour comprendre « elle », « cette liste », « ce projet ».
     public var recent: RecentContext?
+    /// F02, F10 — la source analysée (pour revérifier sa politique juste avant chaque envoi).
+    public var sourceID: UUID?
+    /// F02 — la provenance des métadonnées ; nil : aucune métadonnée dérivée ne sort de l'iPhone.
+    public var provenance: ContextProvenance?
 
     public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
                 categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
-                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil) {
+                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil,
+                sourceID: UUID? = nil, provenance: ContextProvenance? = nil) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
@@ -118,6 +123,8 @@ public struct AnalysisContext: Sendable, Equatable {
         self.categoryCounts = categoryCounts
         self.lists = lists
         self.recent = recent
+        self.sourceID = sourceID
+        self.provenance = provenance
     }
 }
 

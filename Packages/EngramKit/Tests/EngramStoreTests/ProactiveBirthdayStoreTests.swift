@@ -12,7 +12,9 @@ struct ProactiveBirthdayStoreTests {
         _ = try env.filer.file([ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind,
                                              tags: [], categoryPath: path, mentionedDates: [], people: people,
                                              birthdayOf: birthdayOf, listName: list, listItems: items)],
-                               sourceID: interim.sourceID)
+                               sourceID: interim.sourceID,
+                               route: AnalysisRoute(level: .personal, provider: "groq", reason: "Une personne nommée.",
+                                                    needsCloudRetry: false))
         env.dates.advance(by: 60 * 60)
     }
 

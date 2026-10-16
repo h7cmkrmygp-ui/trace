@@ -6,7 +6,8 @@ import GRDB
 extension ListStore {
     /// Coche ou retire les choses dites, dans la liste nommée ou dans celle qui les contient (l'épicerie d'abord).
     /// nil : aucune liste ne convient ; `changed` vide : une liste existe mais rien n'a changé.
-    func apply(_ db: Database, _ action: ListAction, now: Date) throws -> (memory: Memory, changed: [String])? {
+    /// - Parameter sourceID: la dictée qui le demande : la liste prend ses interdictions (F01).
+    func apply(_ db: Database, _ action: ListAction, sourceID: UUID? = nil, now: Date) throws -> (memory: Memory, changed: [String])? {
         let wanted = action.listName.map(ListCommandParser.key)
         let grocery = ListCommandParser.key("épicerie")
         var candidates: [Memory] = []
@@ -32,6 +33,7 @@ extension ListStore {
             let verb = action.kind == .check ? "coché" : "retiré"
             try MemoryVersion(memory: memory, changedBy: .user,
                               reason: "\(verb) à la voix : \(result.changed.joined(separator: ", "))", at: now).insert(db)
+            if let sourceID, let key = keys[memory.id] { try Self.restrict(db, key: key, by: sourceID) }
             return (memory, result.changed)
         }
         return candidates.first.map { ($0, []) }

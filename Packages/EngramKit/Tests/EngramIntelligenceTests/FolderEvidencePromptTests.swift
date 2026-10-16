@@ -70,7 +70,8 @@ struct FolderEvidencePromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Acheter du lait", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts))
+            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts,
+                                     provenance: .trusted(categories: Self.categories)))
         let context = try #require(gemini.receivedContexts.first)
         #expect(context.folderEvidence == [FolderEvidence(path: "Famille", notes: 2, byOwner: 1),
                                            FolderEvidence(path: "Automobile", notes: 1, byOwner: 0)])
@@ -82,7 +83,8 @@ struct FolderEvidencePromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Je pèse 75 kg ce matin", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts))
+            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts,
+                                     provenance: .trusted(categories: Self.categories)))
         let context = try #require(groq.receivedContexts.first)
         #expect(context.folderEvidence == Self.evidence)
         #expect(context.categoryCounts == Self.counts)

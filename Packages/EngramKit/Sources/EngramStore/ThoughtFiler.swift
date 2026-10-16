@@ -53,6 +53,17 @@ public struct ThoughtFiler: Sendable {
                 let existing = try Memory.filter(Column("source_id") == sourceID).order(Column("created_at")).fetchAll(db)
                 return FilingSummary(memories: existing, categoryPaths: [], pathByMemory: [:])
             }
+            // F13 — la décision de confidentialité d'abord, dans cette même transaction : aucun dérivé (note, liste,
+            // rappel) n'est jamais visible sans elle.
+            if let route {
+                source.privacyLevel = route.level
+                source.privacyBasis = source.keepLocal ? .ownerKeepLocal : route.effectiveBasis
+                source.analysisProvider = route.provider
+                source.routeReason = route.reason
+                source.needsCloudRetry = route.needsCloudRetry
+                source.updatedAt = now
+                try source.update(db)
+            }
             let interims = try Memory
                 .filter(Column("source_id") == sourceID && Column("analysis_version") == MemoryStore.interimAnalysisVersion)
                 .fetchAll(db)
@@ -62,26 +73,42 @@ public struct ThoughtFiler: Sendable {
             for memory in interims {
                 if try Self.isTouchedByOwner(db, memory) { touched.append(memory) } else { untouched.append(memory) }
             }
-            // P35 : seule la partie de la dictée qu'aucune pensée ne reprend reste « À classer », jamais une copie de toute
-            // la dictée (et pas pour des « euh »). Sans `keepInterimIfUncovered`, l'ancienne règle s'applique.
-            let leftover = keepInterimIfUncovered
-                ? AnalysisValidator.leftover(of: source.referenceText ?? "", excerpts: thoughts.map(\.excerpt)) : nil
-            let keepUntouched = keepInterimIfUncovered ? leftover != nil : forceKeepInterim
+            // F05 : chaque passage qu'aucune pensée ne reprend (positions exactes, négations et commandes courtes comprises)
+            // reste « À classer », à sa place ; jamais une copie de toute la dictée, et pas pour des « euh ». Sans
+            // `keepInterimIfUncovered`, l'ancienne règle s'applique.
+            let passages = keepInterimIfUncovered
+                ? AnalysisValidator.uncoveredPassages(of: source.referenceText ?? "", thoughts: thoughts) : []
+            let keepUntouched = keepInterimIfUncovered ? !passages.isEmpty : forceKeepInterim
             if touched.isEmpty && !keepUntouched {
                 for memory in untouched { _ = try memory.delete(db) }
             }
-            if touched.isEmpty, let leftover, var piece = untouched.first {
+            if touched.isEmpty, !passages.isEmpty {
                 for other in untouched.dropFirst() { _ = try other.delete(db) }
-                piece.content = leftover
-                piece.excerpt = leftover
-                piece.title = TitleMaker.fallbackTitle(from: leftover)
-                let range = ((source.referenceText ?? "") as NSString).range(of: leftover)
-                piece.spanStart = range.location == NSNotFound ? nil : range.location
-                piece.spanEnd = range.location == NSNotFound ? nil : range.location + range.length
-                piece.analysisVersion = Self.leftoverAnalysisVersion
-                piece.updatedAt = now
-                try piece.update(db)
-                untouched = [piece]
+                var reusable = untouched.first
+                var pieces: [Memory] = []
+                let version: TextVersion = source.correctedText == nil ? .original : .corrected
+                for passage in passages {
+                    if var piece = reusable {
+                        reusable = nil
+                        piece.content = passage.text
+                        piece.excerpt = passage.text
+                        piece.title = TitleMaker.fallbackTitle(from: passage.text)
+                        piece.spanStart = passage.start
+                        piece.spanEnd = passage.end
+                        piece.spanTextVersion = version
+                        piece.analysisVersion = Self.leftoverAnalysisVersion
+                        piece.updatedAt = now
+                        try piece.update(db)
+                        pieces.append(piece)
+                    } else {
+                        let draft = MemoryDraft(sourceID: sourceID, excerpt: passage.text, spanStart: passage.start,
+                                                spanEnd: passage.end, spanTextVersion: version,
+                                                title: TitleMaker.fallbackTitle(from: passage.text), content: passage.text,
+                                                status: .unsorted, analysisVersion: Self.leftoverAnalysisVersion)
+                        pieces.append(try memoryStore.createMemory(db, draft: draft, actor: .system, now: now))
+                    }
+                }
+                untouched = pieces
             }
             let kept = touched
 
@@ -124,7 +151,7 @@ public struct ThoughtFiler: Sendable {
                     // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19). « J'ai
                     // acheté une tondeuse », sans case qui corresponde, reste une note.
                     if let action = ListActionParser.parse(thought.excerpt),
-                       let outcome = try listStore.apply(db, action, now: now), !outcome.changed.isEmpty || action.isExplicit {
+                       let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now), !outcome.changed.isEmpty || action.isExplicit {
                         if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
                         continue
                     }

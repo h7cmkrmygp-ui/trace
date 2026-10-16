@@ -36,21 +36,6 @@ public struct SharedInbox: Sendable {
         try encoder.encode(item).write(to: url, options: .atomic)
     }
 
-    /// Les éléments déposés, du plus ancien au plus récent ; ils sont retirés de la boîte.
-    public func drain() -> [SharedItem] {
-        let files = ((try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [])
-            .filter { $0.pathExtension == "json" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        var items: [SharedItem] = []
-        for file in files {
-            defer { try? FileManager.default.removeItem(at: file) }
-            guard let data = try? Data(contentsOf: file), let item = try? decoder.decode(SharedItem.self, from: data) else { continue }
-            items.append(item)
-        }
-        return items.sorted { $0.createdAt < $1.createdAt }
-    }
 }
 
 /// F19 — un élément de la boîte, avec son identifiant d'import stable (le nom de son fichier).
@@ -81,10 +66,49 @@ extension SharedInbox {
 
     /// F19 — les éléments déposés, du plus ancien au plus récent, **sans les retirer** ; un fichier illisible part en
     /// quarantaine avec son erreur.
-    public func pending() -> InboxReading { InboxReading() }
+    public func pending() -> InboxReading {
+        let files = ((try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        var reading = InboxReading()
+        for file in files {
+            let id = file.deletingPathExtension().lastPathComponent
+            do {
+                let item = try decoder.decode(SharedItem.self, from: try Data(contentsOf: file))
+                reading.items.append(PendingShare(id: id, item: item))
+            } catch {
+                // Jamais effacé : mis de côté avec l'erreur, pour que rien ne se perde en silence.
+                if quarantine(file, error: error) { reading.quarantined.append(id) }
+            }
+        }
+        reading.items.sort { ($0.item.createdAt, $0.id) < ($1.item.createdAt, $1.id) }
+        return reading
+    }
 
     /// F19 — retire un élément, seulement après son enregistrement durable.
-    public func acknowledge(_ id: String) throws {}
+    public func acknowledge(_ id: String) throws {
+        let file = directory.appendingPathComponent(id + ".json")
+        guard FileManager.default.fileExists(atPath: file.path) else { return }
+        try FileManager.default.removeItem(at: file)
+    }
+
+    /// Déplace un fichier illisible en quarantaine, avec un petit fichier qui dit pourquoi.
+    func quarantine(_ file: URL, error: any Error) -> Bool {
+        let name = file.deletingPathExtension().lastPathComponent
+        do {
+            try FileManager.default.createDirectory(at: quarantineDirectory, withIntermediateDirectories: true)
+            let target = quarantineDirectory.appendingPathComponent(file.lastPathComponent)
+            if FileManager.default.fileExists(atPath: target.path) { try FileManager.default.removeItem(at: target) }
+            try FileManager.default.moveItem(at: file, to: target)
+            let note = "Partage illisible (\(name)) : \(error.localizedDescription)\n"
+            try Data(note.utf8).write(to: quarantineDirectory.appendingPathComponent(name + ".erreur.txt"), options: .atomic)
+            return true
+        } catch {
+            return false
+        }
+    }
 }
 
 /// F19 — ce qu'a donné un import.
@@ -105,6 +129,24 @@ public enum SharedImporter {
     public enum Outcome: Sendable, Equatable { case saved, duplicate }
 
     public static func run(_ inbox: SharedInbox, save: (PendingShare) throws -> Outcome) -> ShareImportReport {
-        ShareImportReport()
+        let reading = inbox.pending()
+        var report = ShareImportReport()
+        report.quarantined = reading.quarantined
+        for share in reading.items {
+            do {
+                switch try save(share) {
+                case .saved: report.saved.append(share.id)
+                case .duplicate: report.duplicates.append(share.id)
+                }
+            } catch {
+                // Rien n'est acquitté : l'élément reste dans la boîte pour le prochain essai, les suivants continuent.
+                report.failed.append(share.id)
+                continue
+            }
+            // Enregistré durablement : il peut quitter la boîte. Un acquittement raté ne crée pas de doublon ensuite
+            // (l'identifiant d'import est déjà connu).
+            try? inbox.acknowledge(share.id)
+        }
+        return report
     }
 }

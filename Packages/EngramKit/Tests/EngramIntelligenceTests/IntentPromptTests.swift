@@ -49,7 +49,8 @@ struct IntentPromptTests {
                                     neutral: CloudProvider(name: "gemini", analyzer: gemini), personal: nil,
                                     quota: CloudQuota(defaults: nil))
         _ = try await router.analyze(text: "Acheter du lait", existingCategories: [],
-                                     context: AnalysisContext(capturedAt: Date(), lists: ["épicerie", "cadeaux pour Julie"]))
+                                     context: AnalysisContext(capturedAt: Date(), lists: ["épicerie", "cadeaux pour Julie"],
+                                                              provenance: .trusted(lists: ["épicerie", "cadeaux pour Julie"])))
         #expect(gemini.receivedContexts.first?.lists == ["épicerie"])
     }
 

@@ -57,7 +57,8 @@ struct FilingReasonPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Acheter du lait", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), categoryDescriptions: Self.descriptions))
+            context: AnalysisContext(capturedAt: Date(), categoryDescriptions: Self.descriptions,
+                                     provenance: .trusted(categories: Self.categories)))
         #expect(gemini.callCount == 1)
         #expect(gemini.receivedContexts.first?.categoryDescriptions.isEmpty == true)
     }
@@ -67,7 +68,8 @@ struct FilingReasonPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Je pèse 75 kg ce matin", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), categoryDescriptions: Self.descriptions))
+            context: AnalysisContext(capturedAt: Date(), categoryDescriptions: Self.descriptions,
+                                     provenance: .trusted(categories: Self.categories)))
         #expect(groq.callCount == 1)
         // Un montant ne part pas.
         #expect(groq.receivedContexts.first?.categoryDescriptions

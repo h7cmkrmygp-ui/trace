@@ -41,7 +41,9 @@ struct ContextPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Acheter du lait", existingCategories: [],
-            context: AnalysisContext(capturedAt: Date(), recent: Self.recent))
+            context: AnalysisContext(capturedAt: Date(), recent: Self.recent,
+                                     provenance: .trusted(categories: Self.recent.folders + ["Projets", "Famille"],
+                                                          lists: Self.recent.lists)))
         let context = try #require(gemini.receivedContexts.first)
         #expect(context.recent == RecentContext(people: [], lists: ["épicerie"], folders: ["Projets", "Famille"], minutesAgo: 5))
     }
@@ -53,7 +55,9 @@ struct ContextPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Je pèse 75 kg ce matin", existingCategories: [],
-            context: AnalysisContext(capturedAt: Date(), recent: Self.recent))
+            context: AnalysisContext(capturedAt: Date(), recent: Self.recent,
+                                     provenance: .trusted(categories: Self.recent.folders + ["Projets", "Famille"],
+                                                          lists: Self.recent.lists)))
         let context = try #require(groq.receivedContexts.first)
         #expect(context.recent == RecentContext(people: [], lists: Self.recent.lists, folders: Self.recent.folders,
                                                 minutesAgo: 5))

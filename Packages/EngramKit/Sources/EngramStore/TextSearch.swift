@@ -145,18 +145,30 @@ extension MemoryStore {
                 let memoryID: UUID = row["memory_id"]
                 tags[memoryID, default: []].append(row["name"])
             }
-            // Privées : « Garder sur l'iPhone », ou jugées secrètes (être classée sur l'iPhone faute de service ne compte pas).
-            let privateSources = Set(try UUID.fetchAll(db, sql: """
-                SELECT id FROM source
-                WHERE keep_local = 1
-                   OR (privacy_level = ? AND (route_reason IS NULL OR route_reason NOT IN (?, ?)))
-                """, arguments: [PrivacyLevel.secret.rawValue, RouteReasons.noCloudService, RouteReasons.keepEverythingLocal]))
+            // La politique commune (F01, F13) : celle de la source (inconnue = privée) et, pour une liste, celle de toutes
+            // ses contributions.
+            var facts: [UUID: PrivacyFacts] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, keep_local, privacy_level, privacy_basis FROM source") {
+                let id: UUID = row["id"]
+                facts[id] = Self.privacyFacts(row)
+            }
+            var listMasks: [UUID: Int] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT memory_id, forbidden_mask FROM memory_list") {
+                let id: UUID = row["memory_id"]
+                listMasks[id] = row["forbidden_mask"]
+            }
+            let unknown = PrivacyFacts(keepLocal: false, level: nil, basis: nil)
             return memories.map { memory in
-                RecallDocument(id: memory.id, title: memory.title,
-                               text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
-                               kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
-                               categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted(),
-                               isPrivate: privateSources.contains(memory.sourceID))
+                let source = facts[memory.sourceID] ?? unknown
+                let mask = listMasks[memory.id] ?? 0
+                return RecallDocument(
+                    id: memory.id, title: memory.title,
+                    text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
+                    kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
+                    categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted(),
+                    isPrivate: !PrivacyPolicy.allows(source, .lockScreen) || !PrivacyPolicy.allows(mask: mask, .lockScreen),
+                    isExportable: PrivacyPolicy.allows(source, .assistantExport)
+                        && PrivacyPolicy.allows(mask: mask, .assistantExport))
             }
         }
     }
