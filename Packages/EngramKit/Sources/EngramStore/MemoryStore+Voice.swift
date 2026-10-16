@@ -34,7 +34,7 @@ extension MemoryStore {
     /// - Parameter needsReview: la note attend « Vérifie ta note » : aucune analyse avant `confirmReview`.
     @discardableResult
     public func attachTranscript(sourceID: UUID, transcript: String, languages: [String], engine: String?,
-                                 needsReview: Bool = false) throws -> Memory? {
+                                 needsReview: Bool = false, confidence: Double? = nil) throws -> Memory? {
         let now = dates.now()
         return try database.writer.write { db in
             try attachTranscript(db, sourceID: sourceID, transcript: transcript, languages: languages, engine: engine,

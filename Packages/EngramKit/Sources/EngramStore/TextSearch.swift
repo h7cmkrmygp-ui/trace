@@ -173,3 +173,8 @@ extension MemoryStore {
         }
     }
 }
+
+extension MemoryStore {
+    /// F27 — « Retrouver » ne lit que les `limit` notes les plus récentes : vrai s'il y en a davantage (à signaler).
+    public func recallIsLimited(limit: Int = 5_000) throws -> Bool { false }
+}
