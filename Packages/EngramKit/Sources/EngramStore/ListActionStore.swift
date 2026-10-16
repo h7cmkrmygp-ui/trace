@@ -40,8 +40,10 @@ extension ListStore {
             memory.updatedAt = now
             try memory.update(db)
             let verb = action.kind == .check ? "coché" : "retiré"
-            try MemoryVersion(memory: memory, changedBy: .user,
+            // F09 — une demande comprise par l'IA, pas une modification à la main.
+            try MemoryVersion(memory: memory, changedBy: .ai,
                               reason: "\(verb) à la voix : \(result.changed.joined(separator: ", "))", at: now).insert(db)
+            try Self.syncItems(db, listMemoryID: memory.id, body: result.body, actor: .ai, sourceID: sourceID, now: now)
             if let sourceID {
                 if let key = keys[memory.id] { try Self.restrict(db, key: key, by: sourceID) }
                 let done = items.filter { item in result.changed.contains { ListMerge.matches(item, $0) } }

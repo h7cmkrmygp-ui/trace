@@ -935,7 +935,13 @@ final class AppModel {
     }
 
     func process(sourceID: UUID) async -> ProcessingOutcome {
-        await processor.process(sourceID: sourceID)
+        let outcome = await processor.process(sourceID: sourceID)
+        // F23 — une dictée suivante a pu attendre celle-ci pour en avoir le contexte : elle est classée maintenant.
+        if case .filed = outcome {
+            let processor = processor
+            Task { _ = await processor.processPending() }
+        }
+        return outcome
     }
 
     /// Reprend le travail interrompu : transcriptions puis analyses en attente.
@@ -1122,20 +1128,21 @@ final class AppModel {
         for path in orphans { _ = try? memories.saveVoiceRecording(audioPath: path, duration: nil) }
     }
 
-    /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé.
+    /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé (F09 : et ceux des dictées qui
+    /// n'existaient plus que par leurs ajouts à une liste supprimée).
     func deletePermanently(_ id: UUID) throws {
         let deletion = try memories.deletePermanently(id)
-        if let path = deletion.audioPathToRemove {
-            try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
-        }
+        removeAudio(of: deletion)
     }
 
     /// Vide la corbeille, avec les fichiers audio qui ne servent plus.
     func emptyTrash() throws {
-        for deletion in try memories.emptyTrash() {
-            if let path = deletion.audioPathToRemove {
-                try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
-            }
+        for deletion in try memories.emptyTrash() { removeAudio(of: deletion) }
+    }
+
+    private func removeAudio(of deletion: MemoryStore.PermanentDeletion) {
+        for path in [deletion.audioPathToRemove].compactMap({ $0 }) + deletion.orphanedAudioPaths {
+            try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
         }
     }
 

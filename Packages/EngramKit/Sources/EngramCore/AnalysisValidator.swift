@@ -154,10 +154,10 @@ public enum AnalysisValidator {
             temporal: temporal)
     }
 
-    /// P42 — le dossier dont parle « ce projet » : le seul dossier de la dictée précédente, ou le seul qui est un projet.
+    /// P42, F23 — le dossier dont parle « ce projet » : le seul dossier récent qui est un projet (son nom le dit). Un
+    /// dossier qui n'en est pas un, même seul, n'est jamais pris ; deux projets : aucun choix n'est deviné.
     static func projectFolder(in recent: RecentContext) -> String? {
-        if let only = recent.folders.onlyOne { return only }
-        return recent.folders.filter {
+        recent.folders.filter {
             let form = TextNormalizer.normalizedName($0)
             return form.contains("projet") || form.contains("project")
         }.onlyOne

@@ -165,6 +165,9 @@ public struct ThoughtFiler: Sendable {
                 try entityStore.linkNames(db, people: thought.people, places: thought.places, to: memoryID, now: now)
             }
 
+            // F09 — les choses que cette analyse demande, par liste : une analyse précédente de la même dictée qui en avait
+            // ajouté d'autres (jamais touchées depuis) les voit retirées à la fin.
+            var requestedItems: [UUID: Set<String>] = [:]
             if kept.isEmpty {
                 if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
                 for proposed in thoughts {
@@ -202,7 +205,9 @@ public struct ThoughtFiler: Sendable {
                             // Déjà fait par cette dictée, et la liste jetée depuis par le propriétaire : rien n'est recréé.
                             guard let list = try listStore.add(db, ListCommand(listName: name, items: items),
                                                                sourceID: sourceID, excerpt: thought.excerpt,
-                                                               memoryStore: memoryStore, now: now) else { continue }
+                                                               people: thought.people, memoryStore: memoryStore,
+                                                               now: now) else { continue }
+                            requestedItems[list.memory.id, default: []].formUnion(items.map(ListCommandParser.key))
                             if list.created {
                                 try classify(list.memory.id, with: thought)
                             } else {
@@ -301,6 +306,9 @@ public struct ThoughtFiler: Sendable {
                 }
             }
 
+            if kept.isEmpty {
+                _ = try ListStore.retract(db, sourceID: sourceID, keeping: requestedItems, now: now)
+            }
             source.processingStatus = .done
             source.updatedAt = now
             try source.update(db)

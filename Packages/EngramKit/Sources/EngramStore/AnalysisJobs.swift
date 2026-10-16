@@ -130,4 +130,21 @@ extension MemoryStore {
                                  Self.interimAnalysisVersion, cloudAvailable, limit])
         }
     }
+
+    /// F23 — une dictée dite juste avant celle-ci (dans la fenêtre du contexte) est en ce moment en cours de classement :
+    /// celle-ci attend son tour pour en recevoir le contexte (« elle », « cette liste »).
+    public func earlierDictationInProgress(before sourceID: UUID) throws -> Bool {
+        let now = dates.now()
+        return try database.writer.read { db in
+            guard let source = try Source.fetchOne(db, key: sourceID) else { return false }
+            return try Bool.fetchOne(db, sql: """
+                SELECT EXISTS(
+                  SELECT 1 FROM source s JOIN processing_job j ON j.source_id = s.id
+                  WHERE s.id != ? AND s.captured_at <= ? AND s.captured_at >= ? AND s.processing_status != 'done'
+                    AND s.needs_review = 0 AND j.step = 'analyze' AND j.status = 'running'
+                    AND j.leased_until > ?)
+                """, arguments: [sourceID, source.capturedAt, source.capturedAt.addingTimeInterval(-RecentContext.window),
+                                 now]) ?? false
+        }
+    }
 }

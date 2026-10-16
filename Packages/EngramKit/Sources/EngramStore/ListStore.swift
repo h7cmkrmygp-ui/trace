@@ -90,8 +90,8 @@ public struct ListStore: Sendable {
     /// appartient au propriétaire : elle n'est jamais remplacée quand une dictée est reclassée. P41 : une liste existante
     /// est retrouvée même dite autrement (« anniversaire » pour « souhaits d'anniversaire ») ; `added` dit les choses
     /// ajoutées (pour le résumé). nil : tout était déjà fait, et la liste n'existe plus.
-    func add(_ db: Database, _ command: ListCommand, sourceID: UUID, excerpt: String, memoryStore: MemoryStore,
-             now: Date) throws -> (memory: Memory, created: Bool, added: [String])? {
+    func add(_ db: Database, _ command: ListCommand, sourceID: UUID, excerpt: String, people: [String] = [],
+             memoryStore: MemoryStore, now: Date) throws -> (memory: Memory, created: Bool, added: [String])? {
         let name = try Self.resolvedName(db, command.listName)
         let key = ListCommandParser.key(name)
         let pending = try Self.notYetApplied(db, .add, items: command.items, listKey: key, sourceID: sourceID)
@@ -103,12 +103,16 @@ public struct ListStore: Sendable {
                 memory.summary = merged.body
                 // Une liste archivée qu'on complète redevient active.
                 if memory.status == .archived { memory.status = .active }
-                memory.userEdited = true
+                // F09 — un ajout compris par l'IA n'est pas une modification du propriétaire.
                 memory.version += 1
                 memory.updatedAt = now
                 try memory.update(db)
-                try MemoryVersion(memory: memory, changedBy: .user, reason: "ajouté à la liste", at: now).insert(db)
+                try MemoryVersion(memory: memory, changedBy: .ai, reason: "ajouté à la liste", at: now).insert(db)
             }
+            try Self.syncItems(db, listMemoryID: memory.id, body: memory.summary ?? "", actor: .ai, sourceID: sourceID,
+                               people: people, now: now)
+            try Self.recordRequested(db, listMemoryID: memory.id, items: pending, sourceID: sourceID, people: people,
+                                     now: now)
             try Self.recordApplied(db, .add, items: pending, listKey: key, sourceID: sourceID, now: now)
             try ListAddition(sourceID: sourceID, normalizedName: key, addedAt: now).insert(db, onConflict: .ignore)
             try Self.restrict(db, key: key, by: sourceID)
@@ -120,10 +124,11 @@ public struct ListStore: Sendable {
         let draft = MemoryDraft(sourceID: sourceID, excerpt: excerpt, title: ListCommandParser.title(for: name),
                                 summary: body.body, content: excerpt, kind: .other,
                                 status: .active, analysisVersion: ThoughtFiler.analysisVersion)
-        var memory = try memoryStore.createMemory(db, draft: draft, actor: .user, now: now)
-        memory.userEdited = true
-        try memory.update(db)
+        let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
         try ListRecord(normalizedName: key, name: name, memoryID: memory.id, createdAt: now).save(db)
+        try Self.syncItems(db, listMemoryID: memory.id, body: body.body, actor: .ai, sourceID: sourceID, people: people,
+                           now: now)
+        try Self.recordRequested(db, listMemoryID: memory.id, items: pending, sourceID: sourceID, people: people, now: now)
         try Self.recordApplied(db, .add, items: pending, listKey: key, sourceID: sourceID, now: now)
         try ListAddition(sourceID: sourceID, normalizedName: key, addedAt: now).insert(db, onConflict: .ignore)
         try Self.restrict(db, key: key, by: sourceID)

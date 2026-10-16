@@ -136,6 +136,8 @@ public struct MemoryStore: Sendable {
             memory.updatedAt = now
             try memory.update(db)
             try MemoryVersion(memory: memory, changedBy: actor, reason: reason ?? "modification", at: now).insert(db)
+            // F09 — une liste modifiée à la main : chaque case ajoutée, cochée ou retirée est notée au nom du propriétaire.
+            try Self.syncListItems(db, memory, actor: actor, now: now)
             return memory
         }
     }
@@ -196,6 +198,7 @@ public struct MemoryStore: Sendable {
             memory.updatedAt = now
             try memory.update(db)
             try MemoryVersion(memory: memory, changedBy: .user, reason: "restauration de la version \(version)", at: now).insert(db)
+            try Self.syncListItems(db, memory, actor: .user, now: now)
             return memory
         }
     }
@@ -222,13 +225,54 @@ public struct MemoryStore: Sendable {
         guard memory.status == .trashed else {
             throw StoreError.invalidOperation("mettre le souvenir à la corbeille avant de le supprimer définitivement")
         }
+        // F09 — les dictées qui ont complété cette liste (ses choses, ses opérations, ses ajouts d'avant).
+        let list = try ListRecord.filter(Column("memory_id") == memory.id).fetchOne(db)
+        let contributors = try list.map { record in
+            try UUID.fetchAll(db, sql: """
+                SELECT c.source_id FROM list_item_contribution c JOIN list_item i ON i.id = c.item_id
+                WHERE i.list_memory_id = ? AND c.source_id IS NOT NULL
+                UNION SELECT source_id FROM list_operation WHERE list_key = ?
+                UNION SELECT source_id FROM memory_list_addition WHERE normalized_name = ? OR normalized_name LIKE ?
+                """, arguments: [memory.id, record.normalizedName, record.normalizedName, record.normalizedName + " | %"])
+        } ?? []
         _ = try memory.delete(db)
-        let remaining = try Memory.filter(Column("source_id") == memory.sourceID).fetchCount(db)
-        guard remaining == 0, let source = try Source.fetchOne(db, key: memory.sourceID) else {
-            return PermanentDeletion(memoryID: memory.id, deletedSourceID: nil, audioPathToRemove: nil)
+        var deletion = PermanentDeletion(memoryID: memory.id, deletedSourceID: nil, audioPathToRemove: nil)
+        if let list {
+            for sourceID in contributors where sourceID != memory.sourceID {
+                guard let source = try orphanedContributor(db, sourceID, deletedList: list.normalizedName) else { continue }
+                _ = try source.delete(db)
+                deletion.orphanedSources.append(source.id)
+                if let path = source.audioPath { deletion.orphanedAudioPaths.append(path) }
+            }
         }
+        let remaining = try Memory.filter(Column("source_id") == memory.sourceID).fetchCount(db)
+        guard remaining == 0, let source = try Source.fetchOne(db, key: memory.sourceID) else { return deletion }
         _ = try source.delete(db)
-        return PermanentDeletion(memoryID: memory.id, deletedSourceID: source.id, audioPathToRemove: source.audioPath)
+        return PermanentDeletion(memoryID: memory.id, deletedSourceID: source.id, audioPathToRemove: source.audioPath,
+                                 orphanedSources: deletion.orphanedSources, orphanedAudioPaths: deletion.orphanedAudioPaths)
+    }
+
+    /// F09 — une dictée qui n'existait plus que par ses ajouts à la liste supprimée : aucune note, aucune contribution à
+    /// une autre liste, aucun ajout à une autre liste encore là.
+    static func orphanedContributor(_ db: Database, _ sourceID: UUID, deletedList: String) throws -> Source? {
+        guard try Memory.filter(Column("source_id") == sourceID).fetchCount(db) == 0,
+              !(try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM list_item_contribution WHERE source_id = ?)",
+                                  arguments: [sourceID]) ?? true) else { return nil }
+        let otherLists = try String.fetchAll(db, sql: "SELECT normalized_name FROM memory_list_addition WHERE source_id = ?",
+                                             arguments: [sourceID])
+            .map { $0.components(separatedBy: " | ")[0] }
+            .filter { $0 != deletedList }
+        for key in otherLists {
+            if try ListRecord.fetchOne(db, key: key) != nil { return nil }
+        }
+        return try Source.fetchOne(db, key: sourceID)
+    }
+
+    /// F09 — si ce souvenir est une liste, ses choses suivent son texte.
+    static func syncListItems(_ db: Database, _ memory: Memory, actor: ChangeActor, now: Date) throws {
+        guard try ListRecord.filter(Column("memory_id") == memory.id).fetchCount(db) > 0 else { return }
+        try ListStore.syncItems(db, listMemoryID: memory.id, body: memory.summary ?? "", actor: actor, sourceID: nil,
+                                now: now)
     }
 
     // MARK: - Lecture

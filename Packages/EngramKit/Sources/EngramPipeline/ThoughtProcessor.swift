@@ -64,6 +64,11 @@ public actor ThoughtProcessor {
             guard let source = try memories.source(id: sourceID) else { return .fallback }
             // « Vérifie ta note » : rien n'est envoyé à une IA avant la confirmation du propriétaire.
             guard !source.needsReview else { return .waiting("La note attend ta vérification.") }
+            // F23 — la dictée d'avant est encore en cours : celle-ci attend d'en avoir le contexte (reprise au prochain
+            // passage de la file, dans l'ordre des captures).
+            guard try !memories.earlierDictationInProgress(before: sourceID) else {
+                return .deferred("La dictée précédente est encore en cours de classement : celle-ci suivra.")
+            }
             // F14 — le travail est pris pour un temps (bail) ; tenu par un autre traitement, la note attend son tour.
             guard try memories.beginAnalysis(sourceID: sourceID, revision: source.revision, lease: Self.analysisLease) else {
                 return .deferred("La note est déjà en cours de classement.")

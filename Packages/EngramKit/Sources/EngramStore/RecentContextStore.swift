@@ -3,21 +3,38 @@ import Foundation
 import GRDB
 
 extension MemoryStore {
-    /// P42 — la dictée classée juste avant celle-ci, il y a moins de 30 minutes : ses personnes, ses listes et ses
-    /// dossiers. nil s'il n'y en a pas, ou si elle ne nomme rien.
+    /// P42, F23 — ce qui vient d'être dit, dans les 30 minutes avant cette dictée : les personnes de la dernière dictée
+    /// classée qui en a nommé, les listes de la dernière qui en a complété, les dossiers de la dernière qui en a eu. Une
+    /// dictée qui ne nomme rien n'interrompt pas le fil. nil s'il n'y a rien.
     public func recentContext(before sourceID: UUID) throws -> RecentContext? {
         try database.writer.read { db in
             guard let source = try Source.fetchOne(db, key: sourceID) else { return nil }
             let since = source.capturedAt.addingTimeInterval(-RecentContext.window)
-            guard let previous = try Source
+            let previous = try Source
                 .filter(Column("id") != sourceID && Column("processing_status") == ProcessingStatus.done.rawValue
                         && Column("captured_at") <= source.capturedAt && Column("captured_at") >= since)
                 .order(Column("captured_at").desc)
-                .fetchOne(db) else { return nil }
-            return try Self.context(db, of: previous,
-                                    minutesAgo: Int((source.capturedAt.timeIntervalSince(previous.capturedAt) / 60).rounded()))
+                .limit(Self.recentDictations)
+                .fetchAll(db)
+            var merged: RecentContext?
+            for dictation in previous {
+                let minutes = Int((source.capturedAt.timeIntervalSince(dictation.capturedAt) / 60).rounded())
+                guard let context = try Self.context(db, of: dictation, minutesAgo: minutes) else { continue }
+                guard var current = merged else {
+                    merged = context
+                    continue
+                }
+                if current.people.isEmpty { current.people = context.people }
+                if current.lists.isEmpty { current.lists = context.lists }
+                if current.folders.isEmpty { current.folders = context.folders }
+                merged = current
+            }
+            return merged
         }
     }
+
+    /// F23 — les dictées lues au plus pour retrouver le fil.
+    static let recentDictations = 10
 
     /// Les personnes, les listes et les dossiers d'une dictée classée ; nil si elle ne nomme rien.
     static func context(_ db: Database, of previous: Source, minutesAgo: Int) throws -> RecentContext? {
@@ -34,6 +51,13 @@ extension MemoryStore {
             where entity.kind == .person && !context.people.contains(entity.name) {
                 context.people.append(entity.name)
             }
+        }
+        // F09 — les personnes nommées par ses ajouts à une liste qui appartient à une autre dictée.
+        let named = try String.fetchAll(db, sql: """
+            SELECT people FROM list_item_contribution WHERE source_id = ? AND kind = 'add' AND people != '' ORDER BY at, id
+            """, arguments: [previous.id])
+        for name in named.flatMap({ $0.components(separatedBy: "\n") }) where !context.people.contains(name) {
+            context.people.append(name)
         }
         // Les listes complétées par cette dictée (une clé « liste | passage » vient d'un passage compris par l'IA).
         let keys = try String.fetchAll(db, sql: """

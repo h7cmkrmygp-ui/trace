@@ -70,8 +70,42 @@ enum Schema {
         migrator.registerMigration("v20_revisions_operations_jobs") { db in
             try db.execute(sql: v20RevisionsOperationsJobs)
         }
+        migrator.registerMigration("v21_list_items") { db in
+            try db.execute(sql: v21ListItems)
+            try ListStore.backfillItems(db)
+        }
         return migrator
     }
+
+    /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes
+    /// nommées). Reprise : les cases existantes deviennent des choses ; une opération notée en v20 donne sa dictée, sinon
+    /// la provenance reste inconnue. Le texte des notes de liste n'est pas modifié.
+    static let v21ListItems = """
+        CREATE TABLE list_item (
+          id BLOB PRIMARY KEY NOT NULL,
+          list_memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          text TEXT NOT NULL,
+          item_key TEXT NOT NULL,
+          done INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0,1)),
+          position INTEGER NOT NULL DEFAULT 0,
+          provenance_known INTEGER NOT NULL DEFAULT 1 CHECK (provenance_known IN (0,1)),
+          removed_at DATETIME,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        );
+        CREATE INDEX list_item_list ON list_item(list_memory_id, removed_at);
+        CREATE TABLE list_item_contribution (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_id BLOB NOT NULL REFERENCES list_item(id) ON DELETE CASCADE,
+          source_id BLOB REFERENCES source(id) ON DELETE SET NULL,
+          actor TEXT NOT NULL CHECK (actor IN ('ai','user','system')),
+          kind TEXT NOT NULL CHECK (kind IN ('add','check','uncheck','remove','retract')),
+          people TEXT NOT NULL DEFAULT '',
+          at DATETIME NOT NULL
+        );
+        CREATE INDEX list_item_contribution_item ON list_item_contribution(item_id);
+        CREATE INDEX list_item_contribution_source ON list_item_contribution(source_id);
+        """
 
     /// v20 (F08, F10, F12, F14, F16) : la révision du texte et la version de la politique de chaque source (un résultat
     /// d'analyse n'est écrit que sur la version analysée), le fuseau de la capture, le délai avant un nouvel essai, les
