@@ -496,6 +496,9 @@ enum RecallPeriods {
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     ]
 
+    static let monthNames = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre",
+                             "octobre", "novembre", "decembre"]
+
     static func find(in text: String, now: Date, calendar: Calendar) -> Found? {
         let day = 86_400.0
         func interval(of component: Calendar.Component, shiftedBy days: Int) -> DateInterval? {
@@ -539,6 +542,17 @@ enum RecallPeriods {
             (#"\b((le )?mois (passe|dernier)|last month)\b"#, { _ in monthInterval(shiftedBy: -1) }),
             (#"\b((le )?mois prochain|next month)\b"#, { _ in monthInterval(shiftedBy: 1) }),
             (#"\b(ce mois ci|ce mois|this month)\b"#, { _ in monthInterval(shiftedBy: 0) }),
+            // F22 — « en mars », « au mois d'août » : le dernier mois de ce nom qui n'est pas dans le futur.
+            (#"\b(?:en|au mois de|au mois d|du mois de|du mois d|in) (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\b"#,
+             { match in
+                guard let name = match.output[1].substring.map(String.init),
+                      let month = monthNames.firstIndex(of: name).map({ $0 + 1 }) else { return nil }
+                let current = calendar.dateComponents([.year, .month], from: now)
+                guard let year = current.year, let thisMonth = current.month else { return nil }
+                let start = calendar.date(from: DateComponents(year: month > thisMonth ? year - 1 : year, month: month,
+                                                               day: 1))
+                return start.flatMap { calendar.dateInterval(of: .month, for: $0) }
+            }),
             (#"\b(recemment|dernierement|recents?|recentes?|derniers|dernieres|recently|lately|latest|recent)\b"#,
              { _ in last(14) }),
         ]
