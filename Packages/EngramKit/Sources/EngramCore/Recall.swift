@@ -262,12 +262,15 @@ public enum RecallRanker {
             guard lexical > 0 || similarity >= 0.7 else { continue }
             var score = lexical + meaning
             if !query.kinds.isEmpty { score += query.kinds.contains(document.kind ?? .other) ? 0.25 : -0.35 }
-            if let period = query.period { score += matches(document, period: period, due: query.periodMeansDue) ? 0.3 : -0.4 }
+            // F22 — hors de la période demandée, une note reste visible (apparentée), jamais comme la réponse.
+            let inPeriod = query.period.map { matches(document, period: $0, due: query.periodMeansDue) } ?? true
+            if query.period != nil { score += inPeriod ? 0.3 : -0.4 }
             if document.status == .archived { score -= 0.2 }
             score += 0.1 * exp(-max(0, now.timeIntervalSince(document.capturedAt)) / (30 * 86_400))
-            if score >= minimum { hits.append(RecallHit(document: document, score: score)) }
+            if score >= minimum { hits.append(RecallHit(document: document, score: score, outsidePeriod: !inPeriod)) }
         }
-        return Array(hits.sorted { $0.score > $1.score }.prefix(limit))
+        return Array(hits.sorted { ($0.outsidePeriod ? 1 : 0, -$0.score) < ($1.outsidePeriod ? 1 : 0, -$1.score) }
+            .prefix(limit))
     }
 
     /// Mots d'une note, prêts à comparer.

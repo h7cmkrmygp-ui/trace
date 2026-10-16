@@ -1010,16 +1010,35 @@ final class AppModel {
             if let folders = try? store.tidyFolders() {
                 changes += ((try? store.applyTidy(TidyPlanner.folds(folders, now: Date()))) ?? []).count
             }
-            if let samples = try? store.filingSamples() {
-                let notes = samples.filter { !$0.byOwner }.map {
-                    TidyNote(id: $0.id, paths: $0.paths, evidence: finder.vote(for: $0, among: samples))
-                }
-                changes += ((try? store.applyTidy(Array(TidyPlanner.moves(notes).prefix(20)))) ?? []).count
-            }
+            // F24 — les notes à déplacer ne sont plus déplacées seules : elles sont proposées (voir `proposedMoves`).
             return changes
         }.value
         perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .tidyAt) }
         return count
+    }
+
+    /// F24 — les notes rangées par l'IA qui iraient mieux avec leurs semblables (rangées par le propriétaire), proposées
+    /// une à une : rien ne bouge sans un toucher.
+    func proposedMoves() async -> [TidyProposal] {
+        let store = categories
+        let finder = similarNotes
+        return await Task.detached(priority: .utility) { () -> [TidyProposal] in
+            guard let samples = try? store.filingSamples() else { return [] }
+            let titles = Dictionary(samples.map { ($0.id, $0.text) }, uniquingKeysWith: { first, _ in first })
+            let notes = samples.filter { !$0.byOwner }.map {
+                TidyNote(id: $0.id, paths: $0.paths, evidence: finder.vote(for: $0, among: samples), text: $0.text)
+            }
+            return Array(TidyPlanner.moves(notes).prefix(20)).compactMap { action -> TidyProposal? in
+                guard case .move(let memory, let from, let to) = action else { return nil }
+                let title = String((titles[memory] ?? "").split(separator: "\n").first ?? "")
+                return TidyProposal(action: action, summary: "« \(title) » : \(from) → \(to)")
+            }
+        }.value
+    }
+
+    /// F24 — le propriétaire accepte une proposition : la note est déplacée (et le changement peut être annulé).
+    func acceptProposal(_ proposal: TidyProposal) {
+        perform { _ = try categories.applyTidy([proposal.action]) }
     }
 
     /// P35, une seule fois : les anciennes copies de dictées déjà rangées quittent « À classer » (à la corbeille,

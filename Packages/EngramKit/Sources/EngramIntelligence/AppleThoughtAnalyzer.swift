@@ -232,9 +232,12 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
         formatter.dateFormat = "EEEE d MMMM yyyy"
         let today = formatter.string(from: context.capturedAt)
         var thoughts: [AnalyzedThought] = []
-        for chunk in TextChunker.chunks(of: text, maxLength: Self.maxChunkLength) {
+        let chunks = TextChunker.chunks(of: text, maxLength: Self.maxChunkLength)
+        for chunk in chunks {
+            // F25 — un morceau ne reçoit que ce qu'Engram a reconnu dans ce morceau, jamais un fait d'une autre phrase.
+            let facts = chunks.count > 1 ? NoteFacts.describe(chunk) : context.facts
             thoughts += try await analyze(chunk: chunk, existingCategories: existingCategories, likely: likely, today: today,
-                                          facts: context.facts, descriptions: context.categoryDescriptions,
+                                          facts: facts, descriptions: context.categoryDescriptions,
                                           evidence: context.folderEvidence, counts: context.categoryCounts,
                                           lists: context.lists, recent: context.recent, repairNotes: context.repairNotes, depth: 0)
         }

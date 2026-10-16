@@ -8,6 +8,7 @@ struct TidyView: View {
     @State private var records: [TidyRecord] = []
     @State private var isTidying = false
     @State private var notice: String?
+    @State private var proposals: [TidyProposal] = []
 
     var body: some View {
         List {
@@ -16,8 +17,10 @@ struct TidyView: View {
                     Task {
                         isTidying = true
                         let count = await model.tidyFoldersNow()
+                        proposals = await model.proposedMoves()
                         isTidying = false
-                        notice = count == 0 ? "Tout est déjà en ordre." : "\(count) changement\(count > 1 ? "s" : "")."
+                        notice = count == 0 ? (proposals.isEmpty ? "Tout est déjà en ordre." : "Des déplacements te sont proposés.")
+                            : "\(count) changement\(count > 1 ? "s" : "")."
                         load()
                     }
                 } label: {
@@ -34,7 +37,27 @@ struct TidyView: View {
                     Text(notice).foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("Chaque semaine, Engram fusionne les dossiers en double, met les noms anglais en français, replie les sous-dossiers de moins de 3 notes et range avec leurs semblables les notes clairement mal placées. Il ne touche jamais à un dossier ni à une note que tu as choisis toi-même, et aucune note n'est supprimée.")
+                Text("Chaque semaine, Engram fusionne les dossiers en double, met les noms anglais en français et replie les sous-dossiers de moins de 3 notes. Il propose de déplacer les notes clairement mal placées, sans les déplacer seul. Il ne touche jamais à un dossier ni à une note que tu as choisis toi-même, et aucune note n'est supprimée.")
+            }
+            if !proposals.isEmpty {
+                Section {
+                    ForEach(proposals) { proposal in
+                        HStack {
+                            Text(proposal.summary)
+                            Spacer()
+                            Button("Déplacer") {
+                                model.acceptProposal(proposal)
+                                proposals.removeAll { $0.id == proposal.id }
+                                load()
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                } header: {
+                    Text("Propositions")
+                } footer: {
+                    Text("Ces notes, rangées par l'IA, ressemblent à des notes que tu as rangées ailleurs.")
+                }
             }
             Section("Ce qu'Engram a changé") {
                 if records.isEmpty {
@@ -67,6 +90,7 @@ struct TidyView: View {
         }
         .navigationTitle("Ménage des dossiers")
         .onAppear(perform: load)
+        .task { proposals = await model.proposedMoves() }
     }
 
     private func load() {

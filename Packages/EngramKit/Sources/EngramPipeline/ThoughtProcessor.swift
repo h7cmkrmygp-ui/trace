@@ -17,6 +17,8 @@ public enum ProcessingOutcome: Sendable, Equatable {
 public actor ThoughtProcessor {
     /// Au-delà, la liste de catégories prendrait trop de place dans le contexte du modèle.
     static let maxCategoriesInPrompt = 150
+    /// F25 — listes données au modèle au plus.
+    static let maxListsInPrompt = 40
 
     let memories: MemoryStore
     let categories: CategoryStore
@@ -119,15 +121,21 @@ public actor ThoughtProcessor {
             let snapshot = source.snapshot
             let text = (source.referenceText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return .failed(.quality, "Aucun texte à classer.") }
-            let paths = Array(try categories.categoryPaths().prefix(Self.maxCategoriesInPrompt))
+            // Où sont rangées les notes semblables, et la taille de chaque dossier : l'IA classe comme le propriétaire (P34).
+            let similar = await evidence?.evidence(for: text) ?? []
+            let allCounts = try categories.categoryCounts()
+            // F25 — les dossiers donnés au modèle sont choisis selon le sens de la note (notes semblables, mots en commun,
+            // taille), jamais les 150 premiers par ordre alphabétique.
+            let paths = CategoryBudget.select(try categories.categoryPaths(), for: text, evidence: similar,
+                                              counts: allCounts, limit: Self.maxCategoriesInPrompt)
             // Ce qu'Engram reconnaît déjà (une fête, une mesure, une liste) est dit à l'IA avec la note (P31).
             // Ce que contient chaque catégorie, pour que l'IA juge par le sens et pas par le nom (P32).
             let descriptions = try categories.categoryDescriptions().filter { paths.contains($0.key) }
-            // Où sont rangées les notes semblables, et la taille de chaque dossier : l'IA classe comme le propriétaire (P34).
-            let similar = await evidence?.evidence(for: text) ?? []
-            let counts = try categories.categoryCounts().filter { paths.contains($0.key) }
-            // Les listes du propriétaire (leurs noms) : l'IA y ajoute au lieu d'en créer d'autres (P41).
-            let lists = try ListStore(database: memories.database, dates: memories.dates).names()
+            let counts = allCounts.filter { paths.contains($0.key) }
+            // Les listes du propriétaire (leurs noms, les plus récentes d'abord, 40 au plus) : l'IA y ajoute au lieu d'en
+            // créer d'autres (P41, F25).
+            let lists = Array(try ListStore(database: memories.database, dates: memories.dates).names()
+                .prefix(Self.maxListsInPrompt))
             // Ce qui vient d'être dit (la dictée d'il y a quelques minutes) : « elle », « cette liste », « ce projet » (P42).
             let recent = try memories.recentContext(before: sourceID)
             // F02 — d'où vient chaque dossier, chaque liste et la dictée précédente : un dérivé d'une note locale (ou de
@@ -195,10 +203,14 @@ public actor ThoughtProcessor {
         guard let evidence else { return thoughts }
         var result = thoughts
         for index in result.indices where result[index].categoryPath.isEmpty {
-            guard let top = await evidence.evidence(for: result[index].excerpt).first,
-                  top.notes >= 2 || top.byOwner >= 1 else { continue }
+            // F24 — seulement des notes rangées par le propriétaire, et un dossier qui se détache nettement ; ni un suivi
+            // ni un dossier d'action (« Achats ») qui refuserait la note.
+            guard let top = SimilarFolders.confidentChoice(await evidence.evidence(for: result[index].excerpt)) else {
+                continue
+            }
             let path = top.path.components(separatedBy: CategoryPaths.separator)
             guard MeasurementFolders.accepts(path, text: result[index].excerpt) else { continue }
+            if let role = FolderRole.role(of: path), !role.accepts(result[index].intent) { continue }
             result[index].categoryPath = path
             result[index].categoryReason = "Rangée comme tes notes semblables (\(top.path)) : l'IA n'avait pas trouvé de dossier sûr."
         }

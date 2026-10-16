@@ -21,11 +21,12 @@ public struct RecallAnswerer: Sendable {
         guard !result.hits.isEmpty, case .available = SystemLanguageModel.default.availability else { return fallback }
         do {
             let session = LanguageModelSession(instructions: RecallAnswerPrompt.instructions)
-            let response = try await session.respond(
-                to: RecallAnswerPrompt.prompt(question: question, hits: result.hits, now: now, calendar: calendar),
-                generating: GeneratedRecallAnswer.self)
+            let prompt = RecallAnswerPrompt.prompt(question: question, hits: result.hits, now: now, calendar: calendar)
+            let response = try await session.respond(to: prompt, generating: GeneratedRecallAnswer.self)
             let text = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? fallback : String(text.prefix(Self.maxLength))
+            // F22 — une réponse qui ajoute un montant, un nombre ou un nom absent des notes données est refusée.
+            guard !text.isEmpty, RecallAnswerCheck.isSupported(text, by: [prompt]) else { return fallback }
+            return String(text.prefix(Self.maxLength))
         } catch {
             return fallback
         }

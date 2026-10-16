@@ -122,8 +122,10 @@ public enum RecallAnswerPrompt {
             var line = "\(index + 1). [\(label(document.kind))] « \(document.title) » — notée le \(formatter.string(from: document.capturedAt))"
             if let due = document.dueAt { line += " ; échéance : \(formatter.string(from: due))" }
             if document.status == .archived { line += " ; marquée comme faite" }
+            if hit.outsidePeriod { line += " ; hors de la période demandée" }
             if let folder = document.categories.first { line += " ; dossier : \(folder)" }
-            let text = String(document.text.prefix(maxTextLength))
+            // F22 — le passage qui répond à la question, même après les 300 premiers caractères.
+            let text = relevantText(document.text, question: question)
             if text != document.title { line += "\n   Texte : \(text)" }
             return line
         }
@@ -133,6 +135,17 @@ public enum RecallAnswerPrompt {
             Notes trouvées :
             \(notes.joined(separator: "\n"))
             """
+    }
+
+
+    /// F22 — le texte d'une note pour le modèle : en entier s'il est court, sinon la phrase qui répond à la question
+    /// (et ce qui la suit), plutôt que le seul début.
+    static func relevantText(_ text: String, question: String) -> String {
+        guard text.count > maxTextLength else { return text }
+        guard let sentence = SearchSnippet.make(text, query: question), let range = text.range(of: sentence) else {
+            return String(text.prefix(maxTextLength))
+        }
+        return "… " + String(text[range.lowerBound...].prefix(maxTextLength))
     }
 
     static func label(_ kind: MemoryKind?) -> String {
