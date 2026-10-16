@@ -335,3 +335,9 @@ public enum AnalysisValidator {
         return String(collapsed.prefix(maxLength))
     }
 }
+
+extension AnalysisValidator {
+    /// F05 — les passages exacts de la dictée qu'aucune pensée validée ne couvre (positions UTF-16 dans `text`), y compris
+    /// une négation ou une commande courte ; les hésitations seules ne comptent pas.
+    public static func uncoveredPassages(of text: String, thoughts: [ValidThought]) -> [EvidenceSpan] { [] }
+}

@@ -32,6 +32,10 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     public var correctedByOwner: Bool
     /// P35 — essais de classement ratés (la note est réessayée tant qu'il en reste).
     public var analysisAttempts: Int
+    /// F13 — sur quoi repose `privacyLevel` (nil : inconnu, aucune sortie automatique).
+    public var privacyBasis: PrivacyBasis?
+    /// F19 — identifiant stable de l'import (partage) : un même élément n'est jamais enregistré deux fois.
+    public var importID: String?
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
@@ -40,10 +44,13 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         processingStatus: ProcessingStatus = .pending, createdAt: Date, updatedAt: Date,
         needsReview: Bool = false, keepLocal: Bool = false, privacyLevel: PrivacyLevel? = nil,
         analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false,
-        correctedByOwner: Bool = false, analysisAttempts: Int = 0
+        correctedByOwner: Bool = false, analysisAttempts: Int = 0, privacyBasis: PrivacyBasis? = nil,
+        importID: String? = nil
     ) {
         self.correctedByOwner = correctedByOwner
         self.analysisAttempts = analysisAttempts
+        self.privacyBasis = privacyBasis
+        self.importID = importID
         self.needsReview = needsReview
         self.keepLocal = keepLocal
         self.privacyLevel = privacyLevel
@@ -88,6 +95,8 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case needsCloudRetry = "needs_cloud_retry"
         case correctedByOwner = "corrected_by_owner"
         case analysisAttempts = "analysis_attempts"
+        case privacyBasis = "privacy_basis"
+        case importID = "import_id"
     }
 }
 

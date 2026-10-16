@@ -54,12 +54,26 @@ public struct AnalysisRoute: Sendable, Hashable {
     public var reason: String
     /// Classée sur l'iPhone faute de service disponible : à reclasser plus tard si personne n'y touche.
     public var needsCloudRetry: Bool
+    /// F13 — sur quoi repose le niveau (nil : déduit de la raison, pour les routes écrites avant).
+    public var basis: PrivacyBasis?
 
-    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool) {
+    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool, basis: PrivacyBasis? = nil) {
         self.level = level
         self.provider = provider
         self.reason = reason
         self.needsCloudRetry = needsCloudRetry
+        self.basis = basis
+    }
+
+    /// La base effective : celle donnée, sinon celle que dit la raison enregistrée.
+    public var effectiveBasis: PrivacyBasis {
+        if let basis { return basis }
+        switch reason {
+        case RouteReasons.noCloudService: return .noCloudService
+        case RouteReasons.keepEverythingLocal: return .everythingLocal
+        case RouteReasons.ownerKeepLocal: return .ownerKeepLocal
+        default: return .judged
+        }
     }
 }
 

@@ -80,4 +80,6 @@ public enum ReminderPlanner {
 public enum RouteReasons {
     public static let keepEverythingLocal = "Réglage « Tout garder sur l'iPhone » activé."
     public static let noCloudService = "Aucun service en ligne configuré."
+    /// La raison écrite quand le propriétaire a choisi « Garder sur l'iPhone ».
+    public static let ownerKeepLocal = "Tu as choisi « Garder sur l'iPhone »."
 }

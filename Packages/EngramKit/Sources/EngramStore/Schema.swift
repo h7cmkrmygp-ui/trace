@@ -1,3 +1,5 @@
+import EngramCore
+import Foundation
 import GRDB
 
 /// Schéma de la base. Une migration publiée n'est JAMAIS modifiée : on en ajoute une nouvelle.
@@ -61,7 +63,54 @@ enum Schema {
         migrator.registerMigration("v18_tidy_history") { db in
             try db.execute(sql: v18TidyHistory)
         }
+        migrator.registerMigration("v19_privacy_basis_imports") { db in
+            try db.execute(sql: v19PrivacyAndImports)
+            try backfillListPrivacy(db)
+        }
         return migrator
+    }
+
+    /// v19 (F01, F13, F17, F19) : la base de la confidentialité de chaque source (inconnue = aucune sortie automatique),
+    /// l'identifiant d'import des partages, les destinations interdites de chaque liste (jamais abaissées), les décisions
+    /// ciblées du propriétaire pour une sortie, et les reçus d'envoi vers un service en ligne.
+    static let v19PrivacyAndImports = """
+        ALTER TABLE source ADD COLUMN privacy_basis TEXT
+          CHECK (privacy_basis IS NULL OR privacy_basis IN ('judged','owner_local','everything_local','no_cloud'));
+        UPDATE source SET privacy_basis = CASE
+          WHEN keep_local = 1 THEN 'owner_local'
+          WHEN privacy_level IS NULL THEN NULL
+          WHEN route_reason = 'Réglage « Tout garder sur l''iPhone » activé.' THEN 'everything_local'
+          WHEN route_reason = 'Aucun service en ligne configuré.' THEN 'no_cloud'
+          ELSE 'judged' END;
+        ALTER TABLE source ADD COLUMN import_id TEXT;
+        CREATE UNIQUE INDEX source_import_id ON source(import_id) WHERE import_id IS NOT NULL;
+        ALTER TABLE memory_list ADD COLUMN forbidden_mask INTEGER NOT NULL DEFAULT 0 CHECK (forbidden_mask >= 0);
+        CREATE TABLE output_consent (
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          destination TEXT NOT NULL,
+          granted_at DATETIME NOT NULL,
+          PRIMARY KEY (memory_id, destination)
+        );
+        CREATE TABLE transmission_receipt (
+          id BLOB PRIMARY KEY NOT NULL,
+          source_id BLOB REFERENCES source(id) ON DELETE SET NULL,
+          provider TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('sending','succeeded','failed')),
+          detail TEXT,
+          started_at DATETIME NOT NULL,
+          finished_at DATETIME
+        );
+        CREATE INDEX transmission_receipt_source ON transmission_receipt(source_id);
+        """
+
+    /// v19 : chaque liste existante reçoit les interdictions de toutes les dictées qui l'ont complétée.
+    static func backfillListPrivacy(_ db: Database) throws {
+        for row in try Row.fetchAll(db, sql: "SELECT normalized_name, memory_id FROM memory_list") {
+            let key: String = row["normalized_name"]
+            let memoryID: UUID = row["memory_id"]
+            let mask = try ListStore.contributionMask(db, key: key, memoryID: memoryID)
+            try db.execute(sql: "UPDATE memory_list SET forbidden_mask = ? WHERE normalized_name = ?", arguments: [mask, key])
+        }
     }
 
     /// v18 (P40) : l'historique du ménage des dossiers, avec de quoi annuler chaque changement.

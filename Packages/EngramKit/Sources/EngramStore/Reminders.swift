@@ -33,6 +33,15 @@ extension MemoryStore {
         }
     }
 
+    /// F13 — ce qu'une ligne dit de la confidentialité de sa source (`keep_local`, `privacy_level`, `privacy_basis`).
+    static func privacyFacts(_ row: Row) -> PrivacyFacts {
+        let level: String? = row["privacy_level"]
+        let basis: String? = row["privacy_basis"]
+        let keepLocal: Bool = row["keep_local"] ?? false
+        return PrivacyFacts(keepLocal: keepLocal, level: level.flatMap(PrivacyLevel.init(rawValue:)),
+                            basis: basis.flatMap(PrivacyBasis.init(rawValue:)))
+    }
+
     /// Lit `keep_local`, `privacy_level` et `route_reason` de la source (voir `reminderItems`). Aussi pour les rappels de lieu.
     static func isPrivate(_ row: Row) -> Bool {
         let reason: String? = row["route_reason"]

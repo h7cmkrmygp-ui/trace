@@ -163,3 +163,31 @@ extension ListStore {
         }
     }
 }
+
+extension ListStore {
+    /// F01 — les destinations interdites par toutes les dictées qui ont complété cette liste, sa première comprise.
+    static func contributionMask(_ db: Database, key: String, memoryID: UUID) throws -> Int {
+        var sourceIDs = Set<UUID>()
+        if let first = try UUID.fetchOne(db, sql: "SELECT source_id FROM memory WHERE id = ?", arguments: [memoryID]) {
+            sourceIDs.insert(first)
+        }
+        for row in try Row.fetchAll(db, sql: "SELECT source_id, normalized_name FROM memory_list_addition") {
+            let name: String = row["normalized_name"]
+            guard name.components(separatedBy: " | ")[0] == key else { continue }
+            let id: UUID = row["source_id"]
+            sourceIDs.insert(id)
+        }
+        var mask = 0
+        for id in sourceIDs { mask |= try forbiddenMask(db, sourceID: id) }
+        return mask
+    }
+
+    /// Les destinations interdites par une source (lue colonne par colonne : utilisable dans une migration).
+    static func forbiddenMask(_ db: Database, sourceID: UUID) throws -> Int {
+        guard let row = try Row.fetchOne(db, sql: "SELECT keep_local, privacy_level, privacy_basis FROM source WHERE id = ?",
+                                         arguments: [sourceID]) else {
+            return PrivacyPolicy.forbiddenMask(PrivacyFacts(keepLocal: false, level: nil, basis: nil))
+        }
+        return PrivacyPolicy.forbiddenMask(MemoryStore.privacyFacts(row))
+    }
+}
