@@ -36,6 +36,10 @@ public struct MemoryStore: Sendable {
         public let deletedSourceID: UUID?
         /// Fichier audio à effacer du disque (chemin relatif au dossier audio), le cas échéant.
         public let audioPathToRemove: String?
+        /// F09 — les autres dictées supprimées avec une liste (elles n'existaient plus que par leurs ajouts), et leurs
+        /// fichiers audio à effacer.
+        public var orphanedSources: [UUID] = []
+        public var orphanedAudioPaths: [String] = []
     }
 
     // MARK: - Sources
