@@ -74,8 +74,29 @@ enum Schema {
             try db.execute(sql: v21ListItems)
             try ListStore.backfillItems(db)
         }
+        migrator.registerMigration("v22_temporal_roles_supersession") { db in
+            try db.execute(sql: v22TemporalRolesSupersession)
+        }
         return migrator
     }
+
+    /// v22 (F16, F21) : chaque date dite d'une note avec son rôle (événement, échéance, rappel, début, fin, récurrence),
+    /// sa résolution et le fuseau de la capture ; le lien d'une note vers celle qui la remplace (correction). Reprise :
+    /// aucune ; les notes existantes gardent leur échéance, sans rôle connu (rien n'est inventé).
+    static let v22TemporalRolesSupersession = """
+        ALTER TABLE memory ADD COLUMN superseded_by BLOB REFERENCES memory(id) ON DELETE SET NULL;
+        CREATE TABLE memory_temporal (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('event','deadline','reminder','start','end','recurrence','other')),
+          phrase TEXT NOT NULL,
+          resolved_at DATETIME,
+          has_time INTEGER NOT NULL DEFAULT 0 CHECK (has_time IN (0,1)),
+          time_zone TEXT
+        );
+        CREATE INDEX memory_temporal_memory ON memory_temporal(memory_id);
+        """
 
     /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes
     /// nommées). Reprise : les cases existantes deviennent des choses ; une opération notée en v20 donne sa dictée, sinon

@@ -191,6 +191,8 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
     public var dueAt: Date?
     /// Vrai si une heure précise a été dite.
     public var dueHasTime: Bool
+    /// F21 — la note plus récente qui la remplace (rendez-vous déplacé, montant corrigé, décision révisée) ; nil : actuelle.
+    public var supersededBy: UUID?
 
     public init(id: UUID = UUID(), draft: MemoryDraft, capturedAt: Date, now: Date) {
         self.id = id
@@ -218,6 +220,7 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
         self.version = 1
         self.dueAt = draft.dueAt
         self.dueHasTime = draft.dueHasTime
+        self.supersededBy = nil
     }
 
     /// Ce qui est conservé dans l'historique des versions.
@@ -243,6 +246,7 @@ public struct Memory: Codable, Sendable, Hashable, Identifiable {
         case trashedAt = "trashed_at"
         case dueAt = "due_at"
         case dueHasTime = "due_has_time"
+        case supersededBy = "superseded_by"
     }
 }
 

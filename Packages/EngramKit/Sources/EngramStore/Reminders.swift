@@ -76,3 +76,8 @@ extension MemoryStore {
         }
     }
 }
+
+extension MemoryStore {
+    /// F16 — les dates dites d'une note, avec leur rôle, dans l'ordre de la dictée.
+    public func temporalMentions(of memoryID: UUID) throws -> [TemporalMention] { [] }
+}

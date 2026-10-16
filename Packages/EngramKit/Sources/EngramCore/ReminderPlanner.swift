@@ -20,9 +20,11 @@ public enum ReminderPlanner {
         public let dueHasTime: Bool
         /// Note gardée sur l'iPhone (secrète) : rien de son contenu sur l'écran verrouillé.
         public let isPrivate: Bool
+        /// F16 — les rappels demandés en plus de l'échéance (« rappelle-le-moi lundi à 18 h »), à leur moment exact.
+        public let reminders: [Date]
 
         public init(id: UUID, title: String, kind: MemoryKind?, status: MemoryStatus, dueAt: Date?, dueHasTime: Bool,
-                    isPrivate: Bool) {
+                    isPrivate: Bool, reminders: [Date] = []) {
             self.id = id
             self.title = title
             self.kind = kind
@@ -30,6 +32,7 @@ public enum ReminderPlanner {
             self.dueAt = dueAt
             self.dueHasTime = dueHasTime
             self.isPrivate = isPrivate
+            self.reminders = reminders
         }
     }
 
