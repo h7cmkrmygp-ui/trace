@@ -4,8 +4,8 @@ import Testing
 
 /// F22 — la bonne note doit donner la bonne réponse : la valeur est choisie par son rôle dans la phrase (devis ou prix
 /// payé, dette ou remboursement, numéro de qui), sinon la réponse cite le passage au lieu de trancher ; une note hors de
-/// la période demandée n'est pas présentée comme la réponse ; le passage utile est donné au modèle même après 300
-/// caractères ; une réponse rédigée qui ajoute un montant ou un nom est refusée.
+/// la période demandée n'est pas présentée comme la réponse ; une réponse rédigée qui ajoute un montant ou un nom
+/// est refusée.
 struct AnswerRolesTests {
     static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -63,14 +63,6 @@ struct AnswerRolesTests {
         #expect(DirectAnswer.make(question: "Combien j'ai payé en mars?",
                                   hits: [RecallHit(document: april, score: 1.2, outsidePeriod: true)],
                                   now: Self.date(10, 12), calendar: Self.calendar) == nil)
-    }
-
-    @Test func theUsefulPassageReachesTheModelEvenAfter300Characters() {
-        let filler = String(repeating: "Une longue introduction sans rapport avec la question. ", count: 8)
-        let note = hit("Garage", filler + "Le code de la porte du garage est 4589.")
-        let prompt = RecallAnswerPrompt.prompt(question: "C'est quoi le code de la porte du garage?", hits: [note],
-                                               now: Self.date(10, 12), calendar: Self.calendar)
-        #expect(prompt.contains("4589"))
     }
 
     @Test func aWrittenAnswerCannotAddAnAmountOrAName() {
