@@ -1155,6 +1155,7 @@ final class AppModel {
             case .nameConflict: return "Une catégorie porte déjà ce nom à cet endroit."
             case .invalidName: return "Ce nom n'est pas valide (vide ou trop long)."
             case .invalidOperation(let reason): return "Opération impossible : \(reason)."
+            case .staleRevision: return "La note a changé pendant son classement : elle va être relue."
             }
         }
         if let error = error as? TranscriptionError {
