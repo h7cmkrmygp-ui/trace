@@ -124,5 +124,17 @@ struct LinguisticGuardsTests {
         // Un titre entre guillemets n'est pas une citation ; « aime pas mal » n'est pas une négation de commande.
         #expect(LinguisticGuards.inspect("Ajoute « Dune » à ma liste de films").isPlainRequest)
         #expect(LinguisticGuards.inspect("Ajoute du lait à ma liste d'épicerie").isPlainRequest)
+        // Les formules courantes qui ne nient pas la demande.
+        #expect(LinguisticGuards.inspect("N'oublie pas d'acheter du lait").isPlainRequest)
+        #expect(LinguisticGuards.inspect("On n'a plus de lait").isPlainRequest)
+        #expect(LinguisticGuards.inspect("Peux-tu ajouter du lait à ma liste ?").isPlainRequest)
+        #expect(LinguisticGuards.inspect("Ajoute du lait à ma liste s'il te plaît").isPlainRequest)
+    }
+
+    /// F04 — ce qu'Engram dit au modèle avant l'analyse ne présente pas une commande niée comme un ajout.
+    @Test func aNegatedCommandIsNotAnnouncedAsAListAddition() {
+        #expect(NoteFacts.describe("N'ajoute pas du lait à ma liste d'épicerie").isEmpty)
+        #expect(NoteFacts.describe("Si je te dis ajoute du lait à ma liste d'épicerie").isEmpty)
+        #expect(NoteFacts.describe("Ajoute du lait à ma liste d'épicerie") == ["un ajout à la liste d'épicerie"])
     }
 }
