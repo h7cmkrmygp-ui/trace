@@ -24,12 +24,20 @@ extension MemoryStore {
             WHERE m.due_at IS NOT NULL AND m.status IN ('active', 'unsorted') AND m.kind IN ('task', 'appointment')
               AND s.needs_review = 0
             """)
-        return rows.map { row in
+        return try rows.map { row in
             let kind: String? = row["kind"]
             let status: String = row["status"]
-            return ReminderPlanner.Item(id: row["id"], title: row["title"], kind: kind.flatMap(MemoryKind.init(rawValue:)),
-                                        status: MemoryStatus(rawValue: status) ?? .active, dueAt: row["due_at"],
-                                        dueHasTime: row["due_has_time"] ?? false, isPrivate: isPrivate(row))
+            let id: UUID = row["id"]
+            let due: Date? = row["due_at"]
+            // F16 — les rappels demandés en plus de l'échéance, à leur moment exact (pas celui de l'échéance).
+            let reminders = try Date.fetchAll(db, sql: """
+                SELECT resolved_at FROM memory_temporal
+                WHERE memory_id = ? AND role = 'reminder' AND resolved_at IS NOT NULL ORDER BY position
+                """, arguments: [id]).filter { $0 != due }
+            return ReminderPlanner.Item(id: id, title: row["title"], kind: kind.flatMap(MemoryKind.init(rawValue:)),
+                                        status: MemoryStatus(rawValue: status) ?? .active, dueAt: due,
+                                        dueHasTime: row["due_has_time"] ?? false, isPrivate: isPrivate(row),
+                                        reminders: reminders)
         }
     }
 
@@ -79,5 +87,13 @@ extension MemoryStore {
 
 extension MemoryStore {
     /// F16 — les dates dites d'une note, avec leur rôle, dans l'ordre de la dictée.
-    public func temporalMentions(of memoryID: UUID) throws -> [TemporalMention] { [] }
+    public func temporalMentions(of memoryID: UUID) throws -> [TemporalMention] {
+        try database.writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT role, phrase FROM memory_temporal WHERE memory_id = ? ORDER BY position",
+                             arguments: [memoryID])
+                .compactMap { row in
+                    TemporalRole(rawValue: row["role"]).map { TemporalMention(role: $0, phrase: row["phrase"]) }
+                }
+        }
+    }
 }

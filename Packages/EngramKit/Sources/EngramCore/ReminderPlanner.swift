@@ -45,9 +45,9 @@ public enum ReminderPlanner {
     /// - Parameter snoozes: rappels reportés (« Dans 1 h », « Demain ») : le report remplace le moment prévu.
     public static func plan(_ items: [Item], snoozes: [UUID: Date], now: Date, calendar: Calendar,
                             limit: Int = 60) -> [PlannedReminder] {
-        let planned = items.compactMap { item -> PlannedReminder? in
+        let planned = items.flatMap { item -> [PlannedReminder] in
             guard item.status == .active || item.status == .unsorted, let due = item.dueAt,
-                  item.kind == .task || item.kind == .appointment else { return nil }
+                  item.kind == .task || item.kind == .appointment else { return [] }
             let isAppointment = item.kind == .appointment
             var date: Date
             let body: String
@@ -59,12 +59,32 @@ public enum ReminderPlanner {
                 body = isAppointment ? "Rendez-vous aujourd'hui" : "À faire aujourd'hui"
             }
             if let snoozed = snoozes[item.id], snoozed > now { date = snoozed }
-            guard date > now else { return nil }
-            return PlannedReminder(identifier: identifierPrefix + item.id.uuidString, memoryID: item.id, date: date,
-                                   title: item.isPrivate ? "Rappel Engram" : item.title,
-                                   body: item.isPrivate ? "Ouvre Engram pour le voir." : body)
+            var reminders: [PlannedReminder] = []
+            if date > now {
+                reminders.append(PlannedReminder(identifier: identifierPrefix + item.id.uuidString, memoryID: item.id,
+                                                 date: date, title: item.isPrivate ? "Rappel Engram" : item.title,
+                                                 body: item.isPrivate ? "Ouvre Engram pour le voir." : body))
+            }
+            // F16 — les rappels demandés à part (« rappelle-le-moi lundi à 18 h »), chacun à son moment.
+            for (index, extra) in item.reminders.enumerated() where extra > now {
+                let when = isAppointment ? "Rendez-vous \(day(due, calendar: calendar)) à \(clock(due, calendar: calendar))"
+                    : "Rappel demandé"
+                reminders.append(PlannedReminder(identifier: identifierPrefix + item.id.uuidString + ".rappel.\(index + 1)",
+                                                 memoryID: item.id, date: extra,
+                                                 title: item.isPrivate ? "Rappel Engram" : item.title,
+                                                 body: item.isPrivate ? "Ouvre Engram pour le voir." : when))
+            }
+            return reminders
         }
         return Array(planned.sorted { $0.date < $1.date }.prefix(limit))
+    }
+
+    /// « le 19 janvier ».
+    static func day(_ date: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.day, .month], from: date)
+        let number = parts.day ?? 1
+        let month = WeeklyReviewText.months[max(0, min(11, (parts.month ?? 1) - 1))]
+        return "le \(number == 1 ? "1er" : "\(number)") \(month)"
     }
 
     public static let identifierPrefix = "engram.reminder."

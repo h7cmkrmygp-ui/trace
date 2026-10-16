@@ -47,6 +47,10 @@ public enum HabitParser {
             guard let regex = try? NSRegularExpression(pattern: pattern),
                   let match = regex.firstMatch(in: folded, range: NSRange(folded.startIndex..., in: folded)),
                   let start = Range(match.range, in: folded)?.lowerBound else { continue }
+            // F15 — une habitude supposée, demandée ou rapportée n'est pas faite (« si j'ai médité… », « Paul dit que
+            // j'ai couru… ») ; les refus directs (« j'ai pas médité ») sont déjà exclus par les formes elles-mêmes.
+            let signals = LinguisticGuards.inspect(MeasurementParser.sentence(folded, around: match.range.location).text)
+            if signals.conditional || signals.question || signals.quoted { continue }
             // La quantité se cherche dans la même proposition (« j'ai médité et j'ai couru 5 km »).
             var clause = String(folded[start...])
             if let cut = clause.firstIndex(where: { ".;!?\n".contains($0) }) { clause = String(clause[..<cut]) }

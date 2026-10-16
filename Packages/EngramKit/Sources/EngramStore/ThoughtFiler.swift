@@ -62,6 +62,9 @@ public struct ThoughtFiler: Sendable {
                 guard current.revision == expected.revision, current.textHash == expected.textHash,
                       current.policyVersion == expected.policyVersion else { throw StoreError.staleRevision }
             }
+            // F16 — le calendrier de la capture (son fuseau), pour lire « demain à 9 h » comme le propriétaire l'a dit.
+            var captureCalendar = calendar
+            if let zone = source.capturedTimeZone.flatMap(TimeZone.init(identifier:)) { captureCalendar.timeZone = zone }
             // F13 — la décision de confidentialité d'abord, dans cette même transaction : aucun dérivé (note, liste,
             // rappel) n'est jamais visible sans elle.
             if let route {
@@ -229,15 +232,20 @@ public struct ThoughtFiler: Sendable {
                     }
                     // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33). F03 : une
                     // négation, une hypothèse, une question, une citation ou un récit ne donnent ni échéance ni rappel.
+                    // F16 — les dates se lisent dans le fuseau de la capture (« demain à 9 h » dit à Toronto reste 9 h à
+                    // Toronto) ; un rendez-vous prend la date de l'événement, jamais celle d'un rappel.
+                    let event = noteKind == .appointment
+                        ? thought.temporal.first { $0.role == .event || $0.role == .start }?.phrase : nil
                     let due = thought.birthdayOf != nil || !plan.schedules ? nil
-                        : DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
-                                                 relativeTo: source.capturedAt, calendar: calendar)
+                        : DateResolver.firstDate(in: event.map { [$0] + thought.mentionedDates } ?? thought.mentionedDates,
+                                                 excerpt: thought.excerpt, relativeTo: source.capturedAt,
+                                                 calendar: captureCalendar)
                     // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots
                     // exacts de la dictée (contenu, extrait) restent tels quels.
                     let title = TitleMaker.fallbackTitle(
-                        from: RelativeDateWording.anchored(thought.title, on: source.capturedAt, calendar: calendar))
+                        from: RelativeDateWording.anchored(thought.title, on: source.capturedAt, calendar: captureCalendar))
                     let summary = thought.summary.map {
-                        RelativeDateWording.anchored($0, on: source.capturedAt, calendar: calendar)
+                        RelativeDateWording.anchored($0, on: source.capturedAt, calendar: captureCalendar)
                     }
                     let draft = MemoryDraft(
                         sourceID: sourceID, excerpt: thought.excerpt, spanStart: thought.spanStart, spanEnd: thought.spanEnd,
@@ -246,6 +254,9 @@ public struct ThoughtFiler: Sendable {
                         status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion,
                         dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
+                    // F16 — chaque date dite garde son rôle (événement, échéance, rappel…) et sa résolution.
+                    try Self.recordTemporal(db, memoryID: memory.id, mentions: thought.temporal,
+                                            capturedAt: source.capturedAt, calendar: captureCalendar)
                     try classify(memory.id, with: thought)
                     // F03 — une phrase niée (« je ne pèse plus 180 livres ») n'enregistre ni mesure, ni habitude, ni
                     // objectif, ni fête ; une négation, une hypothèse, une question, une citation ou un récit ne posent ni
@@ -277,6 +288,9 @@ public struct ThoughtFiler: Sendable {
                         try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
                                                          capturedAt: source.capturedAt, now: now)
                     }
+                    // F21 — une correction remplace la note qu'elle corrige, si c'est la seule possible et qu'elle n'est
+                    // pas protégée ; sinon les deux restent et la correction est à classer (revue).
+                    if thought.intent == .correction { try Self.supersede(db, with: memory, now: now) }
                     filedIDs.append(memory.id)
                 }
             } else {
@@ -295,7 +309,7 @@ public struct ThoughtFiler: Sendable {
                         if memory.dueAt == nil, first.birthdayOf == nil, plan.schedules,
                            var current = try Memory.fetchOne(db, key: memory.id),
                            let due = DateResolver.firstDate(in: first.mentionedDates, excerpt: first.excerpt,
-                                                            relativeTo: source.capturedAt, calendar: calendar) {
+                                                            relativeTo: source.capturedAt, calendar: captureCalendar) {
                             current.dueAt = due.date
                             current.dueHasTime = due.hasTime
                             current.updatedAt = now

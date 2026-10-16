@@ -362,11 +362,12 @@ public enum ActionPlanner {
         case .obligation, .purchase: .task
         case .appointment: .appointment
         case .giftIdea, .idea, .hypothesis: .idea
-        case .fact, .narrative, .quote, .correction, .goal: .info
+        case .fact, .narrative, .quote, .goal: .info
         case .preference: .preference
         case .decision: .decision
         case .question: .other
-        case .wish, .listAdd, .listCheck, .listRemove: thought.kind
+        // Une correction garde le type de ce qu'elle corrige (un rendez-vous déplacé reste un rendez-vous).
+        case .wish, .listAdd, .listCheck, .listRemove, .correction: thought.kind
         }
         if thought.polarity == .negative, kind == .task || kind == .appointment { return .info }
         return kind
