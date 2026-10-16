@@ -67,8 +67,34 @@ enum Schema {
             try db.execute(sql: v19PrivacyAndImports)
             try backfillListPrivacy(db)
         }
+        migrator.registerMigration("v20_revisions_operations_jobs") { db in
+            try db.execute(sql: v20RevisionsOperationsJobs)
+        }
         return migrator
     }
+
+    /// v20 (F08, F10, F12, F14, F16) : la révision du texte et la version de la politique de chaque source (un résultat
+    /// d'analyse n'est écrit que sur la version analysée), le fuseau de la capture, le délai avant un nouvel essai, les
+    /// opérations de liste déjà appliquées (identité stable : un rejeu n'ajoute rien, deux ajouts distincts restent deux),
+    /// et le bail, la révision et le type d'erreur des travaux d'analyse.
+    static let v20RevisionsOperationsJobs = """
+        ALTER TABLE source ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1);
+        ALTER TABLE source ADD COLUMN policy_version INTEGER NOT NULL DEFAULT 1 CHECK (policy_version >= 1);
+        ALTER TABLE source ADD COLUMN captured_time_zone TEXT;
+        ALTER TABLE source ADD COLUMN retry_after DATETIME;
+        CREATE TABLE list_operation (
+          op_key TEXT PRIMARY KEY NOT NULL,
+          source_id BLOB NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+          list_key TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('add','check','remove')),
+          item TEXT NOT NULL,
+          applied_at DATETIME NOT NULL
+        );
+        CREATE INDEX list_operation_source ON list_operation(source_id);
+        ALTER TABLE processing_job ADD COLUMN revision INTEGER;
+        ALTER TABLE processing_job ADD COLUMN leased_until DATETIME;
+        ALTER TABLE processing_job ADD COLUMN error_kind TEXT;
+        """
 
     /// v19 (F01, F13, F17, F19) : la base de la confidentialité de chaque source (inconnue = aucune sortie automatique),
     /// l'identifiant d'import des partages, les destinations interdites de chaque liste (jamais abaissées), les décisions

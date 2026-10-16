@@ -36,6 +36,14 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     public var privacyBasis: PrivacyBasis?
     /// F19 — identifiant stable de l'import (partage) : un même élément n'est jamais enregistré deux fois.
     public var importID: String?
+    /// F10 — révision du texte de référence (chaque correction ou retranscription l'augmente).
+    public var revision: Int
+    /// F10 — version de la politique de la source (chaque changement de « Garder sur l'iPhone » l'augmente).
+    public var policyVersion: Int
+    /// F16 — fuseau horaire au moment de la capture (les dates dites se résolvent dans ce fuseau).
+    public var capturedTimeZone: String?
+    /// F12 — pas de nouvel essai avant ce moment (délai croissant après chaque reprise).
+    public var retryAfter: Date?
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
@@ -45,12 +53,17 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         needsReview: Bool = false, keepLocal: Bool = false, privacyLevel: PrivacyLevel? = nil,
         analysisProvider: String? = nil, routeReason: String? = nil, needsCloudRetry: Bool = false,
         correctedByOwner: Bool = false, analysisAttempts: Int = 0, privacyBasis: PrivacyBasis? = nil,
-        importID: String? = nil
+        importID: String? = nil, revision: Int = 1, policyVersion: Int = 1, capturedTimeZone: String? = nil,
+        retryAfter: Date? = nil
     ) {
         self.correctedByOwner = correctedByOwner
         self.analysisAttempts = analysisAttempts
         self.privacyBasis = privacyBasis
         self.importID = importID
+        self.revision = revision
+        self.policyVersion = policyVersion
+        self.capturedTimeZone = capturedTimeZone
+        self.retryAfter = retryAfter
         self.needsReview = needsReview
         self.keepLocal = keepLocal
         self.privacyLevel = privacyLevel
@@ -97,6 +110,10 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case analysisAttempts = "analysis_attempts"
         case privacyBasis = "privacy_basis"
         case importID = "import_id"
+        case revision
+        case policyVersion = "policy_version"
+        case capturedTimeZone = "captured_time_zone"
+        case retryAfter = "retry_after"
     }
 }
 

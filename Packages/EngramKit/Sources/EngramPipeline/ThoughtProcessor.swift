@@ -6,6 +6,8 @@ public enum ProcessingOutcome: Sendable, Equatable {
     case filed(FilingSummary)
     /// Le modèle ne peut pas répondre pour l'instant (raison lisible) : la note reste « À classer » et sera retraitée.
     case waiting(String)
+    /// F14 — cette note doit attendre (déjà prise ailleurs, ou changée pendant l'analyse) ; les suivantes continuent.
+    case deferred(String)
     /// L'analyse a échoué : la note reste « À classer » avec son texte brut.
     case fallback
 }

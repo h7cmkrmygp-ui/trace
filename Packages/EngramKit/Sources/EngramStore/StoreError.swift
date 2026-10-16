@@ -12,4 +12,6 @@ public enum StoreError: Error, Equatable, Sendable {
     case invalidName
     /// L'opération n'est pas permise dans l'état actuel.
     case invalidOperation(String)
+    /// F10 — la source a changé (texte ou confidentialité) depuis le début de l'analyse : son résultat est obsolète.
+    case staleRevision
 }

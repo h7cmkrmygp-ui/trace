@@ -38,7 +38,9 @@ public struct ThoughtFiler: Sendable {
     ///     couvrent moins de `minimumCoverage` du texte.
     ///   - forceKeepInterim: la garder quoi qu'il arrive (des pensées ont été rejetées par le validateur).
     /// - Parameter route: F13 — la décision de confidentialité, enregistrée dans la même transaction que le classement.
-    public func file(_ thoughts: [ValidThought], sourceID: UUID, route: AnalysisRoute? = nil, keepInterimIfUncovered: Bool = false,
+    ///   - expected: F10 — la version analysée de la source ; si elle a changé depuis, rien n'est écrit (`staleRevision`).
+    public func file(_ thoughts: [ValidThought], sourceID: UUID, route: AnalysisRoute? = nil, expected: SourceSnapshot? = nil,
+                     keepInterimIfUncovered: Bool = false,
                      forceKeepInterim: Bool = false) throws -> FilingSummary {
         let now = dates.now()
         let memoryStore = MemoryStore(database: database, dates: dates, calendar: calendar)
