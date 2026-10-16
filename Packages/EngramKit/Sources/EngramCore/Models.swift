@@ -44,6 +44,8 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
     public var capturedTimeZone: String?
     /// F12 — pas de nouvel essai avant ce moment (délai croissant après chaque reprise).
     public var retryAfter: Date?
+    /// F26 — la confiance de la transcription (moyenne des log-probabilités, plus haut = plus sûr) ; nil si inconnue.
+    public var transcriptConfidence: Double?
 
     public init(
         id: UUID = UUID(), kind: SourceKind, audioPath: String? = nil, audioDuration: Double? = nil,
@@ -64,6 +66,7 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         self.policyVersion = policyVersion
         self.capturedTimeZone = capturedTimeZone
         self.retryAfter = retryAfter
+        self.transcriptConfidence = nil
         self.needsReview = needsReview
         self.keepLocal = keepLocal
         self.privacyLevel = privacyLevel
@@ -114,6 +117,7 @@ public struct Source: Codable, Sendable, Hashable, Identifiable {
         case policyVersion = "policy_version"
         case capturedTimeZone = "captured_time_zone"
         case retryAfter = "retry_after"
+        case transcriptConfidence = "transcript_confidence"
     }
 }
 

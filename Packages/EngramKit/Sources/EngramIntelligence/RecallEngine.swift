@@ -45,6 +45,9 @@ public final class RecallEngine: @unchecked Sendable {
     private let lock = NSLock()
     /// Vecteurs de sens déjà calculés (recalculés si le texte de la note change).
     private var vectors: [UUID: (text: String, vector: [Double]?)] = [:]
+    /// F27 — vecteurs gardés au plus.
+    public static let maxCachedVectors = 2_000
+    var cachedVectorCount: Int { lock.withLock { vectors.count } }
 
     public init(embedder: any SentenceEmbedder, neighbors: (any WordNeighbors)?) {
         self.embedder = embedder

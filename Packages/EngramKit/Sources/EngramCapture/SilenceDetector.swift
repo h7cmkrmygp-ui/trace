@@ -19,6 +19,10 @@ public struct SilenceDetector: Sendable {
     /// Silence qui doit précéder un éclat pour qu'il soit isolé (la parole, elle, a des creux bien plus courts).
     public var burstIsolation: TimeInterval = 0.5
     static let floorWindow: TimeInterval = 10
+    /// F27 — mesures gardées au plus.
+    public static let retentionLimit = 400
+    /// F27 — combien de mesures sont gardées en mémoire.
+    var retainedSamples: Int { samples.count }
 
     private var samples: [(time: TimeInterval, level: Float)] = []
 

@@ -77,6 +77,9 @@ enum Schema {
         migrator.registerMigration("v22_temporal_roles_supersession") { db in
             try db.execute(sql: v22TemporalRolesSupersession)
         }
+        migrator.registerMigration("v23_transcript_confidence") { db in
+            try db.execute(sql: v23TranscriptConfidence)
+        }
         return migrator
     }
 
@@ -96,6 +99,11 @@ enum Schema {
           time_zone TEXT
         );
         CREATE INDEX memory_temporal_memory ON memory_temporal(memory_id);
+        """
+
+    /// v23 (F26) : la confiance de la transcription de chaque dictée. Reprise : aucune (inconnue pour les anciennes).
+    static let v23TranscriptConfidence = """
+        ALTER TABLE source ADD COLUMN transcript_confidence REAL;
         """
 
     /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes
