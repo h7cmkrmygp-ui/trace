@@ -425,3 +425,9 @@ extension AnalysisValidator {
         return end > start ? NSRange(location: start, length: end - start) : nil
     }
 }
+
+extension AnalysisValidator {
+    /// F07 — pourquoi chaque pensée d'une réponse est refusée (extrait introuvable…), en phrases à renvoyer au modèle pour
+    /// un seul nouvel essai.
+    public static func problems(in analysis: ThoughtAnalysis, against text: String) -> [String] { [] }
+}

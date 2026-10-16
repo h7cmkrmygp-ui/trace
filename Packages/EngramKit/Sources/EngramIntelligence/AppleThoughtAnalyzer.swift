@@ -115,7 +115,8 @@ enum AnalysisPrompt {
 
     static func prompt(text: String, categories: [String], likely: [String], today: String? = nil,
                        facts: [String] = [], descriptions: [String: String] = [:], evidence: [FolderEvidence] = [],
-                       counts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil) -> String {
+                       counts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil,
+                       repairNotes: [String] = []) -> String {
         // Une catégorie par ligne, avec son nombre de notes (P34) et ce qu'elle contient (P32) quand Engram le sait.
         let existing = categories.isEmpty ? "(none yet)"
             : categories.map { name in
