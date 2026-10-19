@@ -16,7 +16,7 @@ struct IntentPromptTests {
         #expect(system.contains("je dois acheter"))
         #expect(system.localizedCaseInsensitiveContains("gift idea"))
         #expect(system.localizedCaseInsensitiveContains("preference"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
     }
 
     @Test func theAIKnowsTheExistingLists() {
@@ -49,13 +49,14 @@ struct IntentPromptTests {
                                     neutral: CloudProvider(name: "gemini", analyzer: gemini), personal: nil,
                                     quota: CloudQuota(defaults: nil))
         _ = try await router.analyze(text: "Acheter du lait", existingCategories: [],
-                                     context: AnalysisContext(capturedAt: Date(), lists: ["épicerie", "cadeaux pour Julie"]))
+                                     context: AnalysisContext(capturedAt: Date(), lists: ["épicerie", "cadeaux pour Julie"],
+                                                              provenance: .trusted(lists: ["épicerie", "cadeaux pour Julie"])))
         #expect(gemini.receivedContexts.first?.lists == ["épicerie"])
     }
 
     #if canImport(FoundationModels)
     @Test func theAppleModelKnowsTheListsToo() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("listItems"))
         #expect(AnalysisPrompt.prompt(text: "x", categories: [], likely: [], lists: ["épicerie"]).contains("Existing lists: épicerie"))
     }

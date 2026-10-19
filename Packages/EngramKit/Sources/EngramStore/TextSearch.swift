@@ -116,6 +116,8 @@ extension MemoryStore {
         try database.writer.read { db in
             let memories = try Memory
                 .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                // F21, F22 — une note remplacée par une correction n'est plus une réponse (elle reste dans l'historique).
+                .filter(Column("superseded_by") == nil)
                 .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
                 .order(Column("captured_at").desc)
                 .limit(limit)
@@ -145,19 +147,44 @@ extension MemoryStore {
                 let memoryID: UUID = row["memory_id"]
                 tags[memoryID, default: []].append(row["name"])
             }
-            // Privées : « Garder sur l'iPhone », ou jugées secrètes (être classée sur l'iPhone faute de service ne compte pas).
-            let privateSources = Set(try UUID.fetchAll(db, sql: """
-                SELECT id FROM source
-                WHERE keep_local = 1
-                   OR (privacy_level = ? AND (route_reason IS NULL OR route_reason NOT IN (?, ?)))
-                """, arguments: [PrivacyLevel.secret.rawValue, RouteReasons.noCloudService, RouteReasons.keepEverythingLocal]))
-            return memories.map { memory in
-                RecallDocument(id: memory.id, title: memory.title,
-                               text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
-                               kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
-                               categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted(),
-                               isPrivate: privateSources.contains(memory.sourceID))
+            // La politique commune (F01, F13) : celle de la source (inconnue = privée) et, pour une liste, celle de toutes
+            // ses contributions.
+            var facts: [UUID: PrivacyFacts] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, keep_local, privacy_level, privacy_basis FROM source") {
+                let id: UUID = row["id"]
+                facts[id] = Self.privacyFacts(row)
             }
+            var listMasks: [UUID: Int] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT memory_id, forbidden_mask FROM memory_list") {
+                let id: UUID = row["memory_id"]
+                listMasks[id] = row["forbidden_mask"]
+            }
+            let unknown = PrivacyFacts(keepLocal: false, level: nil, basis: nil)
+            return memories.map { memory in
+                let source = facts[memory.sourceID] ?? unknown
+                let mask = listMasks[memory.id] ?? 0
+                return RecallDocument(
+                    id: memory.id, title: memory.title,
+                    text: [memory.content, memory.summary].compactMap { $0 }.joined(separator: " "),
+                    kind: memory.kind, status: memory.status, capturedAt: memory.capturedAt, dueAt: memory.dueAt,
+                    categories: (paths[memory.id] ?? []).sorted(), tags: (tags[memory.id] ?? []).sorted(),
+                    isPrivate: !PrivacyPolicy.allows(source, .lockScreen) || !PrivacyPolicy.allows(mask: mask, .lockScreen),
+                    isExportable: PrivacyPolicy.allows(source, .assistantExport)
+                        && PrivacyPolicy.allows(mask: mask, .assistantExport))
+            }
+        }
+    }
+}
+
+extension MemoryStore {
+    /// F27 — « Retrouver » ne lit que les `limit` notes les plus récentes : vrai s'il y en a davantage (à signaler).
+    public func recallIsLimited(limit: Int = 5_000) throws -> Bool {
+        try database.writer.read { db in
+            try Memory
+                .filter([MemoryStatus.active, MemoryStatus.unsorted, MemoryStatus.archived].contains(Column("status")))
+                .filter(Column("superseded_by") == nil)
+                .filter(sql: "source_id NOT IN (SELECT id FROM source WHERE needs_review = 1)")
+                .fetchCount(db) > limit
         }
     }
 }

@@ -171,7 +171,7 @@ final class RecordModel {
             for index in items.indices {
                 items[index].addedToCalendar = ((try? app.calendarLinks.link(for: items[index].id)) ?? nil) != nil
             }
-        case .waiting(let reason):
+        case .waiting(let reason), .deferred(let reason):
             phase = .message("Pensée gardée dans « À classer ». \(reason)")
         case .fallback:
             phase = .message("Pensée gardée dans « À classer » : l'IA n'a pas su la classer.")

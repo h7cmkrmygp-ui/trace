@@ -10,8 +10,12 @@ struct ListsWidgetStoreTests {
             throw StoreTestFailure.unexpectedDuplicate
         }
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: .task, tags: [],
-                                   categoryPath: ["Achats"], mentionedDates: [])
-        _ = try env.filer.file([thought], sourceID: interim.sourceID)
+                                   categoryPath: ["Achats"], mentionedDates: [], intent: .listAdd)
+        // La décision de confidentialité est enregistrée avec le classement, comme dans l'app (F13).
+        let route = keepLocal
+            ? AnalysisRoute(level: .secret, provider: "apple", reason: RouteReasons.ownerKeepLocal, needsCloudRetry: false)
+            : AnalysisRoute(level: .neutral, provider: "gemini", reason: "Aucune information personnelle.", needsCloudRetry: false)
+        _ = try env.filer.file([thought], sourceID: interim.sourceID, route: route)
     }
 
     @Test func widgetSourcesCarryTheTextAndThePrivacy() throws {

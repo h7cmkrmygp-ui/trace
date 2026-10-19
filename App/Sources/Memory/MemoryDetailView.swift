@@ -52,6 +52,8 @@ struct MemoryDetailView: View {
     @State private var isShowingInfo = false
     @State private var isConfirmingDeletion = false
     @State private var isRetranscribing = false
+    /// F17 : rendez-vous retenu hors du calendrier synchronisé par la confidentialité de sa note.
+    @State private var keptOutOfCalendar = false
 
     var body: some View {
         Group {
@@ -90,6 +92,7 @@ struct MemoryDetailView: View {
                     NoteBodyEditor(blocks: $blocks, focus: $focus, tint: tint, onToggle: save)
                 }
                 spokenWords(memory)
+                if keptOutOfCalendar { calendarDecision }
                 categoriesSection
                 entitiesSection
                 if !noteMeasurements.isEmpty { measurementsSection }
@@ -238,6 +241,28 @@ struct MemoryDetailView: View {
     }
 
     // MARK: - Catégories et notes liées
+
+    /// F17 — « Garder sur l'iPhone » vaut aussi pour le calendrier synchronisé : le propriétaire peut l'autoriser pour ce
+    /// seul rendez-vous.
+    private var calendarDecision: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Pas copié dans ton calendrier synchronisé", systemImage: "calendar.badge.exclamationmark")
+                .font(.subheadline.weight(.semibold))
+            Text("Cette note est gardée sur l'iPhone (ou sa confidentialité n'est pas encore connue) : Engram ne l'envoie pas dans un calendrier iCloud ou Google.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("L'ajouter quand même") {
+                Task {
+                    await model.addToCalendarAnyway(memoryID)
+                    keptOutOfCalendar = model.isKeptOutOfCalendar(memoryID)
+                }
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemBackground)))
+    }
 
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -430,6 +455,13 @@ struct MemoryDetailView: View {
                         }
                     }
                 }
+                // F29 — le parcours du classement de cette note (versions, modèle, refus, opérations), sans la note ni ses
+                // dossiers : à partager seulement si tu le choisis.
+                if let report = try? model.memories.diagnosticReport(sourceID: memory.sourceID), report.contains("Tentative") {
+                    ShareLink(item: report, subject: Text("Diagnostic Engram")) {
+                        Label("Partager le diagnostic (sans la note)", systemImage: "stethoscope")
+                    }
+                }
                 if let source, source.kind == .voice, source.audioPath != nil, !source.correctedByOwner {
                     Button("Retranscrire avec Whisper", systemImage: "waveform") {
                         isRetranscribing = true
@@ -533,6 +565,7 @@ struct MemoryDetailView: View {
             isPinned = try model.memories.isPinned(memoryID)
             placeTrigger = try model.entities.placeTrigger(for: memoryID)
             recurrence = try model.memories.recurrence(for: memoryID)
+            keptOutOfCalendar = memory.kind == .appointment && model.isKeptOutOfCalendar(memoryID)
             title = memory.title
             blocks = NoteBody.blocks(from: memory.summary ?? "")
             if blocks.isEmpty { blocks = [NoteBlock(kind: .text, text: "")] }

@@ -11,11 +11,12 @@ struct BirthdayFolderStoreTests {
     static let text = "Retiens l'anniversaire de Inès c'est le 13 octobre"
 
     func file(_ env: StoreTestEnvironment, _ text: String, kind: MemoryKind = .task, path: [String], dates: [String] = [],
-              birthdayOf: String? = nil) throws -> Memory {
+              birthdayOf: String? = nil, intent: IntentType? = nil) throws -> Memory {
         let interim = try env.saveNote(text)
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind, tags: [],
                                    categoryPath: path, mentionedDates: dates,
-                                   categoryReason: birthdayOf == nil ? nil : "Une fête à retenir.", birthdayOf: birthdayOf)
+                                   categoryReason: birthdayOf == nil ? nil : "Une fête à retenir.", birthdayOf: birthdayOf,
+                                   intent: intent)
         return try #require(try env.filer.file([thought], sourceID: interim.sourceID).memories.first)
     }
 
@@ -45,7 +46,8 @@ struct BirthdayFolderStoreTests {
         let chosen = try file(env, "La fête de Marc, c'est le 5 avril", path: ["Famille"])
         let familyID = try #require(try env.categories.categories(for: chosen.id).first?.id)
         try env.categories.confirm(memoryID: chosen.id, categoryID: familyID)
-        let gift = try file(env, "Acheter un cadeau pour la fête de Julie le 12 mars", path: ["Achats"], dates: ["12 mars"])
+        let gift = try file(env, "Acheter un cadeau pour la fête de Julie le 12 mars", path: ["Achats"], dates: ["12 mars"],
+                            intent: .purchase)
 
         #expect(try env.categories.refileBirthdayNotes() == 1)
         let refiled = try #require(try env.memories.memory(id: old.id))

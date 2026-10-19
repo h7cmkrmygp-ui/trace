@@ -9,6 +9,7 @@ extension MemoryStore {
         try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             source.privacyLevel = route.level
+            source.privacyBasis = source.keepLocal ? .ownerKeepLocal : route.effectiveBasis
             source.analysisProvider = route.provider
             source.routeReason = route.reason
             source.needsCloudRetry = route.needsCloudRetry
@@ -34,20 +35,30 @@ extension MemoryStore {
         }
     }
 
-    /// Notes classées sur l'iPhone parce que le service en ligne ne répondait pas (quota, réseau).
+    /// Notes classées sur l'iPhone parce que le service en ligne ne répondait pas (quota, réseau), dont le délai avant un
+    /// nouvel essai est passé (F12).
     public func sourcesNeedingCloudRetry(limit: Int = 20) throws -> [Source] {
-        try database.writer.read { db in
+        let now = dates.now()
+        return try database.writer.read { db in
             try Source.filter(Column("needs_cloud_retry") == true && Column("processing_status") == ProcessingStatus.done
                               && Column("analysis_attempts") < ThoughtFiler.maxAnalysisAttempts)
+                .filter(Column("retry_after") == nil || Column("retry_after") <= now)
                 .order(Column("captured_at"))
                 .limit(limit)
                 .fetchAll(db)
         }
     }
 
-    /// Remet la note en attente d'analyse pour le service en ligne : les notes que l'IA avait tirées sont remplacées
-    /// par une note provisoire. Si le propriétaire a touché l'une d'elles, rien n'est remplacé et la note n'est plus
-    /// reproposée. Renvoie `true` si la note a été rouverte.
+    /// F12 — délai avant l'essai suivant : de plus en plus long (15 min, 2 h, 12 h).
+    static func retryDelay(afterAttempt attempt: Int) -> TimeInterval {
+        let delays: [TimeInterval] = [15 * 60, 2 * 3600, 12 * 3600]
+        return delays[min(max(attempt, 1), delays.count) - 1]
+    }
+
+    /// Remet la note en attente d'analyse pour un nouvel essai. F12 : rien n'est supprimé maintenant — les notes déjà
+    /// tirées restent utilisables et ne seront remplacées, d'un coup, que par une nouvelle analyse réussie ; chaque essai
+    /// compte et repousse le suivant. Si le propriétaire a touché l'une d'elles, la note n'est plus reproposée.
+    /// Renvoie `true` si la note a été rouverte.
     @discardableResult
     public func reopenForCloudRetry(sourceID: UUID) throws -> Bool {
         let now = dates.now()
@@ -62,14 +73,10 @@ extension MemoryStore {
                 try source.update(db)
                 return false
             }
-            for memory in memories { _ = try memory.delete(db) }
+            source.analysisAttempts += 1
+            source.retryAfter = now.addingTimeInterval(Self.retryDelay(afterAttempt: source.analysisAttempts))
             source.processingStatus = .waiting
             try source.update(db)
-            let draft = MemoryDraft(sourceID: sourceID, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
-                                    spanTextVersion: source.correctedText == nil ? .original : .corrected,
-                                    title: TitleMaker.fallbackTitle(from: text), content: text,
-                                    status: .unsorted, analysisVersion: Self.interimAnalysisVersion)
-            _ = try createMemory(db, draft: draft, actor: .system, now: now)
             return true
         }
     }

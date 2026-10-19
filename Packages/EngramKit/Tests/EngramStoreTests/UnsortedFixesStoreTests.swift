@@ -39,6 +39,9 @@ struct UnsortedFixesStoreTests {
         let env = try StoreTestEnvironment()
         let interim = try env.saveNote("Une note que l'IA n'arrive pas à classer")
         try env.filer.markFallback(sourceID: interim.sourceID)
+        // F12 : pas de nouvel essai tout de suite (à chaque ouverture), mais après un délai.
+        #expect(try env.memories.sourcesNeedingCloudRetry().isEmpty)
+        env.dates.advance(by: 16 * 60)
         #expect(try env.memories.sourcesNeedingCloudRetry().map(\.id) == [interim.sourceID])
         #expect(try env.memories.unsortedReason(for: interim.id)?.contains("réessaiera") == true)
         for _ in 0..<2 {

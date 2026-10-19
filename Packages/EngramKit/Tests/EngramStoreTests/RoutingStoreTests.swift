@@ -33,7 +33,8 @@ struct RoutingStoreTests {
         #expect(try env.memories.sourcesNeedingCloudRetry().map(\.id) == [interim.sourceID])
 
         #expect(try env.memories.reopenForCloudRetry(sourceID: interim.sourceID))
-        #expect(try env.memories.memory(id: filed.memories[0].id) == nil)
+        // F12 : la note reste utilisable jusqu'à ce que le nouveau classement la remplace.
+        #expect(try env.memories.memory(id: filed.memories[0].id) != nil)
         #expect(try env.memories.sourcesAwaitingAnalysis() == [interim.sourceID])
         #expect(try env.memories.sourcesNeedingCloudRetry().isEmpty)
     }

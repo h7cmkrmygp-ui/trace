@@ -45,6 +45,11 @@ public final class RecallEngine: @unchecked Sendable {
     private let lock = NSLock()
     /// Vecteurs de sens déjà calculés (recalculés si le texte de la note change).
     private var vectors: [UUID: (text: String, vector: [Double]?)] = [:]
+    /// F27 — vecteurs gardés au plus.
+    public static let maxCachedVectors = 2_000
+    /// Ordre d'entrée des vecteurs, pour retirer les plus anciens.
+    private var order: [UUID] = []
+    var cachedVectorCount: Int { lock.withLock { vectors.count } }
 
     public init(embedder: any SentenceEmbedder, neighbors: (any WordNeighbors)?) {
         self.embedder = embedder
@@ -94,7 +99,16 @@ public final class RecallEngine: @unchecked Sendable {
         let text = document.meaningText
         if let cached = lock.withLock({ vectors[document.id] }), cached.text == text { return cached.vector }
         let vector = embedder.vector(for: text)
-        lock.withLock { vectors[document.id] = (text, vector) }
+        lock.withLock {
+            if vectors[document.id] == nil { order.append(document.id) }
+            vectors[document.id] = (text, vector)
+            // F27 — au-delà de la limite, les vecteurs les plus anciens partent (ils seront recalculés au besoin).
+            if order.count > Self.maxCachedVectors {
+                let excess = order.count - Self.maxCachedVectors
+                for id in order.prefix(excess) { vectors[id] = nil }
+                order.removeFirst(excess)
+            }
+        }
         return vector
     }
 }
@@ -122,8 +136,10 @@ public enum RecallAnswerPrompt {
             var line = "\(index + 1). [\(label(document.kind))] « \(document.title) » — notée le \(formatter.string(from: document.capturedAt))"
             if let due = document.dueAt { line += " ; échéance : \(formatter.string(from: due))" }
             if document.status == .archived { line += " ; marquée comme faite" }
+            if hit.outsidePeriod { line += " ; hors de la période demandée" }
             if let folder = document.categories.first { line += " ; dossier : \(folder)" }
-            let text = String(document.text.prefix(maxTextLength))
+            // F22 — le passage qui répond à la question, même après les 300 premiers caractères.
+            let text = relevantText(document.text, question: question)
             if text != document.title { line += "\n   Texte : \(text)" }
             return line
         }
@@ -133,6 +149,17 @@ public enum RecallAnswerPrompt {
             Notes trouvées :
             \(notes.joined(separator: "\n"))
             """
+    }
+
+
+    /// F22 — le texte d'une note pour le modèle : en entier s'il est court, sinon la phrase qui répond à la question
+    /// (et ce qui la suit), plutôt que le seul début.
+    static func relevantText(_ text: String, question: String) -> String {
+        guard text.count > maxTextLength else { return text }
+        guard let sentence = SearchSnippet.make(text, query: question), let range = text.range(of: sentence) else {
+            return String(text.prefix(maxTextLength))
+        }
+        return "… " + String(text[range.lowerBound...].prefix(maxTextLength))
     }
 
     static func label(_ kind: MemoryKind?) -> String {

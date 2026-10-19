@@ -6,11 +6,14 @@ public struct Transcript: Sendable, Equatable {
     public let text: String
     /// Langue détectée ou utilisée (« fr-CA », « fr », « en », « fr+en »…).
     public let localeIdentifier: String
+    /// F26 — la confiance du modèle (moyenne des log-probabilités du morceau le moins sûr) ; nil si le moteur ne la donne pas.
+    public let averageLogProbability: Double?
 
     /// Les hésitations (« euh », « hum ») sont retirées : la note garde l'essentiel (l'audio, lui, reste entier).
-    public init(text: String, localeIdentifier: String) {
+    public init(text: String, localeIdentifier: String, averageLogProbability: Double? = nil) {
         self.text = SpeechCleanup.removingHesitations(text)
         self.localeIdentifier = localeIdentifier
+        self.averageLogProbability = averageLogProbability
     }
 }
 

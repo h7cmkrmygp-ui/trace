@@ -84,6 +84,9 @@ struct SecuritySettingsSection: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            if let problem = model.restoreProblem {
+                Text(problem).font(.footnote).foregroundStyle(.red)
+            }
         } header: {
             Text("Sauvegarde chiffrée")
         } footer: {

@@ -24,14 +24,33 @@ public struct AnalyzedThought: Sendable, Hashable {
     public var listName: String?
     /// P41 — les choses à ajouter à cette liste, une par case.
     public var listItems: [String]
+    /// F03 — l'intention (nil : le modèle n'en a pas donné de reconnaissable ; aucune opération de liste).
+    public var intent: IntentType?
+    public var polarity: Polarity?
+    /// F03 — qui fait ou veut la chose (« moi », un prénom), l'action (« nettoyer »), son objet (« ma douche ») et pour qui.
+    public var subject: String?
+    public var action: String?
+    public var object: String?
+    public var beneficiary: String?
+    /// F16 — les dates dites, avec leur rôle.
+    public var temporal: [TemporalMention]
 
     public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
                 mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil,
                 people: [String] = [], places: [String] = [], categoryReason: String? = nil, listName: String? = nil,
-                listItems: [String] = []) {
+                listItems: [String] = [], intent: IntentType? = nil, polarity: Polarity? = nil, subject: String? = nil,
+                action: String? = nil, object: String? = nil, beneficiary: String? = nil,
+                temporal: [TemporalMention] = []) {
         self.categoryReason = categoryReason
         self.listName = listName
         self.listItems = listItems
+        self.intent = intent
+        self.polarity = polarity
+        self.subject = subject
+        self.action = action
+        self.object = object
+        self.beneficiary = beneficiary
+        self.temporal = temporal
         self.people = people
         self.places = places
         self.title = title
@@ -54,12 +73,32 @@ public struct AnalysisRoute: Sendable, Hashable {
     public var reason: String
     /// Classée sur l'iPhone faute de service disponible : à reclasser plus tard si personne n'y touche.
     public var needsCloudRetry: Bool
+    /// F13 — sur quoi repose le niveau (nil : déduit de la raison, pour les routes écrites avant).
+    public var basis: PrivacyBasis?
+    /// F29 — le modèle exact et la version des consignes de la tentative (nil : inconnus).
+    public var model: String?
+    public var promptVersion: String?
 
-    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool) {
+    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool, basis: PrivacyBasis? = nil,
+                model: String? = nil, promptVersion: String? = nil) {
         self.level = level
         self.provider = provider
         self.reason = reason
         self.needsCloudRetry = needsCloudRetry
+        self.basis = basis
+        self.model = model
+        self.promptVersion = promptVersion
+    }
+
+    /// La base effective : celle donnée, sinon celle que dit la raison enregistrée.
+    public var effectiveBasis: PrivacyBasis {
+        if let basis { return basis }
+        switch reason {
+        case RouteReasons.noCloudService: return .noCloudService
+        case RouteReasons.keepEverythingLocal: return .everythingLocal
+        case RouteReasons.ownerKeepLocal: return .ownerKeepLocal
+        default: return .judged
+        }
     }
 }
 
@@ -68,10 +107,15 @@ public struct ThoughtAnalysis: Sendable, Hashable {
     public var thoughts: [AnalyzedThought]
     /// Renseigné par le routage (nil pour un analyseur seul).
     public var route: AnalysisRoute?
+    /// F29 — le modèle exact et la version des consignes, donnés par l'analyseur qui a répondu.
+    public var model: String?
+    public var promptVersion: String?
 
-    public init(thoughts: [AnalyzedThought], route: AnalysisRoute? = nil) {
+    public init(thoughts: [AnalyzedThought], route: AnalysisRoute? = nil, model: String? = nil, promptVersion: String? = nil) {
         self.thoughts = thoughts
         self.route = route
+        self.model = model
+        self.promptVersion = promptVersion
     }
 }
 
@@ -92,10 +136,17 @@ public struct AnalysisContext: Sendable, Equatable {
     public var lists: [String]
     /// P42 — ce qui vient d'être dit (la dictée précédente), pour comprendre « elle », « cette liste », « ce projet ».
     public var recent: RecentContext?
+    /// F02, F10 — la source analysée (pour revérifier sa politique juste avant chaque envoi).
+    public var sourceID: UUID?
+    /// F02 — la provenance des métadonnées ; nil : aucune métadonnée dérivée ne sort de l'iPhone.
+    public var provenance: ContextProvenance?
+    /// F07 — les erreurs précises d'une réponse refusée, à corriger au nouvel essai (un seul, borné).
+    public var repairNotes: [String]
 
     public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
                 categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
-                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil) {
+                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil,
+                sourceID: UUID? = nil, provenance: ContextProvenance? = nil, repairNotes: [String] = []) {
         self.keepLocal = keepLocal
         self.capturedAt = capturedAt
         self.facts = facts
@@ -104,6 +155,9 @@ public struct AnalysisContext: Sendable, Equatable {
         self.categoryCounts = categoryCounts
         self.lists = lists
         self.recent = recent
+        self.sourceID = sourceID
+        self.provenance = provenance
+        self.repairNotes = repairNotes
     }
 }
 
@@ -156,15 +210,33 @@ public struct ValidThought: Sendable, Hashable {
     /// P41 — la liste où vont les choses dites (nom sans « Liste de »), et ces choses ; nil pour une note.
     public var listName: String?
     public var listItems: [String]
+    /// F03 — l'intention vérifiée (nil : inconnue, aucune opération de liste), sa polarité et ses arguments.
+    public var intent: IntentType?
+    public var polarity: Polarity?
+    public var subject: String?
+    public var action: String?
+    public var object: String?
+    public var beneficiary: String?
+    /// F16 — les dates dites, avec leur rôle (seulement celles qui figurent dans l'extrait).
+    public var temporal: [TemporalMention]
 
     public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
                 tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
                 people: [String] = [], places: [String] = [], categoryReason: String? = nil, birthdayOf: String? = nil,
-                listName: String? = nil, listItems: [String] = []) {
+                listName: String? = nil, listItems: [String] = [], intent: IntentType? = nil, polarity: Polarity? = nil,
+                subject: String? = nil, action: String? = nil, object: String? = nil, beneficiary: String? = nil,
+                temporal: [TemporalMention] = []) {
         self.categoryReason = categoryReason
         self.birthdayOf = birthdayOf
         self.listName = listName
         self.listItems = listItems
+        self.intent = intent
+        self.polarity = polarity
+        self.subject = subject
+        self.action = action
+        self.object = object
+        self.beneficiary = beneficiary
+        self.temporal = temporal
         self.people = people
         self.places = places
         self.title = title

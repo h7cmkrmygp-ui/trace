@@ -3,7 +3,7 @@ import Testing
 @testable import EngramCore
 
 /// P35 — moins de « À classer » : seule la partie oubliée par l'IA devient une note (pas toute la dictée, et pas pour des
-/// « euh ») ; si l'IA reformule au lieu de recopier, la dictée entière est classée comme une seule note.
+/// « euh ») ; F07 : si l'IA reformule au lieu de recopier, sa réponse est refusée avec une raison précise.
 struct UnsortedFixesTests {
     @Test func onlyTheForgottenPartRemains() {
         let text = "Acheter des wipers pour la Corolla. Penser à rappeler le notaire au sujet de la maison."
@@ -20,7 +20,9 @@ struct UnsortedFixesTests {
                                            excerpts: ["Appeler le garage pour les pneus"]) == nil)
     }
 
-    @Test func aRephrasedAnswerStillFilesTheWholeNote() throws {
+    /// F07 (remplace le sauvetage de P35) : une réponse reformulée est refusée, et la raison précise est écrite pour le
+    /// nouvel essai (l'extrait fautif cité, la consigne de recopier les mots exacts) ; aucune note n'est déduite d'elle.
+    @Test func aRephrasedAnswerIsRefusedWithItsPreciseError() throws {
         let text = "Faut que j'appelle le garage pour les pneus d'hiver"
         // L'IA a traduit au lieu de recopier : aucun extrait ne se retrouve dans la note.
         let analysis = ThoughtAnalysis(thoughts: [
@@ -29,12 +31,10 @@ struct UnsortedFixesTests {
                             categoryReason: "Un entretien de l'auto."),
         ])
         #expect(throws: AnalyzerError.invalidOutput) { try AnalysisValidator.validate(analysis, against: text) }
-        let whole = try #require(AnalysisValidator.salvage(analysis, against: text))
-        #expect(whole.excerpt == text)
-        #expect(whole.title == "Appeler le garage")
-        #expect(whole.categoryPath == ["Automobile"])
-        #expect(whole.kind == .task)
-        #expect(whole.categoryReason == "Un entretien de l'auto.")
-        #expect(AnalysisValidator.salvage(ThoughtAnalysis(thoughts: []), against: text) == nil)
+        let problems = AnalysisValidator.problems(in: analysis, against: text)
+        #expect(problems.count == 1)
+        #expect(problems.first?.contains("Call the garage about winter tires") == true)
+        // Une réponse vide est aussi expliquée.
+        #expect(!AnalysisValidator.problems(in: ThoughtAnalysis(thoughts: []), against: text).isEmpty)
     }
 }

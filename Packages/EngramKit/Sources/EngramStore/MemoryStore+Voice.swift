@@ -20,7 +20,8 @@ extension MemoryStore {
     func saveVoiceRecording(_ db: Database, audioPath: String, duration: Double?, now: Date) throws -> Memory {
         let source = Source(kind: .voice, audioPath: audioPath, audioDuration: duration,
                             contentHash: ContentHasher.textHash("audio:" + audioPath),
-                            capturedAt: now, processingStatus: .pending, createdAt: now, updatedAt: now)
+                            capturedAt: now, processingStatus: .pending, createdAt: now, updatedAt: now,
+                            capturedTimeZone: calendar.timeZone.identifier)
         try source.insert(db)
         let draft = MemoryDraft(sourceID: source.id, excerpt: Self.pendingTranscriptContent,
                                 title: Self.pendingTranscriptTitle, content: Self.pendingTranscriptContent,
@@ -33,16 +34,16 @@ extension MemoryStore {
     /// - Parameter needsReview: la note attend « Vérifie ta note » : aucune analyse avant `confirmReview`.
     @discardableResult
     public func attachTranscript(sourceID: UUID, transcript: String, languages: [String], engine: String?,
-                                 needsReview: Bool = false) throws -> Memory? {
+                                 needsReview: Bool = false, confidence: Double? = nil) throws -> Memory? {
         let now = dates.now()
         return try database.writer.write { db in
             try attachTranscript(db, sourceID: sourceID, transcript: transcript, languages: languages, engine: engine,
-                                 needsReview: needsReview, now: now)
+                                 needsReview: needsReview, confidence: confidence, now: now)
         }
     }
 
     func attachTranscript(_ db: Database, sourceID: UUID, transcript: String, languages: [String],
-                          engine: String?, needsReview: Bool = false, now: Date) throws -> Memory? {
+                          engine: String?, needsReview: Bool = false, confidence: Double? = nil, now: Date) throws -> Memory? {
         guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
         // Une transcription tardive (traitement en double) ne rouvre jamais une source déjà transcrite ou classée.
         guard source.processingStatus == .pending else {
@@ -54,6 +55,8 @@ extension MemoryStore {
         source.originalText = text.isEmpty ? nil : text
         source.languages = languages
         source.transcriptionEngine = engine
+        // F26 — la confiance du modèle reste avec la dictée.
+        source.transcriptConfidence = confidence
         source.processingStatus = .waiting
         // Rien à vérifier quand aucune parole n'a été reconnue.
         source.needsReview = needsReview && !text.isEmpty
@@ -118,7 +121,11 @@ extension MemoryStore {
             let confirmed = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
             guard !confirmed.isEmpty else { throw StoreError.emptyContent }
             let original = (source.originalText ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
-            source.correctedText = confirmed == original ? nil : confirmed
+            let corrected = confirmed == original ? nil : confirmed
+            // F10 : un autre texte, une autre révision ; un autre choix de confidentialité, une autre version de politique.
+            if corrected != source.correctedText { source.revision += 1 }
+            if keepLocal != source.keepLocal { source.policyVersion += 1 }
+            source.correctedText = corrected
             source.correctedByOwner = source.correctedText != nil
             source.keepLocal = keepLocal
             source.needsReview = false
@@ -171,12 +178,13 @@ extension MemoryStore {
     }
 
     /// Nouvelle transcription d'une note vocale par un meilleur moteur. La transcription d'origine est gardée,
-    /// la nouvelle devient le texte de référence ; les souvenirs que l'IA avait tirés de l'ancienne et que le
-    /// propriétaire n'a pas touchés sont remplacés par une note provisoire, qui sera ré-analysée.
-    @discardableResult
-    public func retranscribe(sourceID: UUID, transcript: String, languages: [String], engine: String?) throws -> Memory? {
+    /// la nouvelle devient le texte de référence (révision suivante, F10) ; la source attend sa nouvelle analyse.
+    /// F12 : les notes tirées de l'ancienne transcription restent en place jusqu'à ce que la nouvelle analyse les
+    /// remplace d'un coup (elle réconcilie aussi les notes modifiées par le propriétaire, F11) ; si elle échoue, rien
+    /// n'est perdu.
+    public func retranscribe(sourceID: UUID, transcript: String, languages: [String], engine: String?) throws {
         let now = dates.now()
-        return try database.writer.write { db in
+        try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             guard source.kind == .voice else { throw StoreError.invalidOperation("seule une note vocale peut être retranscrite") }
             // La transcription corrigée à la main est la vérité : elle n'est jamais remplacée.
@@ -188,18 +196,9 @@ extension MemoryStore {
             source.languages = languages
             source.transcriptionEngine = engine
             source.processingStatus = .waiting
+            source.revision += 1
             source.updatedAt = now
             try source.update(db)
-
-            var keptAny = false
-            for memory in try Memory.filter(Column("source_id") == sourceID).fetchAll(db) {
-                if try ThoughtFiler.isTouchedByOwner(db, memory) { keptAny = true } else { _ = try memory.delete(db) }
-            }
-            guard !keptAny else { return nil }
-            let draft = MemoryDraft(sourceID: sourceID, excerpt: text, spanStart: 0, spanEnd: text.utf16.count,
-                                    spanTextVersion: .corrected, title: TitleMaker.fallbackTitle(from: text), content: text,
-                                    status: .unsorted, analysisVersion: Self.interimAnalysisVersion)
-            return try createMemory(db, draft: draft, actor: .system, now: now)
         }
     }
 

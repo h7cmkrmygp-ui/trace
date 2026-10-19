@@ -122,11 +122,15 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
     /// Dossiers (chemins complets, du plus large au plus précis).
     public let categories: [String]
     public let tags: [String]
-    /// Gardée sur l'iPhone ou jugée secrète : jamais donnée à un assistant extérieur.
+    /// Rien sur l'écran verrouillé (notifications « Te souviens-tu ? », « Ce jour-là ») : gardée sur l'iPhone, jugée
+    /// secrète, ou de confidentialité inconnue.
     public let isPrivate: Bool
+    /// F01/F17 — peut être donnée à un assistant extérieur (raccourci d'export) : jamais une note privée, ni une note du
+    /// réglage « Tout garder sur l'iPhone », ni une liste qu'un ajout protégé a complétée.
+    public let isExportable: Bool
 
     public init(id: UUID, title: String, text: String, kind: MemoryKind?, status: MemoryStatus, capturedAt: Date,
-                dueAt: Date?, categories: [String], tags: [String], isPrivate: Bool = false) {
+                dueAt: Date?, categories: [String], tags: [String], isPrivate: Bool = false, isExportable: Bool? = nil) {
         self.id = id
         self.title = title
         self.text = text
@@ -137,6 +141,7 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
         self.categories = categories
         self.tags = tags
         self.isPrivate = isPrivate
+        self.isExportable = isExportable ?? !isPrivate
     }
 
     /// Ce que le sens compare à la question.
@@ -146,10 +151,13 @@ public struct RecallDocument: Sendable, Hashable, Identifiable {
 public struct RecallHit: Sendable, Equatable {
     public let document: RecallDocument
     public let score: Double
+    /// F22 — la note répond aux mots, mais pas à la période demandée : apparentée, jamais présentée comme la réponse.
+    public let outsidePeriod: Bool
 
-    public init(document: RecallDocument, score: Double) {
+    public init(document: RecallDocument, score: Double, outsidePeriod: Bool = false) {
         self.document = document
         self.score = score
+        self.outsidePeriod = outsidePeriod
     }
 }
 
@@ -254,12 +262,15 @@ public enum RecallRanker {
             guard lexical > 0 || similarity >= 0.7 else { continue }
             var score = lexical + meaning
             if !query.kinds.isEmpty { score += query.kinds.contains(document.kind ?? .other) ? 0.25 : -0.35 }
-            if let period = query.period { score += matches(document, period: period, due: query.periodMeansDue) ? 0.3 : -0.4 }
+            // F22 — hors de la période demandée, une note reste visible (apparentée), jamais comme la réponse.
+            let inPeriod = query.period.map { matches(document, period: $0, due: query.periodMeansDue) } ?? true
+            if query.period != nil { score += inPeriod ? 0.3 : -0.4 }
             if document.status == .archived { score -= 0.2 }
             score += 0.1 * exp(-max(0, now.timeIntervalSince(document.capturedAt)) / (30 * 86_400))
-            if score >= minimum { hits.append(RecallHit(document: document, score: score)) }
+            if score >= minimum { hits.append(RecallHit(document: document, score: score, outsidePeriod: !inPeriod)) }
         }
-        return Array(hits.sorted { $0.score > $1.score }.prefix(limit))
+        return Array(hits.sorted { ($0.outsidePeriod ? 1 : 0, -$0.score) < ($1.outsidePeriod ? 1 : 0, -$1.score) }
+            .prefix(limit))
     }
 
     /// Mots d'une note, prêts à comparer.
@@ -485,6 +496,9 @@ enum RecallPeriods {
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     ]
 
+    static let monthNames = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre",
+                             "octobre", "novembre", "decembre"]
+
     static func find(in text: String, now: Date, calendar: Calendar) -> Found? {
         let day = 86_400.0
         func interval(of component: Calendar.Component, shiftedBy days: Int) -> DateInterval? {
@@ -528,6 +542,17 @@ enum RecallPeriods {
             (#"\b((le )?mois (passe|dernier)|last month)\b"#, { _ in monthInterval(shiftedBy: -1) }),
             (#"\b((le )?mois prochain|next month)\b"#, { _ in monthInterval(shiftedBy: 1) }),
             (#"\b(ce mois ci|ce mois|this month)\b"#, { _ in monthInterval(shiftedBy: 0) }),
+            // F22 — « en mars », « au mois d'août » : le dernier mois de ce nom qui n'est pas dans le futur.
+            (#"\b(?:en|au mois de|au mois d|du mois de|du mois d|in) (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\b"#,
+             { match in
+                guard let name = match.output[1].substring.map(String.init),
+                      let month = monthNames.firstIndex(of: name).map({ $0 + 1 }) else { return nil }
+                let current = calendar.dateComponents([.year, .month], from: now)
+                guard let year = current.year, let thisMonth = current.month else { return nil }
+                let start = calendar.date(from: DateComponents(year: month > thisMonth ? year - 1 : year, month: month,
+                                                               day: 1))
+                return start.flatMap { calendar.dateInterval(of: .month, for: $0) }
+            }),
             (#"\b(recemment|dernierement|recents?|recentes?|derniers|dernieres|recently|lately|latest|recent)\b"#,
              { _ in last(14) }),
         ]

@@ -54,7 +54,8 @@ struct RoutedAnalyzerTests {
 
         func route(_ text: String, categories: [String] = [], keepLocal: Bool = false) async throws -> AnalysisRoute? {
             try await router.analyze(text: text, existingCategories: categories,
-                                     context: AnalysisContext(keepLocal: keepLocal, capturedAt: Date())).route
+                                     context: AnalysisContext(keepLocal: keepLocal, capturedAt: Date(),
+                                                              provenance: .trusted(categories: categories))).route
         }
     }
 

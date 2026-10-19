@@ -49,6 +49,8 @@ final class AppModel {
     let lock: AppLock
     /// Ce que la dernière restauration a mis de côté (affiché une fois dans les Réglages).
     var restoredAside: URL?
+    /// F28 — une restauration interrompue ou refusée au lancement (elle sera reprise au prochain lancement).
+    var restoreProblem: String?
     let database: AppDatabase
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
@@ -106,12 +108,20 @@ final class AppModel {
         self.quota = quota
         lock = AppLock(settings: settings)
         let settings = self.settings
+        let memoryStore = memories
         // Neutre → Gemini, personnel → Groq, secret → l'iPhone ; le contrôleur de confidentialité décide sur l'iPhone.
+        // F10 : juste avant chaque envoi, la note est relue (gardée sur l'iPhone, en attente de vérification) ; F13 : un reçu
+        // est écrit avant l'envoi (sans reçu, rien ne part).
         let router = RoutedAnalyzer(local: AppleThoughtAnalyzer(), judge: ApplePrivacyJudge(),
                                     providers: { AppModel.cloudProviders(settings: settings) },
                                     healthStaysLocal: { (try? settings.bool(.healthStaysLocal, default: false)) ?? false },
-                                    keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? false },
-                                    quota: quota)
+                                    keepEverythingLocal: { (try? settings.bool(.keepEverythingLocal, default: false)) ?? true },
+                                    quota: quota,
+                                    sourceAllowsCloud: { id in
+                                        guard let source = (try? memoryStore.source(id: id)) ?? nil else { return false }
+                                        return !source.keepLocal && !source.needsReview
+                                    },
+                                    onTransmission: { event in try memoryStore.recordTransmission(event) })
         // P34 : avant chaque classement, l'iPhone regarde où sont rangées les notes les plus semblables (rien ne sort
         // de l'iPhone, sauf les noms de ces dossiers).
         let categoryStore = categories
@@ -408,11 +418,17 @@ final class AppModel {
         }
     }
 
-    /// Éléments partagés vers Engram depuis d'autres apps : enregistrés puis classés comme une note écrite.
+    /// Éléments partagés vers Engram depuis d'autres apps (F19) : chacun est d'abord enregistré (identifiant d'import
+    /// stable), puis retiré de la boîte. L'analyse suit, indépendamment, avec les autres notes en attente
+    /// (`resumePendingWork`). Un arrêt de l'app ne perd rien et ne double rien.
     func importSharedItems() async {
         guard let inbox = SharedContainer.inbox else { return }
-        for item in inbox.drain() where !item.noteText.isEmpty {
-            await captureText(item.noteText, keepLocal: false)
+        let report = memories.importShares(from: inbox)
+        if !report.failed.isEmpty {
+            errorMessage = report.failed.count == 1 ? "Un partage n'a pas pu être enregistré : Engram réessaiera."
+                : "\(report.failed.count) partages n'ont pas pu être enregistrés : Engram réessaiera."
+        } else if !report.quarantined.isEmpty {
+            errorMessage = "Un partage illisible a été mis de côté (rien n'a été effacé)."
         }
     }
 
@@ -586,14 +602,17 @@ final class AppModel {
         }
     }
 
-    /// Notes classées sur l'iPhone faute de service : reclassées par le bon service dès qu'il répond,
-    /// seulement si le propriétaire n'y a pas touché (10 au plus à chaque retour dans l'app).
+    /// F12 — nouveaux essais, espacés et bornés (10 au plus à chaque retour dans l'app) : les analyses ratées, même sans
+    /// service en ligne (le modèle de l'iPhone réessaie), et les notes classées sur l'iPhone faute de service, par le bon
+    /// service dès qu'il répond. Les bons résultats restent en place jusqu'à ce qu'un nouveau classement les remplace.
     func retryCloudClassifications() async {
         let (neutral, personal) = Self.cloudProviders(settings: settings)
-        guard neutral != nil || personal != nil else { return }
-        for source in (try? memories.sourcesNeedingCloudRetry(limit: 10)) ?? [] {
-            let provider = source.privacyLevel == .neutral ? (neutral ?? personal) : personal
-            guard let provider, !quota.isPaused(provider.name) else { continue }
+        let cloudAvailable = neutral != nil || personal != nil
+        for source in (try? memories.sourcesToRetry(cloudAvailable: cloudAvailable, limit: 10)) ?? [] {
+            if source.needsCloudRetry && cloudAvailable {
+                let provider = source.privacyLevel == .neutral ? (neutral ?? personal) : personal
+                guard let provider, !quota.isPaused(provider.name) else { continue }
+            }
             guard (try? memories.reopenForCloudRetry(sourceID: source.id)) == true else { continue }
             _ = await processor.process(sourceID: source.id)
         }
@@ -678,9 +697,17 @@ final class AppModel {
         return Result {
             // Une restauration préparée s'applique avant d'ouvrir la base (les données actuelles sont mises de côté).
             let storage = try DatabaseRecovery.storageDirectory()
-            let aside = try? BackupRestore.applyPending(in: storage, at: Date())
+            // F28 : une erreur n'est jamais ignorée ; le journal de reprise reste, et la restauration reprendra.
+            var aside: URL?
+            var problem: String?
+            do {
+                aside = try BackupRestore.applyPending(in: storage, at: Date())
+            } catch {
+                problem = "La restauration n'a pas pu se terminer ; elle reprendra au prochain lancement (\(error))."
+            }
             let model = AppModel(database: try AppDatabase.openOnDisk(), storageDirectory: storage)
-            model.restoredAside = aside ?? nil
+            model.restoredAside = aside
+            model.restoreProblem = problem
             // Un échec du nettoyage ne doit pas empêcher l'app de s'ouvrir.
             _ = try? model.categories.archiveUnusedSeeds()
             return model
@@ -702,9 +729,14 @@ final class AppModel {
         }
         do {
             let (transcript, engine) = try await runTranscription(url: url)
+            // F26 — une transcription incertaine dont le sens dépend d'un mot fragile (négation, nombre, date, nom) passe
+            // par « Vérifie ta note », même si la revue n'est pas activée ; sa confiance est gardée avec la dictée.
+            let needsReview = TranscriptReview.needsReview(text: transcript.text,
+                                                           averageLogProbability: transcript.averageLogProbability,
+                                                           ownerWantsReview: reviewsBeforeFiling)
             try memories.attachTranscript(sourceID: sourceID, transcript: transcript.text,
                                           languages: Self.languages(of: transcript), engine: engine,
-                                          needsReview: reviewsBeforeFiling)
+                                          needsReview: needsReview, confidence: transcript.averageLogProbability)
             return true
         } catch {
             return false
@@ -744,9 +776,14 @@ final class AppModel {
         return calendar
     }
 
+    /// F27 — vrai si la dernière recherche n'a pas pu lire toutes les notes (seulement les plus récentes).
+    private(set) var recallLimited = false
+
     /// Les notes qui répondent à une question. Rien ne quitte l'iPhone : ni la question ni les notes.
     /// - Parameter previous: la question d'avant, pour affiner (« Et la semaine passée ? »).
     func recallSearch(_ question: String, after previous: RecallQuery? = nil) async -> RecallResult {
+        // F27 — la recherche ne lit que les notes les plus récentes : l'interface le dit quand il y en a davantage.
+        recallLimited = (try? memories.recallIsLimited()) ?? false
         guard let documents = try? memories.recallDocuments() else { return RecallResult(query: RecallQuery(), hits: []) }
         let engine = recall
         let now = Date()
@@ -918,7 +955,13 @@ final class AppModel {
     }
 
     func process(sourceID: UUID) async -> ProcessingOutcome {
-        await processor.process(sourceID: sourceID)
+        let outcome = await processor.process(sourceID: sourceID)
+        // F23 — une dictée suivante a pu attendre celle-ci pour en avoir le contexte : elle est classée maintenant.
+        if case .filed = outcome {
+            let processor = processor
+            Task { _ = await processor.processPending() }
+        }
+        return outcome
     }
 
     /// Reprend le travail interrompu : transcriptions puis analyses en attente.
@@ -987,16 +1030,35 @@ final class AppModel {
             if let folders = try? store.tidyFolders() {
                 changes += ((try? store.applyTidy(TidyPlanner.folds(folders, now: Date()))) ?? []).count
             }
-            if let samples = try? store.filingSamples() {
-                let notes = samples.filter { !$0.byOwner }.map {
-                    TidyNote(id: $0.id, paths: $0.paths, evidence: finder.vote(for: $0, among: samples))
-                }
-                changes += ((try? store.applyTidy(Array(TidyPlanner.moves(notes).prefix(20)))) ?? []).count
-            }
+            // F24 — les notes à déplacer ne sont plus déplacées seules : elles sont proposées (voir `proposedMoves`).
             return changes
         }.value
         perform { try settings.set(ISO8601DateFormatter().string(from: Date()), for: .tidyAt) }
         return count
+    }
+
+    /// F24 — les notes rangées par l'IA qui iraient mieux avec leurs semblables (rangées par le propriétaire), proposées
+    /// une à une : rien ne bouge sans un toucher.
+    func proposedMoves() async -> [TidyProposal] {
+        let store = categories
+        let finder = similarNotes
+        return await Task.detached(priority: .utility) { () -> [TidyProposal] in
+            guard let samples = try? store.filingSamples() else { return [] }
+            let titles = Dictionary(samples.map { ($0.id, $0.text) }, uniquingKeysWith: { first, _ in first })
+            let notes = samples.filter { !$0.byOwner }.map {
+                TidyNote(id: $0.id, paths: $0.paths, evidence: finder.vote(for: $0, among: samples), text: $0.text)
+            }
+            return Array(TidyPlanner.moves(notes).prefix(20)).compactMap { action -> TidyProposal? in
+                guard case .move(let memory, let from, let to) = action else { return nil }
+                let title = String((titles[memory] ?? "").split(separator: "\n").first ?? "")
+                return TidyProposal(action: action, summary: "« \(title) » : \(from) → \(to)")
+            }
+        }.value
+    }
+
+    /// F24 — le propriétaire accepte une proposition : la note est déplacée (et le changement peut être annulé).
+    func acceptProposal(_ proposal: TidyProposal) {
+        perform { _ = try categories.applyTidy([proposal.action]) }
     }
 
     /// P35, une seule fois : les anciennes copies de dictées déjà rangées quittent « À classer » (à la corbeille,
@@ -1050,6 +1112,22 @@ final class AppModel {
         }
     }
 
+    /// F17 — ce rendez-vous n'est pas copié dans le calendrier synchronisé à cause de la confidentialité de sa note
+    /// (gardée sur l'iPhone, secrète, ou pas encore évaluée).
+    func isKeptOutOfCalendar(_ memoryID: UUID) -> Bool {
+        guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true,
+              ((try? calendarLinks.link(for: memoryID)) ?? nil) == nil else { return false }
+        let target = (try? settings.string(.calendarTarget)) ?? nil
+        guard !calendarService.isLocalCalendar(target) else { return false }
+        return ((try? calendarLinks.blockedAppointments(for: .syncedCalendar)) ?? []).contains { $0.id == memoryID }
+    }
+
+    /// F17 — décision ciblée du propriétaire : ce rendez-vous peut aller dans son calendrier synchronisé.
+    func addToCalendarAnyway(_ memoryID: UUID) async {
+        perform { try calendarLinks.allowOutput(memoryID: memoryID, to: .syncedCalendar) }
+        await syncAppointments(askPermission: true)
+    }
+
     /// Ajoute au calendrier de l'iPhone les rendez-vous datés pas encore ajoutés, si l'option est active.
     /// `askPermission` : demander l'accès au calendrier s'il n'a jamais été demandé (juste après une dictée).
     func syncAppointments(askPermission: Bool) async {
@@ -1057,22 +1135,21 @@ final class AppModel {
         isSyncingCalendar = true
         defer { isSyncingCalendar = false }
         guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true else { return }
-        guard let waiting = try? calendarLinks.unlinkedAppointments(), !waiting.isEmpty else { return }
+        // F17 : l'autorisation n'est demandée que s'il y a un rendez-vous qui peut aller dans un calendrier de l'iPhone.
+        let waiting = (try? calendarLinks.unlinkedAppointments(for: .localCalendar)) ?? []
         if calendarService.access == .notDetermined {
-            guard askPermission, await calendarService.requestAccess() else { return }
+            guard !waiting.isEmpty, askPermission, await calendarService.requestAccess() else { return }
         }
         guard calendarService.access == .granted || calendarService.access == .writeOnly else { return }
         let target = (try? settings.string(.calendarTarget)) ?? nil
-        // Relire la liste après l'attente de l'autorisation, et revérifier chaque lien juste avant d'ajouter.
-        guard let pending = try? calendarLinks.unlinkedAppointments() else { return }
-        for memory in pending {
-            guard let start = memory.dueAt, (try? calendarLinks.link(for: memory.id)) == nil else { continue }
-            guard let added = try? calendarService.addAppointment(title: memory.title, start: start,
-                                                                  hasTime: memory.dueHasTime, notes: memory.summary,
-                                                                  calendarIdentifier: target) else { continue }
-            try? calendarLinks.link(memoryID: memory.id, eventIdentifier: added.eventID, calendarIdentifier: added.calendarID)
-            calendarRevision += 1
-        }
+        // F17 : un calendrier synchronisé (iCloud, Google…) est une destination externe : seulement ce que la politique de
+        // chaque note permet (ou ce que le propriétaire a autorisé pour cette note).
+        let destination: PrivacyDestination = calendarService.isLocalCalendar(target) ? .localCalendar : .syncedCalendar
+        // F18 : chaque effet passe par la boîte d'envoi (opération écrite avant l'effet, marque Engram dans l'événement,
+        // erreurs gardées, modifications faites dans le calendrier respectées).
+        let report = await CalendarOutbox(database: database).sync(destination: destination, calendarIdentifier: target,
+                                                                   effects: calendarService)
+        if report.created + report.linkedExisting + report.updated + report.deleted > 0 { calendarRevision += 1 }
     }
 
     /// Enregistrements restés sur le disque sans note (app fermée pendant l'enregistrement) : ils deviennent
@@ -1085,20 +1162,21 @@ final class AppModel {
         for path in orphans { _ = try? memories.saveVoiceRecording(audioPath: path, duration: nil) }
     }
 
-    /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé.
+    /// Suppression définitive, y compris le fichier audio s'il n'est plus utilisé (F09 : et ceux des dictées qui
+    /// n'existaient plus que par leurs ajouts à une liste supprimée).
     func deletePermanently(_ id: UUID) throws {
         let deletion = try memories.deletePermanently(id)
-        if let path = deletion.audioPathToRemove {
-            try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
-        }
+        removeAudio(of: deletion)
     }
 
     /// Vide la corbeille, avec les fichiers audio qui ne servent plus.
     func emptyTrash() throws {
-        for deletion in try memories.emptyTrash() {
-            if let path = deletion.audioPathToRemove {
-                try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
-            }
+        for deletion in try memories.emptyTrash() { removeAudio(of: deletion) }
+    }
+
+    private func removeAudio(of deletion: MemoryStore.PermanentDeletion) {
+        for path in [deletion.audioPathToRemove].compactMap({ $0 }) + deletion.orphanedAudioPaths {
+            try? FileManager.default.removeItem(at: AudioFiles.url(forRelativePath: path, in: storageDirectory))
         }
     }
 
@@ -1118,6 +1196,7 @@ final class AppModel {
             case .nameConflict: return "Une catégorie porte déjà ce nom à cet endroit."
             case .invalidName: return "Ce nom n'est pas valide (vide ou trop long)."
             case .invalidOperation(let reason): return "Opération impossible : \(reason)."
+            case .staleRevision: return "La note a changé pendant son classement : elle va être relue."
             }
         }
         if let error = error as? TranscriptionError {

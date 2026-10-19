@@ -42,7 +42,7 @@ public enum PrivacyGate {
     public static func evaluate(_ text: String, keepLocal: Bool, healthStaysLocal: Bool,
                                 judge: (any PrivacyJudge)?) async -> PrivacyDecision {
         if keepLocal {
-            return PrivacyDecision(level: .secret, reasons: ["Tu as choisi « Garder sur l'iPhone »."])
+            return PrivacyDecision(level: .secret, reasons: [RouteReasons.ownerKeepLocal])
         }
         let signals = SensitiveDetectors.signals(in: text) + SensitiveLexicon.signals(in: text, healthStaysLocal: healthStaysLocal)
         var level = signals.map(\.level).max() ?? .neutral

@@ -18,7 +18,7 @@ struct RecentContextStoreTests {
                          mentionedDates: []),
             ValidThought(title: "Écouteurs", summary: nil, excerpt: "J'aimerais recevoir des écouteurs", spanStart: nil,
                          spanEnd: nil, kind: .other, tags: [], categoryPath: ["Listes"], mentionedDates: [],
-                         listName: "souhaits d'anniversaire", listItems: ["Écouteurs"]),
+                         listName: "souhaits d'anniversaire", listItems: ["Écouteurs"], intent: .wish),
         ], sourceID: first.sourceID)
     }
 

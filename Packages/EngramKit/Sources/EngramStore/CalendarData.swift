@@ -108,12 +108,19 @@ public struct CalendarLink: Codable, Sendable, Hashable, FetchableRecord, Persis
     public var eventIdentifier: String
     public var calendarIdentifier: String?
     public var createdAt: Date
+    /// F18 — ce qu'Engram a écrit dans l'événement, et quand (nil : lien d'avant v24, jamais modifié automatiquement).
+    public var syncedTitle: String? = nil
+    public var syncedStart: Date? = nil
+    public var syncedAt: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case memoryID = "memory_id"
         case eventIdentifier = "event_identifier"
         case calendarIdentifier = "calendar_identifier"
         case createdAt = "created_at"
+        case syncedTitle = "synced_title"
+        case syncedStart = "synced_start"
+        case syncedAt = "synced_at"
     }
 }
 
@@ -227,5 +234,49 @@ extension CategoryStore {
             categories: categories.filter { shown.contains($0.id) }
                 .map { BrainLayout.CategoryInput(id: $0.id, name: $0.name, parentID: $0.parentID) },
             items: memories.map { BrainLayout.ItemInput(id: $0.id, title: $0.title, categoryID: deepest[$0.id]) })
+    }
+}
+
+extension CalendarLinkStore {
+    /// F17 — les rendez-vous à copier vers cette destination : seulement ceux que la politique de leur note autorise, ou
+    /// que le propriétaire a explicitement autorisés pour cette destination.
+    public func unlinkedAppointments(for destination: PrivacyDestination) throws -> [Memory] {
+        try candidates(for: destination).filter { $0.allowed }.map { $0.memory }
+    }
+
+    /// F17 — les rendez-vous retenus par la politique (affichés avec « L'ajouter quand même »).
+    public func blockedAppointments(for destination: PrivacyDestination) throws -> [Memory] {
+        try candidates(for: destination).filter { !$0.allowed }.map { $0.memory }
+    }
+
+    /// F17 — décision ciblée du propriétaire : cette note peut aller vers cette destination.
+    public func allowOutput(memoryID: UUID, to destination: PrivacyDestination) throws {
+        let now = dates.now()
+        try database.writer.write { db in
+            try db.execute(sql: """
+                INSERT OR REPLACE INTO output_consent (memory_id, destination, granted_at) VALUES (?, ?, ?)
+                """, arguments: [memoryID, destination.key, now])
+        }
+    }
+
+    /// Les rendez-vous à venir sans événement, avec ce que leur politique (ou le propriétaire) permet pour cette destination.
+    func candidates(for destination: PrivacyDestination) throws -> [(memory: Memory, allowed: Bool)] {
+        let now = dates.now()
+        let since = min(now.addingTimeInterval(-12 * 3600), calendar.startOfDay(for: now))
+        return try database.writer.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT m.*, s.keep_local AS keep_local, s.privacy_level AS privacy_level, s.privacy_basis AS privacy_basis,
+                       EXISTS(SELECT 1 FROM output_consent c WHERE c.memory_id = m.id AND c.destination = ?) AS consented
+                FROM memory m JOIN source s ON s.id = m.source_id
+                WHERE m.kind = 'appointment' AND m.due_at IS NOT NULL AND m.due_at >= ?
+                  AND m.status IN ('active','unsorted')
+                  AND NOT EXISTS (SELECT 1 FROM calendar_link l WHERE l.memory_id = m.id)
+                ORDER BY m.due_at
+                """, arguments: [destination.key, since]).map { row in
+                let consented: Bool = row["consented"] ?? false
+                let allowed = consented || PrivacyPolicy.allows(MemoryStore.privacyFacts(row), destination)
+                return (try Memory(row: row), allowed)
+            }
+        }
     }
 }

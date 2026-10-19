@@ -10,22 +10,26 @@ struct RetranscriptionTests {
                      tags: [], categoryPath: path, mentionedDates: [])
     }
 
-    @Test func replacesUntouchedAIMemoriesWithAFreshInterim() throws {
+    /// F12 : l'ancienne note reste utilisable jusqu'à ce que la nouvelle analyse la remplace d'un coup.
+    @Test func keepsTheOldResultUntilTheNewAnalysisReplacesIt() throws {
         let env = try StoreTestEnvironment()
         let recording = try env.memories.saveVoiceNote(audioPath: "audio/v.caf", duration: 5, transcript: "a pelé le gars rage",
                                                        languages: ["fr-CA"], engine: "apple-speech")
         let filed = try env.filer.file([valid("a pelé le gars rage", path: ["Divers"])], sourceID: recording.sourceID)
-        let interim = try #require(try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Appeler le garage",
-                                                                 languages: ["fr"], engine: "whisperkit-large-v3-turbo"))
-        #expect(try env.memories.memory(id: filed.memories[0].id) == nil)
-        #expect(interim.title == "Appeler le garage")
-        #expect(interim.analysisVersion == MemoryStore.interimAnalysisVersion)
+        let old = try #require(filed.memories.first)
+        try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Appeler le garage",
+                                      languages: ["fr"], engine: "whisperkit-large-v3-turbo")
+        #expect(try env.memories.memory(id: old.id) != nil)
+        #expect(try env.memories.sourcesAwaitingAnalysis() == [recording.sourceID])
+        let replaced = try env.filer.file([valid("Appeler le garage", path: ["Automobile"])], sourceID: recording.sourceID)
+        #expect(try env.memories.memory(id: old.id) == nil)
+        #expect(replaced.memories.map(\.title) == ["Appeler le garage"])
         let source = try #require(try env.memories.source(id: recording.sourceID))
+        #expect(source.revision == 2)
         #expect(source.originalText == "a pelé le gars rage")
         #expect(source.correctedText == "Appeler le garage")
         #expect(source.referenceText == "Appeler le garage")
         #expect(source.transcriptionEngine == "whisperkit-large-v3-turbo")
-        #expect(try env.memories.sourcesAwaitingAnalysis() == [recording.sourceID])
     }
 
     @Test func keepsMemoriesTheOwnerTouched() throws {
@@ -34,7 +38,7 @@ struct RetranscriptionTests {
                                                        languages: [], engine: "apple-speech")
         let filed = try env.filer.file([valid("texte mal compris", path: ["Divers"])], sourceID: recording.sourceID)
         _ = try env.memories.updateMemory(filed.memories[0].id, with: MemoryEdit(title: "Corrigé à la main"), actor: .user)
-        _ = try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Texte bien compris", languages: [], engine: nil)
+        try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Texte bien compris", languages: [], engine: nil)
         #expect(try env.memories.memory(id: filed.memories[0].id)?.title == "Corrigé à la main")
     }
 
@@ -46,9 +50,8 @@ struct RetranscriptionTests {
         let filed = try env.filer.file([valid("dentiste vendredi", path: ["Santé"])], sourceID: recording.sourceID)
         try CalendarLinkStore(database: env.database, dates: env.dates)
             .link(memoryID: filed.memories[0].id, eventIdentifier: "event-1", calendarIdentifier: nil)
-        let interim = try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Dentiste vendredi à 14 h",
-                                                    languages: [], engine: nil)
-        #expect(interim == nil)
+        try env.memories.retranscribe(sourceID: recording.sourceID, transcript: "Dentiste vendredi à 14 h",
+                                      languages: [], engine: nil)
         #expect(try env.memories.memory(id: filed.memories[0].id) != nil)
     }
 

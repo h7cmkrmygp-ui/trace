@@ -34,7 +34,8 @@ struct RecallStoreTests {
     }
 
     /// Une note gardée sur l'iPhone, ou jugée secrète, est marquée privée : elle ne sera jamais donnée à un assistant.
-    /// Être classée sur l'iPhone faute de service ne la rend pas privée.
+    /// Être classée sur l'iPhone faute de service ne la rend pas privée. F13 : une note dont la confidentialité n'a jamais
+    /// été enregistrée est privée (aucune sortie automatique tant qu'elle est inconnue).
     @Test func privateNotesAreMarked() throws {
         let env = try StoreTestEnvironment()
         guard case .saved(let kept) = try env.memories.saveTextNoteWithoutAnalysis("Code du casier", keepLocal: true) else {
@@ -47,12 +48,20 @@ struct RecallStoreTests {
         let offline = try env.saveNote("Acheter des piles")
         try env.memories.recordRoute(sourceID: offline.sourceID, route: AnalysisRoute(
             level: .secret, provider: "apple", reason: RouteReasons.noCloudService, needsCloudRetry: true))
-        let plain = try env.saveNote("Idée de jardin")
+        let neutral = try env.saveNote("Idée de jardin")
+        try env.memories.recordRoute(sourceID: neutral.sourceID, route: AnalysisRoute(
+            level: .neutral, provider: "gemini", reason: "Aucune information personnelle détectée.", needsCloudRetry: false))
+        let unknown = try env.saveNote("Idée de cabane")
 
         let documents = Dictionary(uniqueKeysWithValues: try env.memories.recallDocuments().map { ($0.id, $0) })
         #expect(documents[kept.id]?.isPrivate == true)
         #expect(documents[secret.id]?.isPrivate == true)
         #expect(documents[offline.id]?.isPrivate == false)
-        #expect(documents[plain.id]?.isPrivate == false)
+        #expect(documents[neutral.id]?.isPrivate == false)
+        #expect(documents[unknown.id]?.isPrivate == true)
+        // L'export pour un assistant suit la même règle (F01, F17).
+        #expect(documents[neutral.id]?.isExportable == true)
+        #expect(documents[kept.id]?.isExportable == false)
+        #expect(documents[unknown.id]?.isExportable == false)
     }
 }

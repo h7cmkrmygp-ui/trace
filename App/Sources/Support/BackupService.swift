@@ -104,6 +104,10 @@ final class BackupService {
                 let names = (try? FileManager.default.contentsOfDirectory(atPath: audio.path)) ?? []
                 files += names.filter { $0.hasSuffix(".caf") }.sorted().map { "audio/\($0)" }
             }
+            // F28 — le manifeste (version du schéma, fichiers et empreintes) voyage avec la sauvegarde, chiffré avec elle.
+            try BackupManifest.write(in: work, files: files, schemaVersion: (try? database.schemaVersion()) ?? "inconnue",
+                                     createdAt: Date())
+            files.append(BackupManifest.fileName)
             let archive = work.appendingPathComponent(name)
             try BackupArchive.write(files: files, from: work, to: archive, password: password)
             try Self.place(archive, in: folder, named: name)
@@ -148,7 +152,8 @@ final class BackupService {
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
             do {
                 try BackupArchive.read(file, password: password, into: work)
-                let count = try BackupRestore.noteCount(inRestored: work)
+                // F28 — vérifiée sans rien fabriquer : base présente, empreintes, contrôle SQLite en lecture seule.
+                let count = try BackupRestore.validate(work).noteCount
                 try BackupRestore.stage(work, in: storage)
                 return count
             } catch {

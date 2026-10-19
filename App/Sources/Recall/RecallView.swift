@@ -185,6 +185,11 @@ struct RecallView: View {
                         ForEach(model.exchanges) { exchange in
                             ExchangeView(exchange: exchange).id(exchange.id)
                         }
+                        if !model.exchanges.isEmpty, app.recallLimited {
+                            Text("Recherche faite dans tes 5 000 notes les plus récentes.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .padding(16)
                     .animation(reduceMotion ? nil : .snappy, value: model.exchanges.map { $0.reply?.hits.count ?? -1 })

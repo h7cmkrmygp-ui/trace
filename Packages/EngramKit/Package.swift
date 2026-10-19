@@ -28,7 +28,7 @@ let package = Package(
             name: "EngramCapture",
             dependencies: ["EngramCore", .product(name: "WhisperKit", package: "WhisperKit")]
         ),
-        .target(name: "EngramCalendar"),
+        .target(name: "EngramCalendar", dependencies: ["EngramCore"]),
         .target(name: "EngramTesting", dependencies: ["EngramCore"]),
         .testTarget(name: "EngramCoreTests", dependencies: ["EngramCore", "EngramTesting"]),
         .testTarget(
@@ -39,7 +39,10 @@ let package = Package(
             name: "EngramPipelineTests",
             dependencies: ["EngramPipeline", "EngramStore", "EngramCore", "EngramTesting"]
         ),
-        .testTarget(name: "EngramIntelligenceTests", dependencies: ["EngramIntelligence", "EngramCore", "EngramTesting"]),
+        .testTarget(
+            name: "EngramIntelligenceTests",
+            dependencies: ["EngramIntelligence", "EngramCore", "EngramTesting", "EngramPipeline", "EngramStore"]
+        ),
         .testTarget(name: "EngramCaptureTests", dependencies: ["EngramCapture", "EngramTesting"]),
     ]
 )

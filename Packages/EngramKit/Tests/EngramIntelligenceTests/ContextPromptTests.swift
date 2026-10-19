@@ -19,7 +19,7 @@ struct ContextPromptTests {
         let system = CloudPrompt.system
         #expect(system.contains("Note précédente"))
         #expect(system.contains("cette liste"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
         let context = CloudContext(now: Date(timeIntervalSince1970: 1_791_475_200), timeZone: Self.toronto,
                                    recent: RecentContext(people: ["Julie"], lists: ["souhaits d'anniversaire"],
                                                          folders: ["Projets › Chalet"], minutesAgo: 5))
@@ -41,7 +41,9 @@ struct ContextPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Acheter du lait", existingCategories: [],
-            context: AnalysisContext(capturedAt: Date(), recent: Self.recent))
+            context: AnalysisContext(capturedAt: Date(), recent: Self.recent,
+                                     provenance: .trusted(categories: Self.recent.folders + ["Projets", "Famille"],
+                                                          lists: Self.recent.lists)))
         let context = try #require(gemini.receivedContexts.first)
         #expect(context.recent == RecentContext(people: [], lists: ["épicerie"], folders: ["Projets", "Famille"], minutesAgo: 5))
     }
@@ -53,7 +55,9 @@ struct ContextPromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Je pèse 75 kg ce matin", existingCategories: [],
-            context: AnalysisContext(capturedAt: Date(), recent: Self.recent))
+            context: AnalysisContext(capturedAt: Date(), recent: Self.recent,
+                                     provenance: .trusted(categories: Self.recent.folders + ["Projets", "Famille"],
+                                                          lists: Self.recent.lists)))
         let context = try #require(groq.receivedContexts.first)
         #expect(context.recent == RecentContext(people: [], lists: Self.recent.lists, folders: Self.recent.folders,
                                                 minutesAgo: 5))
@@ -62,7 +66,7 @@ struct ContextPromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelKnowsWhatWasJustSaidToo() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("Previous note"))
         let prompt = AnalysisPrompt.prompt(text: "x", categories: [], likely: [],
                                            recent: RecentContext(people: ["Julie"], lists: [], folders: ["Projets › Chalet"],

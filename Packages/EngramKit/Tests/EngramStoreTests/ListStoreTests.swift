@@ -7,9 +7,9 @@ import Testing
 
 /// P15 — une liste par nom : chaque « ajoute … à ma liste d'épicerie » la complète, au lieu d'une nouvelle note.
 struct ListStoreTests {
-    func thought(_ text: String, kind: MemoryKind = .task) -> ValidThought {
+    func thought(_ text: String, kind: MemoryKind = .task, intent: IntentType = .listAdd) -> ValidThought {
         ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind, tags: [],
-                     categoryPath: ["Achats"], mentionedDates: [])
+                     categoryPath: ["Achats"], mentionedDates: [], intent: intent)
     }
 
     func dictate(_ env: StoreTestEnvironment, _ texts: String...) throws -> (sourceID: UUID, filed: [Memory]) {
@@ -98,7 +98,10 @@ struct ListStoreTests {
 
     @Test func aDictationCanMixAListAndANote() throws {
         let env = try StoreTestEnvironment()
-        let filed = try dictate(env, "Ajoute du lait à ma liste d'épicerie", "Appeler le garage").filed
+        let interim = try env.saveNote("Ajoute du lait à ma liste d'épicerie Appeler le garage")
+        let filed = try env.filer.file([thought("Ajoute du lait à ma liste d'épicerie"),
+                                        thought("Appeler le garage", intent: .obligation)],
+                                       sourceID: interim.sourceID).memories
         #expect(Set(filed.map(\.title)) == ["Liste d'épicerie", "Appeler le garage"])
     }
 

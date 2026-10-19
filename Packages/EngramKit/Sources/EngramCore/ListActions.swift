@@ -57,7 +57,7 @@ public enum ListActionParser {
 
 extension ListMerge {
     /// La clé d'une chose dite : sans accents ni ligatures, au singulier (« Œufs » → « oeuf »).
-    static func itemKey(_ text: String) -> String {
+    public static func itemKey(_ text: String) -> String {
         var key = ListCommandParser.key(text.replacingOccurrences(of: "œ", with: "oe").replacingOccurrences(of: "Œ", with: "oe")
             .replacingOccurrences(of: "æ", with: "ae"))
         if key.count > 3, key.hasSuffix("s") || key.hasSuffix("x") { key.removeLast() }

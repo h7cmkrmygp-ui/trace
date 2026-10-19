@@ -6,10 +6,11 @@ import Testing
 
 /// P19 — les cases cochées ou retirées à la voix, sans nouvelle note.
 struct ListActionStoreTests {
-    func dictate(_ env: StoreTestEnvironment, _ text: String, kind: MemoryKind = .task) throws -> [Memory] {
+    func dictate(_ env: StoreTestEnvironment, _ text: String, kind: MemoryKind = .task,
+                 intent: IntentType = .listAdd) throws -> [Memory] {
         let interim = try env.saveNote(text)
         let thought = ValidThought(title: text, summary: nil, excerpt: text, spanStart: nil, spanEnd: nil, kind: kind, tags: [],
-                                   categoryPath: ["Achats"], mentionedDates: [])
+                                   categoryPath: ["Achats"], mentionedDates: [], intent: intent)
         return try env.filer.file([thought], sourceID: interim.sourceID).memories
     }
 
@@ -20,7 +21,7 @@ struct ListActionStoreTests {
     @Test func boughtThingsAreCheckedWithoutANewNote() throws {
         let env = try StoreTestEnvironment()
         let list = try groceries(env)
-        let filed = try dictate(env, "J'ai acheté le lait pis les bananes", kind: .info)
+        let filed = try dictate(env, "J'ai acheté le lait pis les bananes", kind: .info, intent: .listCheck)
         #expect(filed.map(\.id) == [list.id])
         #expect(try env.memories.memory(id: list.id)?.summary == "☑ Lait\n☐ Pain\n☑ Bananes")
         #expect(try env.memories.versions(of: list.id).first?.changeReason?.hasPrefix("coché") == true)
@@ -29,7 +30,7 @@ struct ListActionStoreTests {
     @Test func somethingBoughtThatIsNotOnAListIsANote() throws {
         let env = try StoreTestEnvironment()
         let list = try groceries(env)
-        let filed = try dictate(env, "J'ai acheté une nouvelle tondeuse", kind: .info)
+        let filed = try dictate(env, "J'ai acheté une nouvelle tondeuse", kind: .info, intent: .listCheck)
         #expect(filed.count == 1)
         #expect(filed.first?.id != list.id)
         #expect(try env.memories.memory(id: list.id)?.summary == "☐ Lait\n☐ Pain\n☐ Bananes")
@@ -38,7 +39,7 @@ struct ListActionStoreTests {
     @Test func aBoxCanBeRemoved() throws {
         let env = try StoreTestEnvironment()
         let list = try groceries(env)
-        #expect(try dictate(env, "Enlève le pain de ma liste d'épicerie").map(\.id) == [list.id])
+        #expect(try dictate(env, "Enlève le pain de ma liste d'épicerie", intent: .listRemove).map(\.id) == [list.id])
         #expect(try env.memories.memory(id: list.id)?.summary == "☐ Lait\n☐ Bananes")
     }
 
@@ -46,7 +47,7 @@ struct ListActionStoreTests {
         let env = try StoreTestEnvironment()
         let list = try groceries(env)
         // Rien à cocher (le café n'y est pas) : la demande reste une demande, pas une note.
-        #expect(try dictate(env, "Coche le café").map(\.id) == [list.id])
+        #expect(try dictate(env, "Coche le café", intent: .listCheck).map(\.id) == [list.id])
         #expect(try env.memories.memory(id: list.id)?.summary == "☐ Lait\n☐ Pain\n☐ Bananes")
     }
 }

@@ -73,4 +73,11 @@ struct ContextualMemoryTests {
         #expect(try valid("Pour ce projet, il faut aussi acheter du bois", category: "Maison",
                           recent: RecentContext(folders: ["Projets › Chalet", "Projets › Cuisine"])).categoryPath == ["Maison"])
     }
+
+    /// F23 — « ce projet » ne désigne qu'un projet : le seul dossier précédent, s'il n'en est pas un, n'est pas pris.
+    @Test func aFolderThatIsNotAProjectIsNotThisProject() throws {
+        let thought = try valid("Pour ce projet, il faut aussi acheter du bois", category: "Bricolage",
+                                recent: RecentContext(folders: ["Maison"]))
+        #expect(thought.categoryPath == ["Bricolage"])
+    }
 }

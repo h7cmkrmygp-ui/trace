@@ -1,3 +1,5 @@
+import EngramCore
+import Foundation
 import GRDB
 
 /// Schéma de la base. Une migration publiée n'est JAMAIS modifiée : on en ajoute une nouvelle.
@@ -61,7 +63,198 @@ enum Schema {
         migrator.registerMigration("v18_tidy_history") { db in
             try db.execute(sql: v18TidyHistory)
         }
+        migrator.registerMigration("v19_privacy_basis_imports") { db in
+            try db.execute(sql: v19PrivacyAndImports)
+            try backfillListPrivacy(db)
+        }
+        migrator.registerMigration("v20_revisions_operations_jobs") { db in
+            try db.execute(sql: v20RevisionsOperationsJobs)
+        }
+        migrator.registerMigration("v21_list_items") { db in
+            try db.execute(sql: v21ListItems)
+            try ListStore.backfillItems(db)
+        }
+        migrator.registerMigration("v22_temporal_roles_supersession") { db in
+            try db.execute(sql: v22TemporalRolesSupersession)
+        }
+        migrator.registerMigration("v23_transcript_confidence") { db in
+            try db.execute(sql: v23TranscriptConfidence)
+        }
+        migrator.registerMigration("v24_calendar_outbox") { db in
+            try db.execute(sql: v24CalendarOutbox)
+        }
+        migrator.registerMigration("v25_analysis_runs") { db in
+            try db.execute(sql: v25AnalysisRuns)
+        }
         return migrator
+    }
+
+    /// v22 (F16, F21) : chaque date dite d'une note avec son rôle (événement, échéance, rappel, début, fin, récurrence),
+    /// sa résolution et le fuseau de la capture ; le lien d'une note vers celle qui la remplace (correction). Reprise :
+    /// aucune ; les notes existantes gardent leur échéance, sans rôle connu (rien n'est inventé).
+    static let v22TemporalRolesSupersession = """
+        ALTER TABLE memory ADD COLUMN superseded_by BLOB REFERENCES memory(id) ON DELETE SET NULL;
+        CREATE TABLE memory_temporal (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('event','deadline','reminder','start','end','recurrence','other')),
+          phrase TEXT NOT NULL,
+          resolved_at DATETIME,
+          has_time INTEGER NOT NULL DEFAULT 0 CHECK (has_time IN (0,1)),
+          time_zone TEXT
+        );
+        CREATE INDEX memory_temporal_memory ON memory_temporal(memory_id);
+        """
+
+    /// v23 (F26) : la confiance de la transcription de chaque dictée. Reprise : aucune (inconnue pour les anciennes).
+    static let v23TranscriptConfidence = """
+        ALTER TABLE source ADD COLUMN transcript_confidence REAL;
+        """
+
+    /// v24 (F18) : la boîte d'envoi du calendrier (une opération écrite avant chaque création, modification ou
+    /// suppression d'événement, avec son état, son erreur et ses essais) ; ce qui a été écrit dans l'événement et quand
+    /// (pour reconnaître une note rééditée et un événement modifié dans le calendrier). Reprise : aucune ; les liens
+    /// existants restent sans état connu et ne sont jamais modifiés ni supprimés automatiquement.
+    static let v24CalendarOutbox = """
+        CREATE TABLE calendar_operation (
+          op_id TEXT PRIMARY KEY NOT NULL,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL CHECK (kind IN ('create','update','delete')),
+          state TEXT NOT NULL CHECK (state IN ('pending','applied','failed','conflict')),
+          event_identifier TEXT,
+          error TEXT,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        );
+        CREATE INDEX calendar_operation_memory ON calendar_operation(memory_id);
+        ALTER TABLE calendar_link ADD COLUMN synced_title TEXT;
+        ALTER TABLE calendar_link ADD COLUMN synced_start DATETIME;
+        ALTER TABLE calendar_link ADD COLUMN synced_at DATETIME;
+        """
+
+    /// v25 (F29) : la trace de chaque tentative de classement, gardée sur l'iPhone (version lue de la source, fournisseur
+    /// et modèle exacts, versions du contrat et des consignes, confidentialité, propositions, refus, opérations, issue).
+    /// Reprise : aucune (les classements d'avant n'ont pas de trace).
+    static let v25AnalysisRuns = """
+        CREATE TABLE analysis_run (
+          id BLOB PRIMARY KEY NOT NULL,
+          source_id BLOB NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+          attempt INTEGER NOT NULL,
+          revision INTEGER NOT NULL,
+          text_hash TEXT NOT NULL,
+          provider TEXT,
+          model TEXT,
+          prompt_version TEXT,
+          contract_version TEXT NOT NULL,
+          privacy_level TEXT,
+          privacy_basis TEXT,
+          proposals TEXT NOT NULL DEFAULT '[]',
+          problems TEXT NOT NULL DEFAULT '[]',
+          operations TEXT NOT NULL DEFAULT '[]',
+          outcome TEXT NOT NULL CHECK (outcome IN ('filed','refused','waiting','failed','stale')),
+          error_kind TEXT,
+          started_at DATETIME NOT NULL,
+          finished_at DATETIME NOT NULL
+        );
+        CREATE INDEX analysis_run_source ON analysis_run(source_id, started_at);
+        """
+
+    /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes
+    /// nommées). Reprise : les cases existantes deviennent des choses ; une opération notée en v20 donne sa dictée, sinon
+    /// la provenance reste inconnue. Le texte des notes de liste n'est pas modifié.
+    static let v21ListItems = """
+        CREATE TABLE list_item (
+          id BLOB PRIMARY KEY NOT NULL,
+          list_memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          text TEXT NOT NULL,
+          item_key TEXT NOT NULL,
+          done INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0,1)),
+          position INTEGER NOT NULL DEFAULT 0,
+          provenance_known INTEGER NOT NULL DEFAULT 1 CHECK (provenance_known IN (0,1)),
+          removed_at DATETIME,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        );
+        CREATE INDEX list_item_list ON list_item(list_memory_id, removed_at);
+        CREATE TABLE list_item_contribution (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_id BLOB NOT NULL REFERENCES list_item(id) ON DELETE CASCADE,
+          source_id BLOB REFERENCES source(id) ON DELETE SET NULL,
+          actor TEXT NOT NULL CHECK (actor IN ('ai','user','system')),
+          kind TEXT NOT NULL CHECK (kind IN ('add','check','uncheck','remove','retract')),
+          people TEXT NOT NULL DEFAULT '',
+          at DATETIME NOT NULL
+        );
+        CREATE INDEX list_item_contribution_item ON list_item_contribution(item_id);
+        CREATE INDEX list_item_contribution_source ON list_item_contribution(source_id);
+        """
+
+    /// v20 (F08, F10, F12, F14, F16) : la révision du texte et la version de la politique de chaque source (un résultat
+    /// d'analyse n'est écrit que sur la version analysée), le fuseau de la capture, le délai avant un nouvel essai, les
+    /// opérations de liste déjà appliquées (identité stable : un rejeu n'ajoute rien, deux ajouts distincts restent deux),
+    /// et le bail, la révision et le type d'erreur des travaux d'analyse.
+    static let v20RevisionsOperationsJobs = """
+        ALTER TABLE source ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1);
+        ALTER TABLE source ADD COLUMN policy_version INTEGER NOT NULL DEFAULT 1 CHECK (policy_version >= 1);
+        ALTER TABLE source ADD COLUMN captured_time_zone TEXT;
+        ALTER TABLE source ADD COLUMN retry_after DATETIME;
+        CREATE TABLE list_operation (
+          op_key TEXT PRIMARY KEY NOT NULL,
+          source_id BLOB NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+          list_key TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('add','check','remove')),
+          item TEXT NOT NULL,
+          applied_at DATETIME NOT NULL
+        );
+        CREATE INDEX list_operation_source ON list_operation(source_id);
+        ALTER TABLE processing_job ADD COLUMN revision INTEGER;
+        ALTER TABLE processing_job ADD COLUMN leased_until DATETIME;
+        ALTER TABLE processing_job ADD COLUMN error_kind TEXT;
+        """
+
+    /// v19 (F01, F13, F17, F19) : la base de la confidentialité de chaque source (inconnue = aucune sortie automatique),
+    /// l'identifiant d'import des partages, les destinations interdites de chaque liste (jamais abaissées), les décisions
+    /// ciblées du propriétaire pour une sortie, et les reçus d'envoi vers un service en ligne.
+    static let v19PrivacyAndImports = """
+        ALTER TABLE source ADD COLUMN privacy_basis TEXT
+          CHECK (privacy_basis IS NULL OR privacy_basis IN ('judged','owner_local','everything_local','no_cloud'));
+        UPDATE source SET privacy_basis = CASE
+          WHEN keep_local = 1 THEN 'owner_local'
+          WHEN privacy_level IS NULL THEN NULL
+          WHEN route_reason = 'Réglage « Tout garder sur l''iPhone » activé.' THEN 'everything_local'
+          WHEN route_reason = 'Aucun service en ligne configuré.' THEN 'no_cloud'
+          ELSE 'judged' END;
+        ALTER TABLE source ADD COLUMN import_id TEXT;
+        CREATE UNIQUE INDEX source_import_id ON source(import_id) WHERE import_id IS NOT NULL;
+        ALTER TABLE memory_list ADD COLUMN forbidden_mask INTEGER NOT NULL DEFAULT 0 CHECK (forbidden_mask >= 0);
+        CREATE TABLE output_consent (
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          destination TEXT NOT NULL,
+          granted_at DATETIME NOT NULL,
+          PRIMARY KEY (memory_id, destination)
+        );
+        CREATE TABLE transmission_receipt (
+          id BLOB PRIMARY KEY NOT NULL,
+          source_id BLOB REFERENCES source(id) ON DELETE SET NULL,
+          provider TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('sending','succeeded','failed')),
+          detail TEXT,
+          started_at DATETIME NOT NULL,
+          finished_at DATETIME
+        );
+        CREATE INDEX transmission_receipt_source ON transmission_receipt(source_id);
+        """
+
+    /// v19 : chaque liste existante reçoit les interdictions de toutes les dictées qui l'ont complétée.
+    static func backfillListPrivacy(_ db: Database) throws {
+        for row in try Row.fetchAll(db, sql: "SELECT normalized_name, memory_id FROM memory_list") {
+            let key: String = row["normalized_name"]
+            let memoryID: UUID = row["memory_id"]
+            let mask = try ListStore.contributionMask(db, key: key, memoryID: memoryID)
+            try db.execute(sql: "UPDATE memory_list SET forbidden_mask = ? WHERE normalized_name = ?", arguments: [mask, key])
+        }
     }
 
     /// v18 (P40) : l'historique du ménage des dossiers, avec de quoi annuler chaque changement.

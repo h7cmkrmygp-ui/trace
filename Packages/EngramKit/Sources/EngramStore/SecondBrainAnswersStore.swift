@@ -16,9 +16,11 @@ extension EntityStore {
     public func profile(of entityID: UUID) throws -> PersonProfile {
         guard let person = try entity(id: entityID), person.kind == .person else { return PersonProfile() }
         let listIDs = Set(try database.writer.read { db in try UUID.fetchAll(db, sql: "SELECT memory_id FROM memory_list") })
-        let texts = try memories(for: person.id).reversed()
+        // F21 — des assertions par personne : la plus récente sur une même chose remplace les autres ; une note qui nomme
+        // quelqu'un d'autre ne lui prête pas ses goûts ; une note à la corbeille ne soutient plus rien.
+        let notes = try memories(for: person.id).reversed()
             .filter { !listIDs.contains($0.id) }
-            .map { $0.content.isEmpty ? $0.title : $0.content }
+            .map { AssertionNote(id: $0.id, text: $0.content.isEmpty ? $0.title : $0.content, saidAt: $0.capturedAt) }
         let key = " " + TextNormalizer.matchingForm(person.name) + " "
         let gifts = try ListStore(database: database, dates: dates).widgetSources()
             .filter { !$0.isPrivate && (" " + TextNormalizer.matchingForm($0.name) + " ").contains(key) }
@@ -28,7 +30,8 @@ extension EntityStore {
                     return nil
                 }
             }
-        return PersonProfile(tastes: PersonQuestion.tastes(in: texts), giftIdeas: gifts)
+        return PersonProfile(tastes: Assertions.currentTastes(Assertions.tastes(of: person.name, in: notes)),
+                             giftIdeas: gifts)
     }
 
     /// P43 — « Qu'est-ce que Julie aime ? » : ses goûts, ses idées de cadeaux et sa fête ; nil si la question porte sur autre

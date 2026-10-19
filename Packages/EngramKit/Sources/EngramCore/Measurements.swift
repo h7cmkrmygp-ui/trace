@@ -111,6 +111,8 @@ public enum MeasurementParser {
         func add(_ position: Int, _ metric: Metric, _ value: Double, second: Double? = nil, unit: String) {
             // Une seule mesure par suivi et par note : la première dite.
             guard !found.contains(where: { $0.measurement.metric == metric }) else { return }
+            // F15 — seulement un fait actuel du propriétaire (ni un tiers, ni une négation, un ancien poids, un souhait…).
+            guard isOwnersFact(folded, at: position) else { return }
             found.append((position, ParsedMeasurement(metric: metric, value: value, secondValue: second, unit: unit,
                                                       daysBefore: days)))
         }

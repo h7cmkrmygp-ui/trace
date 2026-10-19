@@ -11,6 +11,8 @@ public struct FilingSummary: Sendable, Equatable {
     public let pathByMemory: [UUID: String]
     /// P41 — les choses ajoutées à chaque liste (note de la liste → choses), pour le résumé après la dictée.
     public var listAdditions: [UUID: [String]] = [:]
+    /// F29 — ce que le rangement a fait, sans aucun mot de la note (pour la trace et le diagnostic).
+    public var trace: [String] = []
 }
 
 /// Range les pensées validées d'une source, en **une seule transaction** :
@@ -37,7 +39,10 @@ public struct ThoughtFiler: Sendable {
     ///   - keepInterimIfUncovered: garder la note provisoire (texte complet, « À classer ») si les extraits
     ///     couvrent moins de `minimumCoverage` du texte.
     ///   - forceKeepInterim: la garder quoi qu'il arrive (des pensées ont été rejetées par le validateur).
-    public func file(_ thoughts: [ValidThought], sourceID: UUID, keepInterimIfUncovered: Bool = false,
+    /// - Parameter route: F13 — la décision de confidentialité, enregistrée dans la même transaction que le classement.
+    ///   - expected: F10 — la version analysée de la source ; si elle a changé depuis, rien n'est écrit (`staleRevision`).
+    public func file(_ thoughts: [ValidThought], sourceID: UUID, route: AnalysisRoute? = nil, expected: SourceSnapshot? = nil,
+                     keepInterimIfUncovered: Bool = false,
                      forceKeepInterim: Bool = false) throws -> FilingSummary {
         let now = dates.now()
         let memoryStore = MemoryStore(database: database, dates: dates, calendar: calendar)
@@ -52,6 +57,27 @@ public struct ThoughtFiler: Sendable {
                 let existing = try Memory.filter(Column("source_id") == sourceID).order(Column("created_at")).fetchAll(db)
                 return FilingSummary(memories: existing, categoryPaths: [], pathByMemory: [:])
             }
+            // F10 — le résultat doit porter sur la version de la source telle qu'elle est maintenant (texte, révision,
+            // confidentialité) : sinon il est obsolète et rien n'est écrit.
+            if let expected {
+                let current = source.snapshot
+                guard current.revision == expected.revision, current.textHash == expected.textHash,
+                      current.policyVersion == expected.policyVersion else { throw StoreError.staleRevision }
+            }
+            // F16 — le calendrier de la capture (son fuseau), pour lire « demain à 9 h » comme le propriétaire l'a dit.
+            var captureCalendar = calendar
+            if let zone = source.capturedTimeZone.flatMap(TimeZone.init(identifier:)) { captureCalendar.timeZone = zone }
+            // F13 — la décision de confidentialité d'abord, dans cette même transaction : aucun dérivé (note, liste,
+            // rappel) n'est jamais visible sans elle.
+            if let route {
+                source.privacyLevel = route.level
+                source.privacyBasis = source.keepLocal ? .ownerKeepLocal : route.effectiveBasis
+                source.analysisProvider = route.provider
+                source.routeReason = route.reason
+                source.needsCloudRetry = route.needsCloudRetry
+                source.updatedAt = now
+                try source.update(db)
+            }
             let interims = try Memory
                 .filter(Column("source_id") == sourceID && Column("analysis_version") == MemoryStore.interimAnalysisVersion)
                 .fetchAll(db)
@@ -61,26 +87,53 @@ public struct ThoughtFiler: Sendable {
             for memory in interims {
                 if try Self.isTouchedByOwner(db, memory) { touched.append(memory) } else { untouched.append(memory) }
             }
-            // P35 : seule la partie de la dictée qu'aucune pensée ne reprend reste « À classer », jamais une copie de toute
-            // la dictée (et pas pour des « euh »). Sans `keepInterimIfUncovered`, l'ancienne règle s'applique.
-            let leftover = keepInterimIfUncovered
-                ? AnalysisValidator.leftover(of: source.referenceText ?? "", excerpts: thoughts.map(\.excerpt)) : nil
-            let keepUntouched = keepInterimIfUncovered ? leftover != nil : forceKeepInterim
+            // F11, F12 — les notes d'une analyse précédente de cette source (retranscription, nouvel essai) : celles que le
+            // propriétaire a modifiées, archivées ou liées au calendrier sont gardées et ne sont pas recréées ; les autres
+            // sont remplacées maintenant, d'un coup, par la nouvelle analyse (jamais avant qu'elle réussisse). Une liste reste.
+            let listMemoryIDs = Set(try UUID.fetchAll(db, sql: "SELECT memory_id FROM memory_list"))
+            var protectedPrevious: [Memory] = []
+            for memory in try Memory
+                .filter(Column("source_id") == sourceID && Column("status") != MemoryStatus.trashed.rawValue
+                        && Column("analysis_version") != MemoryStore.interimAnalysisVersion)
+                .fetchAll(db) where !listMemoryIDs.contains(memory.id) {
+                if try Self.isTouchedByOwner(db, memory) { protectedPrevious.append(memory) } else { _ = try memory.delete(db) }
+            }
+            // F05 : chaque passage qu'aucune pensée ne reprend (positions exactes, négations et commandes courtes comprises)
+            // reste « À classer », à sa place ; jamais une copie de toute la dictée, et pas pour des « euh ». Sans
+            // `keepInterimIfUncovered`, l'ancienne règle s'applique.
+            let passages = keepInterimIfUncovered
+                ? AnalysisValidator.uncoveredPassages(of: source.referenceText ?? "", thoughts: thoughts) : []
+            let keepUntouched = keepInterimIfUncovered ? !passages.isEmpty : forceKeepInterim
             if touched.isEmpty && !keepUntouched {
                 for memory in untouched { _ = try memory.delete(db) }
             }
-            if touched.isEmpty, let leftover, var piece = untouched.first {
+            if touched.isEmpty, !passages.isEmpty {
                 for other in untouched.dropFirst() { _ = try other.delete(db) }
-                piece.content = leftover
-                piece.excerpt = leftover
-                piece.title = TitleMaker.fallbackTitle(from: leftover)
-                let range = ((source.referenceText ?? "") as NSString).range(of: leftover)
-                piece.spanStart = range.location == NSNotFound ? nil : range.location
-                piece.spanEnd = range.location == NSNotFound ? nil : range.location + range.length
-                piece.analysisVersion = Self.leftoverAnalysisVersion
-                piece.updatedAt = now
-                try piece.update(db)
-                untouched = [piece]
+                var reusable = untouched.first
+                var pieces: [Memory] = []
+                let version: TextVersion = source.correctedText == nil ? .original : .corrected
+                for passage in passages {
+                    if var piece = reusable {
+                        reusable = nil
+                        piece.content = passage.text
+                        piece.excerpt = passage.text
+                        piece.title = TitleMaker.fallbackTitle(from: passage.text)
+                        piece.spanStart = passage.start
+                        piece.spanEnd = passage.end
+                        piece.spanTextVersion = version
+                        piece.analysisVersion = Self.leftoverAnalysisVersion
+                        piece.updatedAt = now
+                        try piece.update(db)
+                        pieces.append(piece)
+                    } else {
+                        let draft = MemoryDraft(sourceID: sourceID, excerpt: passage.text, spanStart: passage.start,
+                                                spanEnd: passage.end, spanTextVersion: version,
+                                                title: TitleMaker.fallbackTitle(from: passage.text), content: passage.text,
+                                                status: .unsorted, analysisVersion: Self.leftoverAnalysisVersion)
+                        pieces.append(try memoryStore.createMemory(db, draft: draft, actor: .system, now: now))
+                    }
+                }
+                untouched = pieces
             }
             let kept = touched
 
@@ -88,6 +141,8 @@ public struct ThoughtFiler: Sendable {
             var paths: [String] = []
             var pathByMemory: [UUID: String] = [:]
             var listAdditions: [UUID: [String]] = [:]
+            // F29 — ce qui est fait, pensée par pensée, sans aucun mot de la note.
+            var trace: [String] = []
 
             func classify(_ memoryID: UUID, with thought: ValidThought) throws {
                 if !thought.categoryPath.isEmpty {
@@ -117,90 +172,159 @@ public struct ThoughtFiler: Sendable {
                 try entityStore.linkNames(db, people: thought.people, places: thought.places, to: memoryID, now: now)
             }
 
+            // F09 — les choses que cette analyse demande, par liste : une analyse précédente de la même dictée qui en avait
+            // ajouté d'autres (jamais touchées depuis) les voit retirées à la fin.
+            var requestedItems: [UUID: Set<String>] = [:]
             if kept.isEmpty {
                 if keepUntouched { filedIDs.append(contentsOf: untouched.map(\.id)) }
-                for thought in thoughts {
-                    // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19). « J'ai
-                    // acheté une tondeuse », sans case qui corresponde, reste une note.
-                    if let action = ListActionParser.parse(thought.excerpt),
-                       let outcome = try listStore.apply(db, action, now: now), !outcome.changed.isEmpty || action.isExplicit {
-                        if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
-                        continue
+                for proposed in thoughts {
+                    // F03, F04 — l'intention, sa polarité et la forme de la phrase décident de l'opération ; les analyseurs
+                    // de listes ne font que fournir ses arguments. Un dossier dont le rôle ne convient pas est refusé.
+                    let plan = ActionPlanner.plan(proposed)
+                    var thought = proposed
+                    trace.append("pensée : intention \(proposed.intent?.rawValue ?? "inconnue")"
+                                 + (plan.review == nil ? "" : ", refus motivé"))
+                    if !plan.keepsFolder {
+                        trace.append("dossier proposé refusé (rôle incompatible)")
+                        thought.categoryPath = []
+                        thought.categoryReason = nil
                     }
-                    // « ajoute du lait à ma liste d'épicerie » : la liste est complétée, sans nouvelle note (P15).
-                    // P41 : l'IA a reconnu des choses à recevoir, à acheter ou à offrir, même sans le mot « liste » : elles
-                    // vont dans leur liste (retrouvée même dite autrement), sans note à part.
-                    let spoken = ListCommandParser.parse(thought.excerpt)
-                    let understood = thought.listName.flatMap { name in
-                        thought.listItems.isEmpty ? nil : ListCommand(listName: name, items: thought.listItems)
-                    }
-                    if let command = spoken ?? understood {
-                        let list = try listStore.add(db, command, sourceID: sourceID, excerpt: thought.excerpt,
-                                                     memoryStore: memoryStore, now: now, perExcerpt: spoken == nil)
-                        if list.created {
-                            try classify(list.memory.id, with: thought)
-                        } else {
-                            // « des écouteurs pour Julie » : la liste est reliée à la personne nommée.
-                            try entityStore.linkNames(db, people: thought.people, places: thought.places,
-                                                      to: list.memory.id, now: now)
+                    var noteKind = thought.kind
+                    var handled = false
+                    for operation in plan.operations {
+                        switch operation {
+                        case .note(let kind):
+                            noteKind = kind
+                        case .checkInList(let name, let items), .removeFromList(let name, let items):
+                            // « coche le lait », « j'ai acheté le pain » : la case est cochée, sans nouvelle note (P19).
+                            // « J'ai acheté une tondeuse », sans case qui corresponde, reste une note.
+                            var isCheck = false
+                            if case .checkInList = operation { isCheck = true }
+                            let explicit = ListActionParser.parse(thought.excerpt)?.isExplicit ?? false
+                            let action = ListAction(kind: isCheck ? .check : .remove, listName: name, items: items,
+                                                    isExplicit: explicit)
+                            if let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now),
+                               !outcome.changed.isEmpty || explicit || outcome.replayed {
+                                if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
+                                trace.append((isCheck ? "cochée dans une liste" : "retirée d'une liste")
+                                             + " : \(outcome.changed.count) case(s)")
+                                handled = true
+                            }
+                        case .appendToList(let name, let items):
+                            // « ajoute du lait à ma liste d'épicerie » (P15), des choses à recevoir, à acheter ou à offrir
+                            // (P41) : elles vont dans leur liste (retrouvée même dite autrement), sans note à part.
+                            handled = true
+                            // Déjà fait par cette dictée, et la liste jetée depuis par le propriétaire : rien n'est recréé.
+                            guard let list = try listStore.add(db, ListCommand(listName: name, items: items),
+                                                               sourceID: sourceID, excerpt: thought.excerpt,
+                                                               people: thought.people, memoryStore: memoryStore,
+                                                               now: now) else { continue }
+                            requestedItems[list.memory.id, default: []].formUnion(items.map(ListCommandParser.key))
+                            trace.append("ajout à une liste\(list.created ? " (créée)" : "") : \(list.added.count) chose(s)")
+                            if list.created {
+                                try classify(list.memory.id, with: thought)
+                            } else {
+                                // « des écouteurs pour Julie » : la liste est reliée à la personne nommée.
+                                try entityStore.linkNames(db, people: thought.people, places: thought.places,
+                                                          to: list.memory.id, now: now)
+                            }
+                            if !list.added.isEmpty {
+                                listAdditions[list.memory.id, default: []].append(contentsOf: list.added)
+                            }
+                            if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
                         }
-                        if !list.added.isEmpty { listAdditions[list.memory.id, default: []].append(contentsOf: list.added) }
-                        if !filedIDs.contains(list.memory.id) { filedIDs.append(list.memory.id) }
+                    }
+                    if handled { continue }
+                    // F11 — la même intention qu'une note gardée d'une analyse précédente : elle n'est pas recréée à côté.
+                    if let match = protectedPrevious.first(where: { IntentionMatch.same(thought, as: $0) }) {
+                        if !filedIDs.contains(match.id) { filedIDs.append(match.id) }
                         continue
                     }
-                    // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33).
-                    let due = thought.birthdayOf != nil ? nil
-                        : DateResolver.firstDate(in: thought.mentionedDates, excerpt: thought.excerpt,
-                                                 relativeTo: source.capturedAt, calendar: calendar)
+                    // Une fête n'a pas d'échéance : la page de la personne la rappelle chaque année (P33). F03 : une
+                    // négation, une hypothèse, une question, une citation ou un récit ne donnent ni échéance ni rappel.
+                    // F16 — les dates se lisent dans le fuseau de la capture (« demain à 9 h » dit à Toronto reste 9 h à
+                    // Toronto) ; un rendez-vous prend la date de l'événement, jamais celle d'un rappel.
+                    let event = noteKind == .appointment
+                        ? thought.temporal.first { $0.role == .event || $0.role == .start }?.phrase : nil
+                    let due = thought.birthdayOf != nil || !plan.schedules ? nil
+                        : DateResolver.firstDate(in: event.map { [$0] + thought.mentionedDates } ?? thought.mentionedDates,
+                                                 excerpt: thought.excerpt, relativeTo: source.capturedAt,
+                                                 calendar: captureCalendar)
                     // « aujourd'hui », « demain »… deviennent la vraie date dans le titre et le texte rédigé ; les mots
                     // exacts de la dictée (contenu, extrait) restent tels quels.
                     let title = TitleMaker.fallbackTitle(
-                        from: RelativeDateWording.anchored(thought.title, on: source.capturedAt, calendar: calendar))
+                        from: RelativeDateWording.anchored(thought.title, on: source.capturedAt, calendar: captureCalendar))
                     let summary = thought.summary.map {
-                        RelativeDateWording.anchored($0, on: source.capturedAt, calendar: calendar)
+                        RelativeDateWording.anchored($0, on: source.capturedAt, calendar: captureCalendar)
                     }
                     let draft = MemoryDraft(
                         sourceID: sourceID, excerpt: thought.excerpt, spanStart: thought.spanStart, spanEnd: thought.spanEnd,
                         spanTextVersion: source.correctedText == nil ? .original : .corrected,
-                        title: title, summary: summary, content: thought.excerpt, kind: thought.kind,
+                        title: title, summary: summary, content: thought.excerpt, kind: noteKind,
                         status: .unsorted, mentionedDates: thought.mentionedDates, analysisVersion: Self.analysisVersion,
                         dueAt: due?.date, dueHasTime: due?.hasTime ?? false)
                     let memory = try memoryStore.createMemory(db, draft: draft, actor: .ai, now: now)
+                    // F16 — chaque date dite garde son rôle (événement, échéance, rappel…) et sa résolution.
+                    try Self.recordTemporal(db, memoryID: memory.id, mentions: thought.temporal,
+                                            capturedAt: source.capturedAt, calendar: captureCalendar)
                     try classify(memory.id, with: thought)
-                    // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
-                    try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt, capturedAt: source.capturedAt,
-                                                now: now)
-                    // « j'ai médité 10 minutes » : l'habitude du jour (P17).
-                    try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
-                                                      capturedAt: source.capturedAt, now: now)
-                    // « mon objectif : méditer 5 fois par semaine » (P21).
-                    try measurementStore.recordHabitGoals(db, memoryID: memory.id, text: thought.excerpt,
-                                                          capturedAt: source.capturedAt)
-                    // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
-                    try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
-                                                     capturedAt: source.capturedAt)
-                    // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
-                    try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
-                    // « l'anniversaire de Julie est le 12 mars » : la fête va sur la page de Julie (P20).
-                    // Une seule pensée : si son extrait a perdu le début de la phrase, la dictée entière est relue (P31).
-                    try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt,
-                                                   fallback: thoughts.count == 1 ? source.referenceText : nil,
-                                                   saidOn: source.capturedAt, calendar: calendar, now: now)
-                    // « tous les lundis » : la tâche revient (P16).
-                    try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
-                                                     capturedAt: source.capturedAt, now: now)
+                    // F03 — une phrase niée (« je ne pèse plus 180 livres ») n'enregistre ni mesure, ni habitude, ni
+                    // objectif, ni fête ; une négation, une hypothèse, une question, une citation ou un récit ne posent ni
+                    // rappel de lieu ni récurrence.
+                    let affirmed = thought.polarity != .negative
+                    if affirmed {
+                        // Les mesures dites (« je pèse 162,5 livres ») vont dans les suivis (P10).
+                        try measurementStore.record(db, memoryID: memory.id, text: thought.excerpt,
+                                                    capturedAt: source.capturedAt, now: now)
+                        // « j'ai médité 10 minutes » : l'habitude du jour (P17).
+                        try measurementStore.recordHabits(db, memoryID: memory.id, text: thought.excerpt,
+                                                          capturedAt: source.capturedAt, now: now)
+                        // « mon objectif : méditer 5 fois par semaine » (P21).
+                        try measurementStore.recordHabitGoals(db, memoryID: memory.id, text: thought.excerpt,
+                                                              capturedAt: source.capturedAt)
+                        // « Mon objectif : 155 livres » fixe l'objectif du suivi (P11).
+                        try measurementStore.recordGoals(db, memoryID: memory.id, text: thought.excerpt,
+                                                         capturedAt: source.capturedAt)
+                        // « l'anniversaire de Julie est le 12 mars » : la fête va sur la page de Julie (P20).
+                        // Une seule pensée : si son extrait a perdu le début de la phrase, la dictée entière est relue (P31).
+                        try entityStore.recordBirthday(db, memoryID: memory.id, text: thought.excerpt,
+                                                       fallback: thoughts.count == 1 ? source.referenceText : nil,
+                                                       saidOn: source.capturedAt, calendar: calendar, now: now)
+                    }
+                    if plan.schedules {
+                        // « quand j'arrive chez Costco » : le rappel attend le lieu (P14).
+                        try entityStore.recordPlaceTrigger(db, memoryID: memory.id, text: thought.excerpt, now: now)
+                        // « tous les lundis » : la tâche revient (P16).
+                        try memoryStore.recordRecurrence(db, memoryID: memory.id, text: thought.excerpt,
+                                                         capturedAt: source.capturedAt, now: now)
+                    }
+                    // F21 — une correction remplace la note qu'elle corrige, si c'est la seule possible et qu'elle n'est
+                    // pas protégée ; sinon les deux restent et la correction est à classer (revue).
+                    if thought.intent == .correction {
+                        trace.append(try Self.supersede(db, with: memory, now: now) ? "correction : remplace une note"
+                                     : "correction : cible ambiguë ou protégée, à classer")
+                    }
+                    trace.append("note créée (\(noteKind.rawValue))"
+                                 + (thought.categoryPath.isEmpty ? ", à classer" : ", rangée dans un dossier"))
                     filedIDs.append(memory.id)
                 }
             } else {
                 // Le propriétaire a déjà touché sa note : on ne la remplace pas. Si elle est encore en usage,
                 // on la classe seulement ; si elle est archivée ou à la corbeille, on n'y touche pas du tout.
                 for memory in kept {
-                    if memory.status == .active || memory.status == .unsorted, let first = thoughts.first {
+                    if memory.status == .active || memory.status == .unsorted, var first = thoughts.first {
+                        // F03 — le même plan décide du dossier et de l'échéance.
+                        let plan = ActionPlanner.plan(first)
+                        if !plan.keepsFolder {
+                            first.categoryPath = []
+                            first.categoryReason = nil
+                        }
                         try classify(memory.id, with: first)
                         // Le texte du propriétaire n'est pas touché, mais l'échéance dictée est posée si la note n'en a pas.
-                        if memory.dueAt == nil, first.birthdayOf == nil, var current = try Memory.fetchOne(db, key: memory.id),
+                        if memory.dueAt == nil, first.birthdayOf == nil, plan.schedules,
+                           var current = try Memory.fetchOne(db, key: memory.id),
                            let due = DateResolver.firstDate(in: first.mentionedDates, excerpt: first.excerpt,
-                                                            relativeTo: source.capturedAt, calendar: calendar) {
+                                                            relativeTo: source.capturedAt, calendar: captureCalendar) {
                             current.dueAt = due.date
                             current.dueHasTime = due.hasTime
                             current.updatedAt = now
@@ -211,12 +335,15 @@ public struct ThoughtFiler: Sendable {
                 }
             }
 
+            if kept.isEmpty {
+                _ = try ListStore.retract(db, sourceID: sourceID, keeping: requestedItems, now: now)
+            }
             source.processingStatus = .done
             source.updatedAt = now
             try source.update(db)
             let memories = try filedIDs.compactMap { try Memory.fetchOne(db, key: $0) }
             return FilingSummary(memories: memories, categoryPaths: paths, pathByMemory: pathByMemory,
-                                 listAdditions: listAdditions)
+                                 listAdditions: listAdditions, trace: trace)
         }
     }
 
@@ -234,13 +361,16 @@ public struct ThoughtFiler: Sendable {
 
     /// Repli : l'analyse a échoué. Le souvenir provisoire reste « À classer » et la source est close ; P35 : elle sera
     /// réessayée plus tard, `maxAnalysisAttempts` fois au plus.
+    /// F12 : un essai compte une seule fois (une reprise l'a déjà compté) ; le suivant attend un délai croissant, et les
+    /// notes déjà tirées d'une analyse précédente restent en place.
     public func markFallback(sourceID: UUID) throws {
         let now = dates.now()
         try database.writer.write { db in
             guard var source = try Source.fetchOne(db, key: sourceID) else { throw StoreError.notFound }
             source.processingStatus = .done
-            source.analysisAttempts += 1
+            source.analysisAttempts = max(source.analysisAttempts, 1)
             source.needsCloudRetry = source.analysisAttempts < Self.maxAnalysisAttempts
+            source.retryAfter = now.addingTimeInterval(MemoryStore.retryDelay(afterAttempt: source.analysisAttempts))
             source.updatedAt = now
             try source.update(db)
         }

@@ -32,11 +32,14 @@ public struct TidyNote: Sendable, Equatable {
     public let id: UUID
     public let paths: [String]
     public let evidence: [FolderEvidence]
+    /// F24 — le texte de la note : un suivi qui la refuserait n'est jamais visé.
+    public let text: String
 
-    public init(id: UUID, paths: [String], evidence: [FolderEvidence]) {
+    public init(id: UUID, paths: [String], evidence: [FolderEvidence], text: String = "") {
         self.id = id
         self.paths = paths
         self.evidence = evidence
+        self.text = text
     }
 }
 
@@ -147,11 +150,15 @@ public enum TidyPlanner {
     }
 
     /// Une note rangée par l'IA dont au moins 3 notes semblables sont dans un même autre dossier, et aucune dans le sien,
-    /// les rejoint.
+    /// peut les rejoindre. F24 : seulement si ce voisinage repose sur des notes rangées par le propriétaire et se détache
+    /// nettement, et jamais vers un suivi qui refuserait la note ; ce sont des propositions (le propriétaire décide).
     public static func moves(_ notes: [TidyNote]) -> [TidyAction] {
         notes.compactMap { note in
-            guard let from = note.paths.first, let top = note.evidence.first, top.notes >= moveMinimumNotes,
+            guard let from = note.paths.first, let top = SimilarFolders.confidentChoice(note.evidence),
+                  top.notes >= moveMinimumNotes,
                   Set(note.paths).isDisjoint(with: note.evidence.map(\.path)) else { return nil }
+            let target = top.path.components(separatedBy: "›").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard MeasurementFolders.accepts(target, text: note.text) else { return nil }
             return .move(memory: note.id, from: from, to: top.path)
         }
     }
@@ -174,4 +181,18 @@ public enum TidyPlanner {
     public static func summary(moved title: String, from: String, to: String) -> String {
         "« \(title) » déplacée de « \(from) » vers « \(to) »."
     }
+}
+
+/// F24 — un déplacement proposé au propriétaire par le ménage (il ne se fait qu'avec son accord).
+public struct TidyProposal: Sendable, Equatable, Identifiable {
+    public let action: TidyAction
+    /// « « Changer les pneus » : Divers → Automobile ».
+    public let summary: String
+
+    public init(action: TidyAction, summary: String) {
+        self.action = action
+        self.summary = summary
+    }
+
+    public var id: String { summary }
 }

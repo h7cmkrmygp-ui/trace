@@ -51,7 +51,7 @@ struct FolderEvidencePromptTests {
         #expect(system.contains("at least 3 notes"))
         #expect(system.localizedCaseInsensitiveContains("most similar"))
         #expect(system.localizedCaseInsensitiveContains("few broad categories"))
-        #expect(CloudPrompt.version == "p42-cloud-v1")
+        #expect(CloudPrompt.version == "p50-cloud-v1")
     }
 
     func router(gemini: FakeCloud, groq: FakeCloud) -> RoutedAnalyzer {
@@ -70,7 +70,8 @@ struct FolderEvidencePromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Acheter du lait", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts))
+            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts,
+                                     provenance: .trusted(categories: Self.categories)))
         let context = try #require(gemini.receivedContexts.first)
         #expect(context.folderEvidence == [FolderEvidence(path: "Famille", notes: 2, byOwner: 1),
                                            FolderEvidence(path: "Automobile", notes: 1, byOwner: 0)])
@@ -82,7 +83,8 @@ struct FolderEvidencePromptTests {
         let groq = FakeCloud(.success(Self.thought))
         _ = try await router(gemini: gemini, groq: groq).analyze(
             text: "Je pèse 75 kg ce matin", existingCategories: Self.categories,
-            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts))
+            context: AnalysisContext(capturedAt: Date(), folderEvidence: Self.evidence, categoryCounts: Self.counts,
+                                     provenance: .trusted(categories: Self.categories)))
         let context = try #require(groq.receivedContexts.first)
         #expect(context.folderEvidence == Self.evidence)
         #expect(context.categoryCounts == Self.counts)
@@ -107,7 +109,7 @@ struct FolderEvidencePromptTests {
 
     #if canImport(FoundationModels)
     @Test func theAppleModelGetsTheSameEvidence() {
-        #expect(AnalysisPrompt.version == "p42-v1")
+        #expect(AnalysisPrompt.version == "p50-v1")
         #expect(AnalysisPrompt.instructions.contains("at least 3 notes"))
         let prompt = AnalysisPrompt.prompt(text: "x", categories: ["Automobile"], likely: [],
                                            evidence: [FolderEvidence(path: "Automobile", notes: 2, byOwner: 0)],

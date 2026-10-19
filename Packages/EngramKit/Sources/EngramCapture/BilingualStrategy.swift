@@ -151,6 +151,9 @@ public enum TranscriptAssembler {
         let spoken = pieces.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         var languages: [String] = []
         for piece in spoken where !languages.contains(piece.language) { languages.append(piece.language) }
-        return Transcript(text: spoken.map(\.text).joined(separator: " "), localeIdentifier: languages.joined(separator: "+"))
+        // F26 — la confiance de la dictée est celle de son morceau le moins sûr.
+        let probabilities = spoken.map(\.averageLogProbability).filter(\.isFinite)
+        return Transcript(text: spoken.map(\.text).joined(separator: " "), localeIdentifier: languages.joined(separator: "+"),
+                          averageLogProbability: probabilities.min())
     }
 }
