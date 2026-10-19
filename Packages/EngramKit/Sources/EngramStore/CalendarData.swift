@@ -108,12 +108,19 @@ public struct CalendarLink: Codable, Sendable, Hashable, FetchableRecord, Persis
     public var eventIdentifier: String
     public var calendarIdentifier: String?
     public var createdAt: Date
+    /// F18 — ce qu'Engram a écrit dans l'événement, et quand (nil : lien d'avant v24, jamais modifié automatiquement).
+    public var syncedTitle: String? = nil
+    public var syncedStart: Date? = nil
+    public var syncedAt: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case memoryID = "memory_id"
         case eventIdentifier = "event_identifier"
         case calendarIdentifier = "calendar_identifier"
         case createdAt = "created_at"
+        case syncedTitle = "synced_title"
+        case syncedStart = "synced_start"
+        case syncedAt = "synced_at"
     }
 }
 

@@ -455,6 +455,13 @@ struct MemoryDetailView: View {
                         }
                     }
                 }
+                // F29 — le parcours du classement de cette note (versions, modèle, refus, opérations), sans la note ni ses
+                // dossiers : à partager seulement si tu le choisis.
+                if let report = try? model.memories.diagnosticReport(sourceID: memory.sourceID), report.contains("Tentative") {
+                    ShareLink(item: report, subject: Text("Diagnostic Engram")) {
+                        Label("Partager le diagnostic (sans la note)", systemImage: "stethoscope")
+                    }
+                }
                 if let source, source.kind == .voice, source.audioPath != nil, !source.correctedByOwner {
                     Button("Retranscrire avec Whisper", systemImage: "waveform") {
                         isRetranscribing = true

@@ -11,6 +11,8 @@ public struct FilingSummary: Sendable, Equatable {
     public let pathByMemory: [UUID: String]
     /// P41 — les choses ajoutées à chaque liste (note de la liste → choses), pour le résumé après la dictée.
     public var listAdditions: [UUID: [String]] = [:]
+    /// F29 — ce que le rangement a fait, sans aucun mot de la note (pour la trace et le diagnostic).
+    public var trace: [String] = []
 }
 
 /// Range les pensées validées d'une source, en **une seule transaction** :
@@ -139,6 +141,8 @@ public struct ThoughtFiler: Sendable {
             var paths: [String] = []
             var pathByMemory: [UUID: String] = [:]
             var listAdditions: [UUID: [String]] = [:]
+            // F29 — ce qui est fait, pensée par pensée, sans aucun mot de la note.
+            var trace: [String] = []
 
             func classify(_ memoryID: UUID, with thought: ValidThought) throws {
                 if !thought.categoryPath.isEmpty {
@@ -178,7 +182,10 @@ public struct ThoughtFiler: Sendable {
                     // de listes ne font que fournir ses arguments. Un dossier dont le rôle ne convient pas est refusé.
                     let plan = ActionPlanner.plan(proposed)
                     var thought = proposed
+                    trace.append("pensée : intention \(proposed.intent?.rawValue ?? "inconnue")"
+                                 + (plan.review == nil ? "" : ", refus motivé"))
                     if !plan.keepsFolder {
+                        trace.append("dossier proposé refusé (rôle incompatible)")
                         thought.categoryPath = []
                         thought.categoryReason = nil
                     }
@@ -199,6 +206,8 @@ public struct ThoughtFiler: Sendable {
                             if let outcome = try listStore.apply(db, action, sourceID: sourceID, now: now),
                                !outcome.changed.isEmpty || explicit || outcome.replayed {
                                 if !filedIDs.contains(outcome.memory.id) { filedIDs.append(outcome.memory.id) }
+                                trace.append((isCheck ? "cochée dans une liste" : "retirée d'une liste")
+                                             + " : \(outcome.changed.count) case(s)")
                                 handled = true
                             }
                         case .appendToList(let name, let items):
@@ -211,6 +220,7 @@ public struct ThoughtFiler: Sendable {
                                                                people: thought.people, memoryStore: memoryStore,
                                                                now: now) else { continue }
                             requestedItems[list.memory.id, default: []].formUnion(items.map(ListCommandParser.key))
+                            trace.append("ajout à une liste\(list.created ? " (créée)" : "") : \(list.added.count) chose(s)")
                             if list.created {
                                 try classify(list.memory.id, with: thought)
                             } else {
@@ -290,7 +300,12 @@ public struct ThoughtFiler: Sendable {
                     }
                     // F21 — une correction remplace la note qu'elle corrige, si c'est la seule possible et qu'elle n'est
                     // pas protégée ; sinon les deux restent et la correction est à classer (revue).
-                    if thought.intent == .correction { try Self.supersede(db, with: memory, now: now) }
+                    if thought.intent == .correction {
+                        trace.append(try Self.supersede(db, with: memory, now: now) ? "correction : remplace une note"
+                                     : "correction : cible ambiguë ou protégée, à classer")
+                    }
+                    trace.append("note créée (\(noteKind.rawValue))"
+                                 + (thought.categoryPath.isEmpty ? ", à classer" : ", rangée dans un dossier"))
                     filedIDs.append(memory.id)
                 }
             } else {
@@ -328,7 +343,7 @@ public struct ThoughtFiler: Sendable {
             try source.update(db)
             let memories = try filedIDs.compactMap { try Memory.fetchOne(db, key: $0) }
             return FilingSummary(memories: memories, categoryPaths: paths, pathByMemory: pathByMemory,
-                                 listAdditions: listAdditions)
+                                 listAdditions: listAdditions, trace: trace)
         }
     }
 

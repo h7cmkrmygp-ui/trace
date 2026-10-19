@@ -35,7 +35,8 @@ public enum DuplicateThoughts {
             }
             merged[index] = kept
         }
-        return ThoughtAnalysis(thoughts: merged, route: analysis.route)
+        return ThoughtAnalysis(thoughts: merged, route: analysis.route, model: analysis.model,
+                               promptVersion: analysis.promptVersion)
     }
 
     static func key(_ excerpt: String) -> String {

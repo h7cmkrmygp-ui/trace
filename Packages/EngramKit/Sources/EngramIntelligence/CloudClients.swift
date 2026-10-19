@@ -607,7 +607,12 @@ public struct GeminiThoughtAnalyzer: MemoryAnalyzer {
         var lastError = CloudError.missingKey
         for model in models {
             do {
-                return try CloudDecoder.decode(try await client.generate(model: model, system: CloudPrompt.system, user: user))
+                var analysis = try CloudDecoder.decode(try await client.generate(model: model, system: CloudPrompt.system,
+                                                                                  user: user))
+                // F29 — le modèle exact qui a répondu (la liste peut changer côté Gemini).
+                analysis.model = model
+                analysis.promptVersion = CloudPrompt.version
+                return analysis
             } catch let error as CloudError {
                 lastError = error
                 switch error {
@@ -636,6 +641,9 @@ public struct GroqThoughtAnalyzer: MemoryAnalyzer {
 
     public func analyze(text: String, existingCategories: [String], context: CloudContext) async throws -> ThoughtAnalysis {
         let user = CloudPrompt.user(text: text, categories: existingCategories, context: context)
-        return try CloudDecoder.decode(try await client.generate(system: CloudPrompt.system, user: user))
+        var analysis = try CloudDecoder.decode(try await client.generate(system: CloudPrompt.system, user: user))
+        analysis.model = GroqClient.model
+        analysis.promptVersion = CloudPrompt.version
+        return analysis
     }
 }

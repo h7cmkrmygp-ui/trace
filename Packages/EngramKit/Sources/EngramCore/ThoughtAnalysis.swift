@@ -107,10 +107,15 @@ public struct ThoughtAnalysis: Sendable, Hashable {
     public var thoughts: [AnalyzedThought]
     /// Renseigné par le routage (nil pour un analyseur seul).
     public var route: AnalysisRoute?
+    /// F29 — le modèle exact et la version des consignes, donnés par l'analyseur qui a répondu.
+    public var model: String?
+    public var promptVersion: String?
 
-    public init(thoughts: [AnalyzedThought], route: AnalysisRoute? = nil) {
+    public init(thoughts: [AnalyzedThought], route: AnalysisRoute? = nil, model: String? = nil, promptVersion: String? = nil) {
         self.thoughts = thoughts
         self.route = route
+        self.model = model
+        self.promptVersion = promptVersion
     }
 }
 

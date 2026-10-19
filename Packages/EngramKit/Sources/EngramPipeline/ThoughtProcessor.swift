@@ -149,41 +149,84 @@ public actor ThoughtProcessor {
                                           folderEvidence: similar, categoryCounts: counts, lists: lists,
                                           recent: recent, sourceID: sourceID, provenance: provenance)
             var tries = 0
+            var analysis: ThoughtAnalysis?
+            var startedAt = memories.dates.now()
+            // F29 — la trace de chaque tentative, gardée sur l'iPhone : version lue, fournisseur et modèle, versions,
+            // confidentialité, propositions, refus, opérations et issue.
+            func trace(_ outcome: AnalysisRun.Outcome, problems: [String] = [], operations: [String] = [],
+                       error: String? = nil) {
+                let route = analysis?.route
+                let proposals = (analysis?.thoughts ?? []).map { thought in
+                    AnalysisRun.Proposal(title: thought.title, intent: thought.intent?.rawValue, kind: thought.kind.rawValue,
+                                         folder: [thought.category, thought.subcategory ?? ""].filter { !$0.isEmpty }
+                                             .joined(separator: CategoryPaths.separator),
+                                         list: thought.listName)
+                }
+                try? memories.recordAnalysisRun(AnalysisRun(
+                    sourceID: sourceID, attempt: tries, revision: snapshot.revision, textHash: snapshot.textHash,
+                    provider: route?.provider, model: route?.model ?? analysis?.model,
+                    promptVersion: route?.promptVersion ?? analysis?.promptVersion,
+                    privacyLevel: route?.level.rawValue, privacyBasis: route?.effectiveBasis.rawValue, proposals: proposals,
+                    problems: problems, operations: operations, outcome: outcome, errorKind: error, startedAt: startedAt,
+                    finishedAt: memories.dates.now()))
+            }
             while true {
                 tries += 1
+                analysis = nil
+                startedAt = memories.dates.now()
                 do {
                     // Un simple « rappelle-moi ça demain » rejoint la note précédente au lieu d'en créer une deuxième,
                     // et deux pensées au même extrait n'en font qu'une.
-                    let analysis = DuplicateThoughts.merge(ReminderMerger.merge(
+                    let received = DuplicateThoughts.merge(ReminderMerger.merge(
                         try await analyzer.analyze(text: text, existingCategories: paths, context: context), in: text))
+                    analysis = received
                     var valid: [ValidThought]
                     do {
-                        valid = try AnalysisValidator.validate(analysis, against: text, recent: recent)
-                    } catch AnalyzerError.invalidOutput where tries < 2 {
+                        valid = try AnalysisValidator.validate(received, against: text, recent: recent)
+                    } catch AnalyzerError.invalidOutput {
                         // F07 — une réponse hors contrat n'obtient aucune confiance : un seul nouvel essai, qui reçoit les
                         // erreurs précises à corriger ; un deuxième refus laisse la dictée « À classer » (aucun sauvetage
                         // dans le dossier ou la liste de la réponse refusée).
-                        context.repairNotes = AnalysisValidator.problems(in: analysis, against: text)
+                        let problems = AnalysisValidator.problems(in: received, against: text)
+                        trace(.refused, problems: problems)
+                        guard tries < 2 else { throw AnalyzerError.invalidOutput }
+                        context.repairNotes = problems
                         continue
                     }
                     valid = await withSimilarNotesFolder(valid)
                     // Des pensées rejetées ou un texte mal couvert : chaque passage oublié reste « À classer » (F05). La
                     // décision de confidentialité est écrite dans la même transaction que les notes (F13), seulement si
                     // la source est encore celle qui a été lue (F10).
-                    let summary = try filer.file(valid, sourceID: sourceID, route: analysis.route, expected: snapshot,
+                    let summary = try filer.file(valid, sourceID: sourceID, route: received.route, expected: snapshot,
                                                  keepInterimIfUncovered: true,
-                                                 forceKeepInterim: valid.count < analysis.thoughts.count)
+                                                 forceKeepInterim: valid.count < received.thoughts.count)
+                    trace(.filed, operations: summary.trace)
                     return .done(.filed(summary))
                 } catch AnalyzerError.unavailable(let reason) {
+                    trace(.waiting, error: AnalysisJob.ErrorKind.providerWait.rawValue)
                     return .done(.waiting(reason))
-                } catch AnalyzerError.invalidOutput where tries < 2 {
+                } catch AnalyzerError.invalidOutput where analysis == nil {
                     // La réponse ne respectait pas le schéma (illisible) : le nouvel essai le sait.
+                    trace(.refused, problems: [AnalysisValidator.unreadableAnswer])
+                    guard tries < 2 else { throw AnalyzerError.invalidOutput }
                     context.repairNotes = [AnalysisValidator.unreadableAnswer]
                     continue
                 } catch AnalyzerError.busy {
                     // Modèle occupé (souvent quand l'app passe en arrière-plan) : un nouvel essai, puis on réessaiera plus tard.
+                    trace(.waiting, error: "busy")
                     if tries < 2 { continue }
                     return .done(.waiting("Le modèle est occupé : la note sera classée au prochain retour dans l'app."))
+                } catch StoreError.staleRevision {
+                    trace(.stale, error: AnalysisJob.ErrorKind.stale.rawValue)
+                    throw StoreError.staleRevision
+                } catch AnalyzerError.refused {
+                    trace(.failed, error: AnalysisJob.ErrorKind.policy.rawValue)
+                    throw AnalyzerError.refused
+                } catch AnalyzerError.invalidOutput {
+                    throw AnalyzerError.invalidOutput
+                } catch {
+                    trace(.failed, error: AnalysisJob.ErrorKind.technical.rawValue)
+                    throw error
                 }
             }
         } catch StoreError.staleRevision {

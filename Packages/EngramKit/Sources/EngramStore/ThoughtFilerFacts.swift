@@ -23,7 +23,8 @@ extension ThoughtFiler {
     /// sur le même sujet, encore actuelle et jamais touchée par le propriétaire, est archivée et reliée à la correction
     /// (l'historique reste). Aucune ou plusieurs cibles possibles, ou une cible protégée : rien ne change, la correction
     /// reste à classer pour que le propriétaire décide.
-    static func supersede(_ db: Database, with correction: Memory, now: Date) throws {
+    @discardableResult
+    static func supersede(_ db: Database, with correction: Memory, now: Date) throws -> Bool {
         let words = CorrectionMatch.words(correction.excerpt)
         let candidates = try Memory
             .filter(Column("source_id") != correction.sourceID && Column("id") != correction.id
@@ -40,11 +41,12 @@ extension ThoughtFiler {
             target.updatedAt = now
             try target.update(db)
             try MemoryVersion(memory: target, changedBy: .system, reason: "remplacée par une correction", at: now).insert(db)
-            return
+            return true
         }
-        guard var review = try Memory.fetchOne(db, key: correction.id), review.status != .unsorted else { return }
+        guard var review = try Memory.fetchOne(db, key: correction.id), review.status != .unsorted else { return false }
         review.status = .unsorted
         review.updatedAt = now
         try review.update(db)
+        return false
     }
 }

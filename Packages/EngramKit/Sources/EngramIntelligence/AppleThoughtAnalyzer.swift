@@ -199,6 +199,8 @@ enum AnalysisPrompt {
 /// Il classe les notes secrètes et sert de secours quand les services en ligne ne répondent pas.
 public struct AppleThoughtAnalyzer: MemoryAnalyzer {
     public static let promptVersion = AnalysisPrompt.version
+    /// F29 — le modèle de la trace (le modèle d'Apple sur l'iPhone).
+    public static let modelName = "apple-foundation-models"
     static let maxChunkLength = 2_500
     /// Nombre de catégories proches du sens de la note données en indice au modèle.
     static let hintCount = 5
@@ -241,7 +243,7 @@ public struct AppleThoughtAnalyzer: MemoryAnalyzer {
                                           evidence: context.folderEvidence, counts: context.categoryCounts,
                                           lists: context.lists, recent: context.recent, repairNotes: context.repairNotes, depth: 0)
         }
-        return ThoughtAnalysis(thoughts: thoughts)
+        return ThoughtAnalysis(thoughts: thoughts, model: Self.modelName, promptVersion: AnalysisPrompt.version)
     }
 
     func analyze(chunk: String, existingCategories: [String], likely: [String], today: String?, facts: [String] = [],

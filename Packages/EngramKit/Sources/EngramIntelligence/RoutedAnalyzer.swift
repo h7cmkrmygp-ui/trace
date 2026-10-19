@@ -203,7 +203,7 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
                 quota.recordUse(provider.name)
                 analysis.route = AnalysisRoute(level: decision.level, provider: provider.name,
                                                reason: decision.reasons.joined(separator: " "), needsCloudRetry: false,
-                                               basis: basis)
+                                               basis: basis, model: analysis.model, promptVersion: analysis.promptVersion)
                 return analysis
             } catch let error as CloudError {
                 try? onTransmission?(TransmissionEvent(id: receipt, sourceID: context.sourceID, provider: provider.name,
@@ -236,7 +236,8 @@ public struct RoutedAnalyzer: MemoryAnalyzer {
         analysis.route = AnalysisRoute(level: stoppedBasis == nil ? decision.level : .secret, provider: Self.localProvider,
                                        reason: (decision.reasons + notes + fallback).joined(separator: " "),
                                        needsCloudRetry: stoppedBasis == nil && temporarilyMissing,
-                                       basis: stoppedBasis ?? basis)
+                                       basis: stoppedBasis ?? basis, model: analysis.model,
+                                       promptVersion: analysis.promptVersion)
         return analysis
     }
 

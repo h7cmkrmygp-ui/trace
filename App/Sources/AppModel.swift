@@ -49,6 +49,8 @@ final class AppModel {
     let lock: AppLock
     /// Ce que la dernière restauration a mis de côté (affiché une fois dans les Réglages).
     var restoredAside: URL?
+    /// F28 — une restauration interrompue ou refusée au lancement (elle sera reprise au prochain lancement).
+    var restoreProblem: String?
     let database: AppDatabase
     /// Dossier Engram (base, enregistrements audio).
     let storageDirectory: URL
@@ -695,9 +697,17 @@ final class AppModel {
         return Result {
             // Une restauration préparée s'applique avant d'ouvrir la base (les données actuelles sont mises de côté).
             let storage = try DatabaseRecovery.storageDirectory()
-            let aside = try? BackupRestore.applyPending(in: storage, at: Date())
+            // F28 : une erreur n'est jamais ignorée ; le journal de reprise reste, et la restauration reprendra.
+            var aside: URL?
+            var problem: String?
+            do {
+                aside = try BackupRestore.applyPending(in: storage, at: Date())
+            } catch {
+                problem = "La restauration n'a pas pu se terminer ; elle reprendra au prochain lancement (\(error))."
+            }
             let model = AppModel(database: try AppDatabase.openOnDisk(), storageDirectory: storage)
-            model.restoredAside = aside ?? nil
+            model.restoredAside = aside
+            model.restoreProblem = problem
             // Un échec du nettoyage ne doit pas empêcher l'app de s'ouvrir.
             _ = try? model.categories.archiveUnusedSeeds()
             return model
@@ -1125,26 +1135,21 @@ final class AppModel {
         isSyncingCalendar = true
         defer { isSyncingCalendar = false }
         guard (try? settings.bool(.calendarAutoAdd, default: true)) ?? true else { return }
-        // F17 : rien à proposer si aucun rendez-vous ne peut aller même dans un calendrier de l'iPhone.
-        guard let waiting = try? calendarLinks.unlinkedAppointments(for: .localCalendar), !waiting.isEmpty else { return }
+        // F17 : l'autorisation n'est demandée que s'il y a un rendez-vous qui peut aller dans un calendrier de l'iPhone.
+        let waiting = (try? calendarLinks.unlinkedAppointments(for: .localCalendar)) ?? []
         if calendarService.access == .notDetermined {
-            guard askPermission, await calendarService.requestAccess() else { return }
+            guard !waiting.isEmpty, askPermission, await calendarService.requestAccess() else { return }
         }
         guard calendarService.access == .granted || calendarService.access == .writeOnly else { return }
         let target = (try? settings.string(.calendarTarget)) ?? nil
-        // Relire la liste après l'attente de l'autorisation, et revérifier chaque lien juste avant d'ajouter.
         // F17 : un calendrier synchronisé (iCloud, Google…) est une destination externe : seulement ce que la politique de
         // chaque note permet (ou ce que le propriétaire a autorisé pour cette note).
         let destination: PrivacyDestination = calendarService.isLocalCalendar(target) ? .localCalendar : .syncedCalendar
-        guard let pending = try? calendarLinks.unlinkedAppointments(for: destination) else { return }
-        for memory in pending {
-            guard let start = memory.dueAt, (try? calendarLinks.link(for: memory.id)) == nil else { continue }
-            guard let added = try? calendarService.addAppointment(title: memory.title, start: start,
-                                                                  hasTime: memory.dueHasTime, notes: memory.summary,
-                                                                  calendarIdentifier: target) else { continue }
-            try? calendarLinks.link(memoryID: memory.id, eventIdentifier: added.eventID, calendarIdentifier: added.calendarID)
-            calendarRevision += 1
-        }
+        // F18 : chaque effet passe par la boîte d'envoi (opération écrite avant l'effet, marque Engram dans l'événement,
+        // erreurs gardées, modifications faites dans le calendrier respectées).
+        let report = await CalendarOutbox(database: database).sync(destination: destination, calendarIdentifier: target,
+                                                                   effects: calendarService)
+        if report.created + report.linkedExisting + report.updated + report.deleted > 0 { calendarRevision += 1 }
     }
 
     /// Enregistrements restés sur le disque sans note (app fermée pendant l'enregistrement) : ils deviennent

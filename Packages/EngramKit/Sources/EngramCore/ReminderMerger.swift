@@ -17,7 +17,8 @@ public enum ReminderMerger {
         for index in merged.indices where merged[index].kind != .appointment && asksForReminder(merged[index].excerpt) {
             merged[index].kind = .task
         }
-        return ThoughtAnalysis(thoughts: merged, route: analysis.route)
+        return ThoughtAnalysis(thoughts: merged, route: analysis.route, model: analysis.model,
+                               promptVersion: analysis.promptVersion)
     }
 
     /// Formules qui ouvrent un simple rappel.

@@ -83,6 +83,9 @@ enum Schema {
         migrator.registerMigration("v24_calendar_outbox") { db in
             try db.execute(sql: v24CalendarOutbox)
         }
+        migrator.registerMigration("v25_analysis_runs") { db in
+            try db.execute(sql: v25AnalysisRuns)
+        }
         return migrator
     }
 
@@ -129,6 +132,33 @@ enum Schema {
         ALTER TABLE calendar_link ADD COLUMN synced_title TEXT;
         ALTER TABLE calendar_link ADD COLUMN synced_start DATETIME;
         ALTER TABLE calendar_link ADD COLUMN synced_at DATETIME;
+        """
+
+    /// v25 (F29) : la trace de chaque tentative de classement, gardée sur l'iPhone (version lue de la source, fournisseur
+    /// et modèle exacts, versions du contrat et des consignes, confidentialité, propositions, refus, opérations, issue).
+    /// Reprise : aucune (les classements d'avant n'ont pas de trace).
+    static let v25AnalysisRuns = """
+        CREATE TABLE analysis_run (
+          id BLOB PRIMARY KEY NOT NULL,
+          source_id BLOB NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+          attempt INTEGER NOT NULL,
+          revision INTEGER NOT NULL,
+          text_hash TEXT NOT NULL,
+          provider TEXT,
+          model TEXT,
+          prompt_version TEXT,
+          contract_version TEXT NOT NULL,
+          privacy_level TEXT,
+          privacy_basis TEXT,
+          proposals TEXT NOT NULL DEFAULT '[]',
+          problems TEXT NOT NULL DEFAULT '[]',
+          operations TEXT NOT NULL DEFAULT '[]',
+          outcome TEXT NOT NULL CHECK (outcome IN ('filed','refused','waiting','failed','stale')),
+          error_kind TEXT,
+          started_at DATETIME NOT NULL,
+          finished_at DATETIME NOT NULL
+        );
+        CREATE INDEX analysis_run_source ON analysis_run(source_id, started_at);
         """
 
     /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes
