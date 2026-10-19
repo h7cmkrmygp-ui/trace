@@ -109,8 +109,8 @@ public enum BackupRestore {
         try FileManager.default.moveItem(at: restored, to: pending)
     }
 
-    /// F28 — vérifie une sauvegarde ouverte sans rien y créer : la base est là, chaque fichier du manifeste correspond à
-    /// son empreinte, la base s'ouvre en lecture seule et passe le contrôle d'intégrité de SQLite, et c'est une base
+    /// F28 — vérifie une sauvegarde ouverte sans fabriquer de base : la base est là, chaque fichier du manifeste correspond à
+    /// son empreinte, la base s'ouvre (sans migration) et passe le contrôle d'intégrité de SQLite, et c'est une base
     /// d'Engram. Signale les audios référencés absents.
     public static func validate(_ folder: URL) throws -> RestoreCheck {
         let fileManager = FileManager.default
@@ -122,11 +122,11 @@ public enum BackupRestore {
             guard fileManager.fileExists(atPath: url.path) else { throw Failure.missingFile(entry.path) }
             guard try BackupManifest.digest(of: url) == entry.sha256 else { throw Failure.corrupted(entry.path) }
         }
-        var configuration = Configuration()
-        configuration.readonly = true
+        // Le fichier existe (vérifié plus haut) : la connexion n'en crée aucun, et aucune migration n'est appliquée. Une
+        // copie d'une base en mode WAL a besoin de ses fichiers annexes : la lecture seule stricte la refuserait.
         let queue: DatabaseQueue
         do {
-            queue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
+            queue = try DatabaseQueue(path: databaseURL.path)
         } catch {
             throw Failure.corrupted(DatabaseRecovery.databaseFileName)
         }
