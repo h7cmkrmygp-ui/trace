@@ -1,8 +1,9 @@
 # Moteur fiable — rapport de la mission F01 à F29
 
-Branche : `moteur-fiable`, issue de `p2-je-parle` au commit a45ba3d (celui de l'audit du 16 octobre 2026). Rien n'est
-fusionné ni déployé ; `p2-je-parle` et `main` ne sont pas touchées. Le suivi constat par constat (fichiers, tests,
-résultat de la CI, limites) est dans [`MOTEUR_FIABLE_SUIVI.md`](MOTEUR_FIABLE_SUIVI.md).
+Branche : `moteur-fiable`, issue de `p2-je-parle` au commit a45ba3d (celui de l'audit du 16 octobre 2026), fusionnée
+dans `p2-je-parle` le 19 octobre 2026 à la demande du propriétaire (demande de fusion #3, commit 3040a47). `main` n'est
+pas touchée. Le suivi constat par constat (fichiers, tests, résultat de la CI, limites) est dans
+[`MOTEUR_FIABLE_SUIVI.md`](MOTEUR_FIABLE_SUIVI.md).
 
 Chaque correction a suivi le même chemin : un test qui échoue sur le défaut, poussé sur la CI (rouge vérifié : seuls les
 nouveaux tests échouent), puis le code (vert : tests, recherche de secrets et construction de l'app).
