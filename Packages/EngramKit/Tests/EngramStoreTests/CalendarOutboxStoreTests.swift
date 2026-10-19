@@ -84,7 +84,7 @@ struct CalendarOutboxStoreTests {
         let first = await outbox(env).sync(destination: .localCalendar, calendarIdentifier: nil, effects: calendar)
         #expect(first.created == 1)
         // L'app s'arrête juste après la création : le lien n'a jamais été écrit.
-        try env.database.writer.write { db in
+        try await env.database.writer.write { db in
             try db.execute(sql: "DELETE FROM calendar_link WHERE memory_id = ?", arguments: [memory.id])
             try db.execute(sql: "UPDATE calendar_operation SET state = 'pending' WHERE memory_id = ?", arguments: [memory.id])
         }
