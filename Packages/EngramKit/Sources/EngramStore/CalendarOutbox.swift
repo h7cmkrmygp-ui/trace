@@ -70,7 +70,7 @@ public struct CalendarOutbox: Sendable {
         }
         // Les événements déjà reliés dont on sait ce qui y a été écrit (les liens d'avant v24 n'y sont pas).
         for link in (try? syncedLinks()) ?? [] {
-            guard let memory = try? database.writer.read({ db in try Memory.fetchOne(db, key: link.memoryID) }) else {
+            guard let memory = memory(link.memoryID) else {
                 continue
             }
             let trashed = memory.status == .trashed
@@ -193,6 +193,10 @@ public struct CalendarOutbox: Sendable {
                 """, arguments: [Self.opID(memoryID, kind), memoryID, kind.rawValue, state.rawValue,
                                  error.map { String(describing: $0) }, now, now])
         }
+    }
+
+    func memory(_ id: UUID) -> Memory? {
+        (try? database.writer.read { db in try Memory.fetchOne(db, key: id) }) ?? nil
     }
 
     func syncedLinks() throws -> [CalendarLink] {
