@@ -70,7 +70,7 @@ public struct CalendarOutbox: Sendable {
         }
         // Les événements déjà reliés dont on sait ce qui y a été écrit (les liens d'avant v24 n'y sont pas).
         for link in (try? syncedLinks()) ?? [] {
-            guard let memory = memory(link.memoryID) else {
+            guard let memory = self.memory(link.memoryID) else {
                 continue
             }
             let trashed = memory.status == .trashed
