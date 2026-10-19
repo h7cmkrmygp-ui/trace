@@ -39,7 +39,10 @@ let package = Package(
             name: "EngramPipelineTests",
             dependencies: ["EngramPipeline", "EngramStore", "EngramCore", "EngramTesting"]
         ),
-        .testTarget(name: "EngramIntelligenceTests", dependencies: ["EngramIntelligence", "EngramCore", "EngramTesting"]),
+        .testTarget(
+            name: "EngramIntelligenceTests",
+            dependencies: ["EngramIntelligence", "EngramCore", "EngramTesting", "EngramPipeline", "EngramStore"]
+        ),
         .testTarget(name: "EngramCaptureTests", dependencies: ["EngramCapture", "EngramTesting"]),
     ]
 )
