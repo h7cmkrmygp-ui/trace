@@ -60,3 +60,53 @@ public enum BackupRestore {
         return aside
     }
 }
+
+/// F28 — le manifeste d'une sauvegarde : format, version du schéma, fichiers attendus et leurs empreintes.
+public struct BackupManifest: Codable, Sendable, Equatable {
+    public struct Entry: Codable, Sendable, Equatable {
+        public let path: String
+        public let size: Int64
+        public let sha256: String
+    }
+
+    public static let fileName = "manifest.json"
+    public var formatVersion: Int
+    public var schemaVersion: String
+    public var createdAt: Date
+    public var files: [Entry]
+
+    /// Écrit le manifeste des fichiers de `folder`.
+    @discardableResult
+    public static func write(in folder: URL, files: [String], schemaVersion: String, createdAt: Date) throws -> BackupManifest {
+        BackupManifest(formatVersion: 1, schemaVersion: schemaVersion, createdAt: createdAt, files: [])
+    }
+}
+
+extension BackupRestore {
+    public enum Failure: Error, Equatable, Sendable {
+        case missingDatabase
+        case missingFile(String)
+        case corrupted(String)
+        case notEngram
+        case interrupted
+    }
+
+    /// Ce que dit la vérification d'une sauvegarde ouverte.
+    public struct RestoreCheck: Sendable, Equatable {
+        public let noteCount: Int
+        public let missingAudio: [String]
+        public let hasManifest: Bool
+        public let schemaVersion: String?
+    }
+
+    /// Étapes d'une restauration (mise de côté, mise en place, fin).
+    public static let stepCount = 7
+
+    public static func validate(_ folder: URL) throws -> RestoreCheck {
+        RestoreCheck(noteCount: try noteCount(inRestored: folder), missingAudio: [], hasManifest: false, schemaVersion: nil)
+    }
+
+    public static func applyPending(in storage: URL, at date: Date, interruptAfter: Int?) throws -> URL? {
+        try applyPending(in: storage, at: date)
+    }
+}

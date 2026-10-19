@@ -80,6 +80,9 @@ enum Schema {
         migrator.registerMigration("v23_transcript_confidence") { db in
             try db.execute(sql: v23TranscriptConfidence)
         }
+        migrator.registerMigration("v24_calendar_outbox") { db in
+            try db.execute(sql: v24CalendarOutbox)
+        }
         return migrator
     }
 
@@ -104,6 +107,28 @@ enum Schema {
     /// v23 (F26) : la confiance de la transcription de chaque dictée. Reprise : aucune (inconnue pour les anciennes).
     static let v23TranscriptConfidence = """
         ALTER TABLE source ADD COLUMN transcript_confidence REAL;
+        """
+
+    /// v24 (F18) : la boîte d'envoi du calendrier (une opération écrite avant chaque création, modification ou
+    /// suppression d'événement, avec son état, son erreur et ses essais) ; ce qui a été écrit dans l'événement et quand
+    /// (pour reconnaître une note rééditée et un événement modifié dans le calendrier). Reprise : aucune ; les liens
+    /// existants restent sans état connu et ne sont jamais modifiés ni supprimés automatiquement.
+    static let v24CalendarOutbox = """
+        CREATE TABLE calendar_operation (
+          op_id TEXT PRIMARY KEY NOT NULL,
+          memory_id BLOB NOT NULL REFERENCES memory(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL CHECK (kind IN ('create','update','delete')),
+          state TEXT NOT NULL CHECK (state IN ('pending','applied','failed','conflict')),
+          event_identifier TEXT,
+          error TEXT,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME NOT NULL,
+          updated_at DATETIME NOT NULL
+        );
+        CREATE INDEX calendar_operation_memory ON calendar_operation(memory_id);
+        ALTER TABLE calendar_link ADD COLUMN synced_title TEXT;
+        ALTER TABLE calendar_link ADD COLUMN synced_start DATETIME;
+        ALTER TABLE calendar_link ADD COLUMN synced_at DATETIME;
         """
 
     /// v21 (F09) : chaque chose d'une liste et ses contributions (dictée, acteur réel, ajout, coche, retrait, personnes

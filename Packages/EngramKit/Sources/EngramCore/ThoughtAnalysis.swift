@@ -75,13 +75,19 @@ public struct AnalysisRoute: Sendable, Hashable {
     public var needsCloudRetry: Bool
     /// F13 — sur quoi repose le niveau (nil : déduit de la raison, pour les routes écrites avant).
     public var basis: PrivacyBasis?
+    /// F29 — le modèle exact et la version des consignes de la tentative (nil : inconnus).
+    public var model: String?
+    public var promptVersion: String?
 
-    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool, basis: PrivacyBasis? = nil) {
+    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool, basis: PrivacyBasis? = nil,
+                model: String? = nil, promptVersion: String? = nil) {
         self.level = level
         self.provider = provider
         self.reason = reason
         self.needsCloudRetry = needsCloudRetry
         self.basis = basis
+        self.model = model
+        self.promptVersion = promptVersion
     }
 
     /// La base effective : celle donnée, sinon celle que dit la raison enregistrée.
