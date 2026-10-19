@@ -1,0 +1,253 @@
+import Foundation
+
+/// Une pensée telle que l'IA la propose (non vérifiée).
+public struct AnalyzedThought: Sendable, Hashable {
+    public var title: String
+    public var summary: String?
+    /// Citation censée être mot pour mot dans le texte d'origine.
+    public var excerpt: String
+    public var kind: MemoryKind
+    public var tags: [String]
+    public var mentionedDates: [String]
+    /// Domaine large, en français (« Automobile »).
+    public var category: String
+    /// Sous-catégorie facultative (« Corolla »).
+    public var subcategory: String?
+    /// Courte description de la catégorie quand l'IA la crée (« Suivi de la santé, du poids… »).
+    public var categoryDescription: String?
+    /// Personnes et lieux nommés dans l'élément, recopiés de la note (P9).
+    public var people: [String]
+    public var places: [String]
+    /// P32 — pourquoi l'IA choisit cette catégorie, en une phrase écrite avant de la choisir.
+    public var categoryReason: String?
+    /// P41 — la liste où vont les choses de cet élément (à recevoir, à acheter, à offrir) ; nil pour une note.
+    public var listName: String?
+    /// P41 — les choses à ajouter à cette liste, une par case.
+    public var listItems: [String]
+    /// F03 — l'intention (nil : le modèle n'en a pas donné de reconnaissable ; aucune opération de liste).
+    public var intent: IntentType?
+    public var polarity: Polarity?
+    /// F03 — qui fait ou veut la chose (« moi », un prénom), l'action (« nettoyer »), son objet (« ma douche ») et pour qui.
+    public var subject: String?
+    public var action: String?
+    public var object: String?
+    public var beneficiary: String?
+    /// F16 — les dates dites, avec leur rôle.
+    public var temporal: [TemporalMention]
+
+    public init(title: String, summary: String?, excerpt: String, kind: MemoryKind, tags: [String],
+                mentionedDates: [String], category: String, subcategory: String?, categoryDescription: String? = nil,
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil, listName: String? = nil,
+                listItems: [String] = [], intent: IntentType? = nil, polarity: Polarity? = nil, subject: String? = nil,
+                action: String? = nil, object: String? = nil, beneficiary: String? = nil,
+                temporal: [TemporalMention] = []) {
+        self.categoryReason = categoryReason
+        self.listName = listName
+        self.listItems = listItems
+        self.intent = intent
+        self.polarity = polarity
+        self.subject = subject
+        self.action = action
+        self.object = object
+        self.beneficiary = beneficiary
+        self.temporal = temporal
+        self.people = people
+        self.places = places
+        self.title = title
+        self.summary = summary
+        self.excerpt = excerpt
+        self.kind = kind
+        self.tags = tags
+        self.mentionedDates = mentionedDates
+        self.category = category
+        self.subcategory = subcategory
+        self.categoryDescription = categoryDescription
+    }
+}
+
+/// Où et pourquoi une note a été classée (affiché au propriétaire, enregistré sur la source).
+public struct AnalysisRoute: Sendable, Hashable {
+    public var level: PrivacyLevel
+    /// « gemini », « groq » ou « apple ».
+    public var provider: String
+    public var reason: String
+    /// Classée sur l'iPhone faute de service disponible : à reclasser plus tard si personne n'y touche.
+    public var needsCloudRetry: Bool
+    /// F13 — sur quoi repose le niveau (nil : déduit de la raison, pour les routes écrites avant).
+    public var basis: PrivacyBasis?
+    /// F29 — le modèle exact et la version des consignes de la tentative (nil : inconnus).
+    public var model: String?
+    public var promptVersion: String?
+
+    public init(level: PrivacyLevel, provider: String, reason: String, needsCloudRetry: Bool, basis: PrivacyBasis? = nil,
+                model: String? = nil, promptVersion: String? = nil) {
+        self.level = level
+        self.provider = provider
+        self.reason = reason
+        self.needsCloudRetry = needsCloudRetry
+        self.basis = basis
+        self.model = model
+        self.promptVersion = promptVersion
+    }
+
+    /// La base effective : celle donnée, sinon celle que dit la raison enregistrée.
+    public var effectiveBasis: PrivacyBasis {
+        if let basis { return basis }
+        switch reason {
+        case RouteReasons.noCloudService: return .noCloudService
+        case RouteReasons.keepEverythingLocal: return .everythingLocal
+        case RouteReasons.ownerKeepLocal: return .ownerKeepLocal
+        default: return .judged
+        }
+    }
+}
+
+/// Résultat brut d'une analyse.
+public struct ThoughtAnalysis: Sendable, Hashable {
+    public var thoughts: [AnalyzedThought]
+    /// Renseigné par le routage (nil pour un analyseur seul).
+    public var route: AnalysisRoute?
+    /// F29 — le modèle exact et la version des consignes, donnés par l'analyseur qui a répondu.
+    public var model: String?
+    public var promptVersion: String?
+
+    public init(thoughts: [AnalyzedThought], route: AnalysisRoute? = nil, model: String? = nil, promptVersion: String? = nil) {
+        self.thoughts = thoughts
+        self.route = route
+        self.model = model
+        self.promptVersion = promptVersion
+    }
+}
+
+/// Ce que l'analyseur sait de la note en plus de son texte : le choix du propriétaire et le moment de la dictée.
+public struct AnalysisContext: Sendable, Equatable {
+    /// « Garder sur l'iPhone ».
+    public var keepLocal: Bool
+    public var capturedAt: Date
+    /// Ce qu'Engram a déjà reconnu dans la note (P31, `NoteFacts`), dit à l'IA avec elle.
+    public var facts: [String]
+    /// Ce que contient chaque catégorie existante (chemin → description), pour que l'IA juge par le sens (P32).
+    public var categoryDescriptions: [String: String]
+    /// Où sont rangées les notes semblables (P34, calculé sur l'iPhone).
+    public var folderEvidence: [FolderEvidence]
+    /// Nombre de notes de chaque dossier (chemin → nombre, sous-dossiers compris).
+    public var categoryCounts: [String: Int]
+    /// P41 — les listes existantes (leurs noms), pour que l'IA y ajoute au lieu d'en créer de nouvelles.
+    public var lists: [String]
+    /// P42 — ce qui vient d'être dit (la dictée précédente), pour comprendre « elle », « cette liste », « ce projet ».
+    public var recent: RecentContext?
+    /// F02, F10 — la source analysée (pour revérifier sa politique juste avant chaque envoi).
+    public var sourceID: UUID?
+    /// F02 — la provenance des métadonnées ; nil : aucune métadonnée dérivée ne sort de l'iPhone.
+    public var provenance: ContextProvenance?
+    /// F07 — les erreurs précises d'une réponse refusée, à corriger au nouvel essai (un seul, borné).
+    public var repairNotes: [String]
+
+    public init(keepLocal: Bool = false, capturedAt: Date = Date(), facts: [String] = [],
+                categoryDescriptions: [String: String] = [:], folderEvidence: [FolderEvidence] = [],
+                categoryCounts: [String: Int] = [:], lists: [String] = [], recent: RecentContext? = nil,
+                sourceID: UUID? = nil, provenance: ContextProvenance? = nil, repairNotes: [String] = []) {
+        self.keepLocal = keepLocal
+        self.capturedAt = capturedAt
+        self.facts = facts
+        self.categoryDescriptions = categoryDescriptions
+        self.folderEvidence = folderEvidence
+        self.categoryCounts = categoryCounts
+        self.lists = lists
+        self.recent = recent
+        self.sourceID = sourceID
+        self.provenance = provenance
+        self.repairNotes = repairNotes
+    }
+}
+
+public enum AnalyzerError: Error, Equatable, Sendable {
+    /// Le modèle ne peut pas répondre pour l'instant (raison lisible) : on réessaiera plus tard.
+    case unavailable(String)
+    /// Le modèle refuse (garde-fous) : repli.
+    case refused
+    /// Sortie inutilisable : un nouvel essai, puis repli.
+    case invalidOutput
+    /// Modèle occupé : un nouvel essai.
+    case busy
+}
+
+/// Ce qui analyse un texte : le modèle d'Apple dans l'app, un faux analyseur dans les tests.
+public protocol MemoryAnalyzer: Sendable {
+    /// `existingCategories` : chemins actifs, « Parent › Enfant ».
+    func analyze(text: String, existingCategories: [String]) async throws -> ThoughtAnalysis
+    /// Avec le contexte de la note (le routage s'en sert ; les autres analyseurs l'ignorent).
+    func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis
+}
+
+extension MemoryAnalyzer {
+    public func analyze(text: String, existingCategories: [String], context: AnalysisContext) async throws -> ThoughtAnalysis {
+        try await analyze(text: text, existingCategories: existingCategories)
+    }
+}
+
+/// Une pensée vérifiée, prête à être classée.
+public struct ValidThought: Sendable, Hashable {
+    public var title: String
+    public var summary: String?
+    public var excerpt: String
+    public var spanStart: Int?
+    public var spanEnd: Int?
+    public var kind: MemoryKind
+    public var tags: [String]
+    /// 0, 1 ou 2 niveaux : [] = « À classer ».
+    public var categoryPath: [String]
+    public var mentionedDates: [String]
+    /// Description de la catégorie principale proposée par l'IA (posée seulement si elle n'en a pas).
+    public var categoryDescription: String?
+    /// Personnes et lieux vérifiés (présents dans le texte).
+    public var people: [String]
+    public var places: [String]
+    /// P32 — la raison donnée par l'IA pour ce chemin (nil si Engram a refusé le chemin).
+    public var categoryReason: String?
+    /// P33 — la pensée dit seulement la fête de cette personne : elle va dans « Anniversaires », sans échéance.
+    public var birthdayOf: String?
+    /// P41 — la liste où vont les choses dites (nom sans « Liste de »), et ces choses ; nil pour une note.
+    public var listName: String?
+    public var listItems: [String]
+    /// F03 — l'intention vérifiée (nil : inconnue, aucune opération de liste), sa polarité et ses arguments.
+    public var intent: IntentType?
+    public var polarity: Polarity?
+    public var subject: String?
+    public var action: String?
+    public var object: String?
+    public var beneficiary: String?
+    /// F16 — les dates dites, avec leur rôle (seulement celles qui figurent dans l'extrait).
+    public var temporal: [TemporalMention]
+
+    public init(title: String, summary: String?, excerpt: String, spanStart: Int?, spanEnd: Int?, kind: MemoryKind,
+                tags: [String], categoryPath: [String], mentionedDates: [String], categoryDescription: String? = nil,
+                people: [String] = [], places: [String] = [], categoryReason: String? = nil, birthdayOf: String? = nil,
+                listName: String? = nil, listItems: [String] = [], intent: IntentType? = nil, polarity: Polarity? = nil,
+                subject: String? = nil, action: String? = nil, object: String? = nil, beneficiary: String? = nil,
+                temporal: [TemporalMention] = []) {
+        self.categoryReason = categoryReason
+        self.birthdayOf = birthdayOf
+        self.listName = listName
+        self.listItems = listItems
+        self.intent = intent
+        self.polarity = polarity
+        self.subject = subject
+        self.action = action
+        self.object = object
+        self.beneficiary = beneficiary
+        self.temporal = temporal
+        self.people = people
+        self.places = places
+        self.title = title
+        self.summary = summary
+        self.excerpt = excerpt
+        self.spanStart = spanStart
+        self.spanEnd = spanEnd
+        self.kind = kind
+        self.tags = tags
+        self.categoryPath = categoryPath
+        self.mentionedDates = mentionedDates
+        self.categoryDescription = categoryDescription
+    }
+}
